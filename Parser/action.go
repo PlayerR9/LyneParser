@@ -3,7 +3,7 @@ package Parser
 import (
 	"fmt"
 
-	ers "github.com/PlayerR9/MyGoLibUnits/Errors"
+	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
 
 // ActionType represents the type of action that the parser will take.

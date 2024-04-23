@@ -4,7 +4,8 @@ import (
 	"errors"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	hp "github.com/PlayerR9/LyneParser/Helpers"
+	hp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
+	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
 
 // ParseBranch is a function that, given a parser and a branch of tokens,
@@ -22,7 +23,7 @@ import (
 func ParseBranch(parser *Parser, branch []gr.LeafToken) ([]gr.NonLeafToken, error) {
 	err := parser.SetInputStream(branch)
 	if err != nil {
-		return nil, hp.NewErrIgnorable(err)
+		return nil, ers.NewErrIgnorable(err)
 	}
 
 	err = parser.Parse()
@@ -32,11 +33,11 @@ func ParseBranch(parser *Parser, branch []gr.LeafToken) ([]gr.NonLeafToken, erro
 
 	roots, err := parser.GetParseTree()
 	if err != nil {
-		return roots, hp.NewErrIgnorable(err)
+		return roots, ers.NewErrIgnorable(err)
 	}
 
 	if len(roots) == 0 {
-		return nil, hp.NewErrIgnorable(errors.New("no roots found"))
+		return nil, ers.NewErrIgnorable(errors.New("no roots found"))
 	}
 
 	return roots, nil

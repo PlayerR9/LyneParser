@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	ers "github.com/PlayerR9/MyGoLibUnits/Errors"
-	ds "github.com/PlayerR9/MyGoLists/DoubleLL"
+	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
+	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
 
 // DecisionFunc is a function that is used to determine the next action to take
@@ -200,7 +200,7 @@ func (p *Parser) GetParseTree() ([]gr.NonLeafToken, error) {
 	roots := make([]gr.NonLeafToken, 0)
 
 	for !p.stack.IsEmpty() {
-		top := p.stack.MustPop()
+		top := p.stack.Pop()
 
 		root, ok := top.(*gr.NonLeafToken)
 		if !ok {
@@ -247,7 +247,7 @@ func (p *Parser) reduce(rule int) error {
 			return fmt.Errorf("after %s: %v", lhs, ers.NewErrUnexpected(nil, value))
 		}
 
-		top := p.stack.MustPop()
+		top := p.stack.Pop()
 
 		if lookahead == nil {
 			lookahead = top.GetLookahead()

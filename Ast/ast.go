@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	ers "github.com/PlayerR9/MyGoLibUnits/Errors"
+	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 )

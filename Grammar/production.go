@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	itf "github.com/PlayerR9/MyGoLib/CustomData/Iterators"
-	ers "github.com/PlayerR9/MyGoLibUnits/Errors"
-	itff "github.com/PlayerR9/MyGoLibUnits/Interfaces"
-	"github.com/PlayerR9/MyGoLists/Common/Stacker"
-	impl "github.com/PlayerR9/MyGoLists/Implementations/Stack"
+	Stacker "github.com/PlayerR9/MyGoLib/ListLike/Common"
+	impl "github.com/PlayerR9/MyGoLib/ListLike/Stack"
+	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+	itff "github.com/PlayerR9/MyGoLib/Units/Interfaces"
 )
 
 // Productioner is an interface that defines methods for a production in a grammar.
@@ -226,16 +226,19 @@ func (p *Production) Match(at int, b any) Tokener {
 		popped := impl.NewArrayStack[Tokener]()
 
 		for i := len(p.rhs) - 1; i >= 0; i-- {
-			top, err := val.Peek()
-			if err != nil {
+			if val.IsEmpty() {
 				// Push back the popped symbols.
 				for !popped.IsEmpty() {
-					elem, _ := popped.Pop()
-					val.Push(elem)
+					val.Push(popped.Pop())
 				}
 
 				return nil
 			}
+
+			top := val.Peek()
+
+			// FIXME: Implement a way to check if the top of the stack is a
+			// non-leaf token.
 
 			popped.Push(top)
 			val.Pop()
@@ -246,8 +249,7 @@ func (p *Production) Match(at int, b any) Tokener {
 
 		// Push back the popped symbols.
 		for !popped.IsEmpty() {
-			elem, _ := popped.Pop()
-			val.Push(elem)
+			val.Push(popped.Pop())
 		}
 
 		tok := NewNonLeafToken(p.lhs, at, slice...)

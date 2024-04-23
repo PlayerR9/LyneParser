@@ -1,8 +1,6 @@
 package Lexer
 
 import (
-	util "github.com/PlayerR9/LyneParser/util"
-
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
@@ -84,7 +82,7 @@ func findInvalidTokenIndex(branch []gr.LeafToken, data []byte) int {
 	for _, token := range branch {
 		b := []byte(token.Data)
 
-		startIndex := util.FindSubsliceFrom(data, b, pos)
+		startIndex := slext.FindSubsliceFrom(data, b, pos)
 		if startIndex == -1 {
 			return -1
 		}

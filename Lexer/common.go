@@ -3,9 +3,8 @@ package Lexer
 import (
 	"strings"
 
-	util "github.com/PlayerR9/LyneParser/util"
-
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	sext "github.com/PlayerR9/MyGoLib/Utility/StringExt"
 )
 
 // LexString is a function that, given an input string, returns a slice of tokens.
@@ -87,16 +86,16 @@ func FormatSyntaxError(branch []gr.LeafToken, data []byte) string {
 
 	// Write all lines before the one containing the invalid token
 
-	beforeLines := util.ByteSplitter(before, '\n')
+	beforeLines := sext.ByteSplitter(before, '\n')
 
 	if len(beforeLines) > 1 {
-		builder.WriteString(util.JoinBytes(beforeLines[:len(beforeLines)-1], '\n'))
+		builder.WriteString(sext.JoinBytes(beforeLines[:len(beforeLines)-1], '\n'))
 		builder.WriteRune('\n')
 	}
 
 	// Write the faulty line
 	faultyLine := beforeLines[len(beforeLines)-1]
-	afterLines := util.ByteSplitter(after, '\n')
+	afterLines := sext.ByteSplitter(after, '\n')
 
 	builder.WriteString(string(faultyLine))
 
@@ -112,7 +111,7 @@ func FormatSyntaxError(branch []gr.LeafToken, data []byte) string {
 	builder.WriteRune('\n')
 
 	if len(afterLines) > 1 {
-		builder.WriteString(util.JoinBytes(afterLines[1:], '\n'))
+		builder.WriteString(sext.JoinBytes(afterLines[1:], '\n'))
 	}
 
 	return builder.String()

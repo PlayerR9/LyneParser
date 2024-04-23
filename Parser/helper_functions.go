@@ -7,6 +7,18 @@ import (
 	hp "github.com/PlayerR9/LyneParser/Helpers"
 )
 
+// ParseBranch is a function that, given a parser and a branch of tokens,
+// returns a slice of non-leaf tokens.
+//
+// Parameters:
+//
+//   - parser: The parser to use.
+//   - branch: The branch of tokens to parse.
+//
+// Returns:
+//
+//   - []gr.NonLeafToken: A slice of non-leaf tokens.
+//   - error: An error if the branch cannot be parsed.
 func ParseBranch(parser *Parser, branch []gr.LeafToken) ([]gr.NonLeafToken, error) {
 	err := parser.SetInputStream(branch)
 	if err != nil {
@@ -30,6 +42,18 @@ func ParseBranch(parser *Parser, branch []gr.LeafToken) ([]gr.NonLeafToken, erro
 	return roots, nil
 }
 
+// ParseIS is a function that, given a parser and a slice of branches of tokens,
+// returns a slice of non-leaf tokens.
+//
+// Parameters:
+//
+//   - parser: The parser to use.
+//   - branches: The branches of tokens to parse.
+//
+// Returns:
+//
+//   - []gr.NonLeafToken: A slice of non-leaf tokens.
+//   - error: An error if the branches cannot be parsed.
 func ParseIS(parser *Parser, branches [][]gr.LeafToken) ([]gr.NonLeafToken, error) {
 	solutions := make([]hp.HResult[gr.NonLeafToken], 0)
 

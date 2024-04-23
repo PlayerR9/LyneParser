@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"

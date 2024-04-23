@@ -6,7 +6,7 @@ import (
 
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
-	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
 
 // ASTNoder is an interface for AST nodes.

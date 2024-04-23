@@ -1,7 +1,7 @@
 package Lexer
 
 import (
-	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
 
 // TokenStatus represents the status of a token

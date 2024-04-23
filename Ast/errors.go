@@ -5,7 +5,7 @@ import (
 
 	fs "github.com/PlayerR9/MyGoLib/Formatting/Strings"
 
-	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
 
 // ErrExpectedNonNil is an error for when a non-nil value is expected.

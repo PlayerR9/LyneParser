@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	nd "github.com/PlayerR9/MyGoLib/CustomData/Node"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"

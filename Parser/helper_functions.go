@@ -3,7 +3,7 @@ package Parser
 import (
 	"errors"
 
-	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	hp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"

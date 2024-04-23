@@ -1,11 +1,11 @@
 package Parser
 
 import (
-	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	"strings"
 
-	nd "WppEditor/PlayerR9/MyGoLib/CustomData/Node"
+	nd "github.com/PlayerR9/MyGoLib/CustomData/Node"
 )
 
 const (

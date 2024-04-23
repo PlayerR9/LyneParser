@@ -3,7 +3,7 @@ package Lexer
 import (
 	"strings"
 
-	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	sext "github.com/PlayerR9/MyGoLib/Utility/StringExt"
 )

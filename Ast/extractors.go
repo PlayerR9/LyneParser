@@ -1,7 +1,7 @@
 package Ast
 
 import (
-	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )

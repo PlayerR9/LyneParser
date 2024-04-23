@@ -6,7 +6,7 @@ import (
 
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
-	gr "github.com/PlayerR9/LyneParser/Grammar"
+	gr "WppEditor/PlayerR9/LyneParser/Grammar"
 )
 
 // ASTNoder is an interface for AST nodes.
@@ -176,15 +176,21 @@ func (ast *ASTer) filterWrongFields(child gr.Tokener, i int) error {
 // Returns:
 //
 //   - error: The error if there are too many fields.
-func (ast *ASTer) filterTooManyFields(children []gr.Tokener) error {
+func (ast *ASTer) filterTooManyFields(size int) error {
 	top := 0
 
 	for j := 0; j < len(ast.table); j++ {
-		if len(children) <= len(ast.table[j]) {
+		if size == len(ast.table[j]) {
 			ast.table[top] = ast.table[j]
 			top++
 		} else if ast.isLastOfTable(top, j) {
-			return NewErrTooManyFields(len(children), len(ast.table[j]))
+			// DEBUG: Print the table
+			// for _, row := range ast.table {
+			// 	fmt.Println(row)
+			// }
+			// fmt.Println()
+
+			return NewErrTooManyFields(size, len(ast.table[j]))
 		}
 	}
 
@@ -209,36 +215,52 @@ func (ast *ASTer) filterTooManyFields(children []gr.Tokener) error {
 //
 //   - error: The error if the check fails.
 func (ast *ASTer) Check(children []gr.Tokener) error {
-	if len(children) == 0 {
-		allExpected := make([]string, 0, len(ast.table))
+	// 1. Create a copy of the table.
+	astCopy := ASTer{
+		table: make([][]string, 0, len(ast.table)),
+	}
 
-		for _, row := range ast.table {
+	for _, row := range ast.table {
+		rowCopy := make([]string, len(row))
+		copy(rowCopy, row)
+
+		astCopy.table = append(astCopy.table, rowCopy)
+	}
+
+	// DEBUG: Print the table
+	// for _, row := range astCopy.table {
+	// 	fmt.Println(row)
+	// }
+	// fmt.Println()
+
+	if len(children) == 0 {
+		allExpected := make([]string, 0, len(astCopy.table))
+
+		for _, row := range astCopy.table {
 			allExpected = append(allExpected, row[0])
 		}
 
 		return NewErrMissingFields(allExpected...)
 	}
 
-	var err error
+	err := astCopy.filterTooManyFields(len(children))
+	if err != nil {
+		return err
+	}
 
 	for i := 0; i < len(children); i++ {
-		err = ast.filterMissingFields(i)
+		err = astCopy.filterMissingFields(i)
 		if err != nil {
 			return err
 		}
 
-		err = ast.filterWrongFields(children[i], i)
-		if err != nil {
-			return err
-		}
-
-		err = ast.filterTooManyFields(children)
+		err = astCopy.filterWrongFields(children[i], i)
 		if err != nil {
 			return err
 		}
 	}
 
-	if len(ast.table) != 1 {
+	if len(astCopy.table) != 1 {
 		return NewErrAmbiguousGrammar()
 	}
 

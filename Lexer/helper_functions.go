@@ -1,7 +1,7 @@
 package Lexer
 
 import (
-	gr "github.com/PlayerR9/LyneParser/Grammar"
+	gr "WppEditor/PlayerR9/LyneParser/Grammar"
 
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )

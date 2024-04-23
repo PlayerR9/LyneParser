@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	gr "github.com/PlayerR9/LyneParser/Grammar"
+	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
@@ -127,6 +128,18 @@ func (p *Parser) SetInputStream(inputStream []gr.LeafToken) error {
 		)
 	}
 
+	// Add EOF token to the end of the input stream (if it is not already present).
+	if inputStream[len(inputStream)-1].GetID() != "EOF" {
+		eofTok := gr.NewLeafToken("EOF", "", -1)
+
+		inputStream = append(inputStream, eofTok)
+	}
+
+	// Add lookahead to all tokens
+	for i := 0; i < len(inputStream)-1; i++ {
+		inputStream[i].SetLookahead(&inputStream[i+1])
+	}
+
 	p.inputStream = inputStream
 	p.inputSize = len(inputStream)
 
@@ -152,13 +165,15 @@ func (p *Parser) Parse() error {
 	p.currentIndex = 0
 
 	// Initial shift
+	decision := NewShiftAction()
+
 	err := p.shift()
 	if err != nil {
 		return err
 	}
 
-	for p.currentIndex < p.inputSize {
-		decision := p.decisionFunc(p.stack)
+	for !p.stack.IsEmpty() && decision.Type != ActAccept {
+		decision = p.decisionFunc(p.stack)
 		p.stack.Refuse()
 
 		switch decision.Type {
@@ -175,8 +190,18 @@ func (p *Parser) Parse() error {
 			}
 
 			p.stack.Accept()
+		case ActAccept:
+			err := p.reduce(decision.Data.(int))
+			if err != nil {
+				p.stack.Refuse()
+				return err
+			}
+
+			p.stack.Accept()
 		case ActError:
 			return decision.Data.(error)
+		default:
+			return fmt.Errorf("unknown action type: %v", decision.Type)
 		}
 	}
 
@@ -219,6 +244,10 @@ func (p *Parser) GetParseTree() ([]gr.NonLeafToken, error) {
 //
 //   - error: An error if the token could not be shifted.
 func (p *Parser) shift() error {
+	if p.currentIndex >= p.inputSize {
+		return NewErrNoAccept()
+	}
+
 	p.stack.Push(&p.inputStream[p.currentIndex])
 	p.currentIndex++
 

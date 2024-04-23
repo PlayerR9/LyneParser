@@ -19,7 +19,7 @@ type ErrExpectedNonNil struct {
 // Returns:
 //
 //   - string: The error message.
-func (e ErrExpectedNonNil) Error() string {
+func (e *ErrExpectedNonNil) Error() string {
 	return fmt.Sprintf("expected non-nil %s", e.Expected)
 }
 
@@ -31,7 +31,7 @@ func (e ErrExpectedNonNil) Error() string {
 //
 // Returns:
 //
-//   - *ErrExpectedNonNil: The new error.
+//   - *ErrExpectedNonNil: A pointer to the new error.
 func NewErrExpectedNonNil(expected string) *ErrExpectedNonNil {
 	return &ErrExpectedNonNil{Expected: expected}
 }
@@ -47,7 +47,7 @@ type ErrInvalidParsing struct {
 // Returns:
 //
 //   - string: The error message.
-func (e ErrInvalidParsing) Error() string {
+func (e *ErrInvalidParsing) Error() string {
 	return fmt.Sprintf("invalid parsing: %v", e.Root)
 }
 
@@ -59,7 +59,7 @@ func (e ErrInvalidParsing) Error() string {
 //
 // Returns:
 //
-//   - *ErrInvalidParsing: The new error.
+//   - *ErrInvalidParsing: A pointer to the new error.
 func NewErrInvalidParsing(root gr.Tokener) *ErrInvalidParsing {
 	return &ErrInvalidParsing{Root: root}
 }
@@ -75,7 +75,7 @@ type ErrMissingFields struct {
 // Returns:
 //
 //   - string: The error message.
-func (e ErrMissingFields) Error() string {
+func (e *ErrMissingFields) Error() string {
 	switch len(e.Missings) {
 	case 0:
 		return "no field is missing"
@@ -94,7 +94,7 @@ func (e ErrMissingFields) Error() string {
 //
 // Returns:
 //
-//   - *ErrMissingFields: The new error.
+//   - *ErrMissingFields: A pointer to the new error.
 func NewErrMissingFields(missings ...string) *ErrMissingFields {
 	return &ErrMissingFields{Missings: missings}
 }
@@ -113,7 +113,7 @@ type ErrTooManyFields struct {
 // Returns:
 //
 //   - string: The error message.
-func (e ErrTooManyFields) Error() string {
+func (e *ErrTooManyFields) Error() string {
 	return fmt.Sprintf("expected %d fields, got %d instead", e.Wanted, e.Got)
 }
 
@@ -126,7 +126,7 @@ func (e ErrTooManyFields) Error() string {
 //
 // Returns:
 //
-//   - *ErrTooManyFields: The new error.
+//   - *ErrTooManyFields: A pointer to the new error.
 func NewErrTooManyFields(got, wanted int) *ErrTooManyFields {
 	return &ErrTooManyFields{Got: got, Wanted: wanted}
 }
@@ -139,7 +139,7 @@ type ErrAmbiguousGrammar struct{}
 // Returns:
 //
 //   - string: The error message.
-func (e ErrAmbiguousGrammar) Error() string {
+func (e *ErrAmbiguousGrammar) Error() string {
 	return "ambiguous grammar"
 }
 
@@ -147,7 +147,7 @@ func (e ErrAmbiguousGrammar) Error() string {
 //
 // Returns:
 //
-//   - *ErrAmbiguousGrammar: The new error.
+//   - *ErrAmbiguousGrammar: A pointer to the new error.
 func NewErrAmbiguousGrammar() *ErrAmbiguousGrammar {
 	return &ErrAmbiguousGrammar{}
 }

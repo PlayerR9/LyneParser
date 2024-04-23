@@ -18,6 +18,10 @@ const (
 
 	// ActError represents the action of encountering an error.
 	ActError
+
+	// ActAccept represents the action of accepting the input.
+	// (It must be a reduce action and not a shift action)
+	ActAccept
 )
 
 // Action represents an action that the parser will take.
@@ -75,4 +79,29 @@ func NewReduceAction(ruleIndex int) Action {
 //   - Action: The new error action.
 func NewErrorAction(reason error) Action {
 	return Action{Type: ActError, Data: reason}
+}
+
+// NewAcceptAction creates a new accept action.
+//
+// Parameters:
+//
+//   - ruleIndex: The index of the rule to reduce by.
+//
+// Returns:
+//
+//   - Action: The new accept action.
+func NewAcceptAction(ruleIndex int) Action {
+	if ruleIndex < 0 {
+		reason := ers.NewErrInvalidParameter(
+			"ruleIndex",
+			fmt.Errorf("value (%d) must be greater than or equal to 0", ruleIndex),
+		)
+
+		return Action{
+			Type: ActError,
+			Data: reason,
+		}
+	}
+
+	return Action{Type: ActAccept, Data: ruleIndex}
 }

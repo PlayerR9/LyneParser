@@ -24,7 +24,7 @@ type Lexer struct {
 	root *nd.Node[helperToken]
 
 	// leaves is a list of all the leaves in the lexer
-	leaves []nd.Node[helperToken]
+	leaves []*nd.Node[helperToken]
 }
 
 // NewLexer creates a new lexer
@@ -82,7 +82,7 @@ func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult) {
 //
 //   - leaf: The leaf to process
 //   - b: The byte slice to lex
-func (l *Lexer) processLeaf(leaf nd.Node[helperToken], b []byte) {
+func (l *Lexer) processLeaf(leaf *nd.Node[helperToken], b []byte) {
 	nextAt := leaf.Data.Tok.GetPos() + len(leaf.Data.Tok.Data)
 	if nextAt >= len(b) {
 		leaf.Data.SetStatus(TkComplete)
@@ -146,7 +146,7 @@ func (l *Lexer) Lex(b []byte) error {
 
 	for {
 		// Remove all the leaves that are completed
-		todo := slext.SliceFilter(l.leaves, func(leaf nd.Node[helperToken]) bool {
+		todo := slext.SliceFilter(l.leaves, func(leaf *nd.Node[helperToken]) bool {
 			return leaf.Data.Status != TkComplete
 		})
 		if len(todo) == 0 {
@@ -155,7 +155,7 @@ func (l *Lexer) Lex(b []byte) error {
 		}
 
 		// Remove all the leaves that are in error
-		todo = slext.SliceFilter(todo, func(leaf nd.Node[helperToken]) bool {
+		todo = slext.SliceFilter(todo, func(leaf *nd.Node[helperToken]) bool {
 			return leaf.Data.Status != TkError
 		})
 		if len(todo) == 0 {
@@ -164,7 +164,7 @@ func (l *Lexer) Lex(b []byte) error {
 		}
 
 		// Remaining leaves are incomplete
-		var newLeaves []nd.Node[helperToken]
+		var newLeaves []*nd.Node[helperToken]
 
 		for _, leaf := range todo {
 			l.processLeaf(leaf, b)

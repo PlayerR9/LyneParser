@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	gr "github.com/PlayerR9/LyneParser/Grammar"
+	gr "WppEditor/PlayerR9/LyneParser/Grammar"
 
 	nd "github.com/PlayerR9/MyGoLib/CustomData/Node"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
@@ -229,20 +229,6 @@ func (l *Lexer) GetTokens() ([][]gr.LeafToken, error) {
 
 	result = l.removeSkippedTokens(result)
 	result = slext.SliceFilter(result, emptyBranchFilter)
-
-	// Add lookahead to all branches
-	for i := 0; i < len(result); i++ {
-		j := 0
-
-		for j < len(result[i])-1 {
-			result[i][j].SetLookahead(&result[i][j+1])
-			j++
-		}
-
-		eofTok := gr.NewLeafToken("EOF", "", -1)
-
-		result[i][j].SetLookahead(&eofTok)
-	}
 
 	if invalidTokIndex != -1 {
 		return result, fmt.Errorf("invalid token at index %d", invalidTokIndex)

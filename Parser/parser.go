@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	gr "github.com/PlayerR9/LyneParser/Grammar"
+	gr "WppEditor/PlayerR9/LyneParser/Grammar"
+
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
@@ -125,6 +126,18 @@ func (p *Parser) SetInputStream(inputStream []gr.LeafToken) error {
 			"inputStream",
 			errors.New("value is empty"),
 		)
+	}
+
+	// Add EOF token to the end of the input stream (if it is not already present).
+	if inputStream[len(inputStream)-1].GetID() != "EOF" {
+		eofTok := gr.NewLeafToken("EOF", "", -1)
+
+		inputStream = append(inputStream, eofTok)
+	}
+
+	// Add lookahead to all tokens
+	for i := 0; i < len(inputStream)-1; i++ {
+		inputStream[i].SetLookahead(&inputStream[i+1])
 	}
 
 	p.inputStream = inputStream

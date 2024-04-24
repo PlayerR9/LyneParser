@@ -6,15 +6,14 @@ import (
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )
 
-// getLongestMatches returns the longest matches
+// getLongestMatches returns the longest matches,
 //
 // Parameters:
-//
-//   - matches: The matches to filter
+//   - matches: A slice of matches to search through.
 //
 // Returns:
 //
-//   - []MatchedResult: The longest matches
+//   - []MatchedResult: A slice of the longest matches.
 func getLongestMatches(matches []gr.MatchedResult) []gr.MatchedResult {
 	return slext.FilterByPositiveWeight(matches, func(match gr.MatchedResult) (int, bool) {
 		leaf, ok := match.Matched.(*gr.LeafToken)
@@ -26,29 +25,14 @@ func getLongestMatches(matches []gr.MatchedResult) []gr.MatchedResult {
 	})
 }
 
-// emptyBranchFilter is a filter function that returns true if a branch is not empty
-//
-// Parameters:
-//
-//   - tokens: The tokens to check
-//
-// Returns:
-//
-//   - bool: True if the branch is not empty, false otherwise
-func emptyBranchFilter(tokens []gr.LeafToken) bool {
-	return len(tokens) > 0
-}
-
 // filterInvalidBranches filters out invalid branches.
 //
 // Parameters:
-//
-//   - branches: The branches to filter
+//   - branches: The branches to filter.
 //
 // Returns:
-//
-//   - [][]helperToken: The filtered branches
-//   - int: The length of the longest branch
+//   - [][]helperToken: The filtered branches.
+//   - int: The length of the longest branch.
 func filterInvalidBranches(branches [][]helperToken) ([][]helperToken, int) {
 	branches, ok := slext.SFSeparateEarly(branches, func(h []helperToken) bool {
 		return len(h) != 0 && h[len(h)-1].Status == TkComplete
@@ -57,7 +41,7 @@ func filterInvalidBranches(branches [][]helperToken) ([][]helperToken, int) {
 		return branches, -1
 	}
 
-	// Return the longest branch
+	// Return the longest branch.
 	branches = slext.FilterByPositiveWeight(branches, func(h []helperToken) (int, bool) {
 		return len(h), true
 	})
@@ -69,12 +53,10 @@ func filterInvalidBranches(branches [][]helperToken) ([][]helperToken, int) {
 // The function returns -1 if no invalid token is found.
 //
 // Parameters:
-//
 //   - branch: The branch of tokens to search for.
 //   - data: The data to search in.
 //
 // Returns:
-//
 //   - int: The index of the first invalid token.
 func findInvalidTokenIndex(branch []gr.LeafToken, data []byte) int {
 	pos := 0

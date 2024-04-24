@@ -11,14 +11,12 @@ import (
 // LexString is a function that, given an input string, returns a slice of tokens.
 //
 // Parameters:
-//
 //   - input: The input string.
 //
 // Returns:
-//
-//   - [][]gr.LeafToken: A slice of slices of tokens.
+//   - []gr.TokenStream: A slice of slices of tokens.
 //   - error: An error if the input string cannot be lexed.
-func LexString(lexer *Lexer, input string) ([][]gr.LeafToken, error) {
+func LexString(lexer *Lexer, input string) ([]gr.TokenStream, error) {
 	err := lexer.Lex([]byte(input))
 	if err != nil {
 		return nil, err
@@ -30,14 +28,13 @@ func LexString(lexer *Lexer, input string) ([][]gr.LeafToken, error) {
 // LexBytes is a function that, given an input byte slice, returns a slice of tokens.
 //
 // Parameters:
-//
 //   - input: The input byte slice.
 //
 // Returns:
 //
-//   - [][]gr.LeafToken: A slice of slices of tokens.
+//   - []gr.TokenStream: A slice of slices of tokens.
 //   - error: An error if the input byte slice cannot be lexed.
-func LexBytes(lexer *Lexer, input []byte) ([][]gr.LeafToken, error) {
+func LexBytes(lexer *Lexer, input []byte) ([]gr.TokenStream, error) {
 	err := lexer.Lex(input)
 	if err != nil {
 		return nil, err
@@ -50,12 +47,10 @@ func LexBytes(lexer *Lexer, input []byte) ([][]gr.LeafToken, error) {
 // The function returns a string with the faulty line and a caret pointing to the invalid token.
 //
 // Parameters:
-//
 //   - branch: The branch of tokens to search for.
 //   - data: The data to search in.
 //
 // Returns:
-//
 //   - string: The formatted syntax error.
 //
 // Example:
@@ -85,7 +80,7 @@ func FormatSyntaxError(branch []gr.LeafToken, data []byte) string {
 	before := data[:firstInvalid]
 	after := data[firstInvalid:]
 
-	// Write all lines before the one containing the invalid token
+	// Write all lines before the one containing the invalid token.
 
 	beforeLines := sext.ByteSplitter(before, '\n')
 
@@ -94,7 +89,7 @@ func FormatSyntaxError(branch []gr.LeafToken, data []byte) string {
 		builder.WriteRune('\n')
 	}
 
-	// Write the faulty line
+	// Write the faulty line.
 	faultyLine := beforeLines[len(beforeLines)-1]
 	afterLines := sext.ByteSplitter(after, '\n')
 
@@ -106,7 +101,7 @@ func FormatSyntaxError(branch []gr.LeafToken, data []byte) string {
 
 	builder.WriteRune('\n')
 
-	// Write the caret
+	// Write the caret.
 	builder.WriteString(strings.Repeat(" ", len(faultyLine)))
 	builder.WriteRune('^')
 	builder.WriteRune('\n')

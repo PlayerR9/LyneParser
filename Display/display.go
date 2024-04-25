@@ -77,6 +77,9 @@ func NewDisplay(frameRate float64) (*Display, error) {
 
 // GetErrChan is a method of Display that returns the error channel.
 //
+// Errors:
+//   - *ErrESCPressed: If the user pressed the Ctrl+C key combination.
+//
 // Returns:
 //   - <-chan error: The error channel.
 func (d *Display) GetErrChan() <-chan error {

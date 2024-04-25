@@ -151,12 +151,24 @@ func (d *Display) Start(table *DtTable) {
 	}()
 }
 
-// Stop is a method of Display that stops the display.
+// Wait is a method of Display that waits for the display to stop.
+// WARNING: This method will block until the display stops.
+func (d *Display) Wait() {
+	d.wg.Wait()
+}
+
+// Stop is a method of Display that stops the display,
+// waiting for it to stop, and cleans up the display.
 func (d *Display) Stop() {
 	d.shouldStop.Set(true)
 
 	d.wg.Wait()
 
+	d.Clean()
+}
+
+// Clean is a method of Display that cleans up the display.
+func (d *Display) Clean() {
 	if d.eventChan != nil {
 		close(d.eventChan)
 		d.eventChan = nil

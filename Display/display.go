@@ -75,6 +75,10 @@ func NewDisplay(frameRate float64) (*Display, error) {
 	return d, nil
 }
 
+// GetErrChan is a method of Display that returns the error channel.
+//
+// Returns:
+//   - <-chan error: The error channel.
 func (d *Display) GetErrChan() <-chan error {
 	return d.errChan
 }

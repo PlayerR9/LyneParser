@@ -1,4 +1,4 @@
-package Display
+package DtTable
 
 import (
 	"github.com/gdamore/tcell"

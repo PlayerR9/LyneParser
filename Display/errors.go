@@ -1,6 +1,8 @@
 package Display
 
-import "errors"
+import (
+	"errors"
+)
 
 // ErrESCPressed is an error that indicates that the Ctrl+C key combination was pressed.
 type ErrESCPressed struct{}
@@ -8,7 +10,7 @@ type ErrESCPressed struct{}
 // Error is a method of errors that returns the error message.
 //
 // Returns:
-//  	- string: The error message.
+//   - string: The error message.
 func (e *ErrESCPressed) Error() string {
 	return "Ctrl+C was pressed"
 }
@@ -16,7 +18,7 @@ func (e *ErrESCPressed) Error() string {
 // NewErrESCPressed creates a new ErrESCPressed error.
 //
 // Returns:
-//  	- *ErrESCPressed: A pointer to the new error.
+//   - *ErrESCPressed: A pointer to the new error.
 func NewErrESCPressed() *ErrESCPressed {
 	return &ErrESCPressed{}
 }

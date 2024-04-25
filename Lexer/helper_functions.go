@@ -58,7 +58,7 @@ func filterInvalidBranches(branches [][]helperToken) ([][]helperToken, int) {
 //
 // Returns:
 //   - int: The index of the first invalid token.
-func findInvalidTokenIndex(branch []gr.LeafToken, data []byte) int {
+func findInvalidTokenIndex(branch []*gr.LeafToken, data []byte) int {
 	pos := 0
 
 	for _, token := range branch {

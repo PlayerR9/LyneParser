@@ -69,8 +69,10 @@ func LexBytes(lexer *Lexer, input []byte) ([]gr.TokenStream, error) {
 //
 //	Hello, word!
 //	       ^
-func FormatSyntaxError(branch []gr.LeafToken, data []byte) string {
-	firstInvalid := findInvalidTokenIndex(branch, data)
+func FormatSyntaxError(inputStream gr.TokenStream, data []byte) string {
+	tokens := inputStream.GetTokens()
+
+	firstInvalid := findInvalidTokenIndex(tokens, data)
 	if firstInvalid == -1 {
 		return string(data)
 	}

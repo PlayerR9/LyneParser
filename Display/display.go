@@ -1,6 +1,7 @@
 package Display
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -34,26 +35,53 @@ type Display struct {
 	// once is a sync.Once to ensure that the display is only started once.
 	once sync.Once
 
-	// runFunc is the function that runs the display.
-	rf RunFunc
+	// frameRate is the frame rate to display the table at.
+	frameRate time.Duration
 }
 
-// NewDisplayScreen creates a new display screen.
+// NewDisplay creates a new display screen.
+//
+// Frame rate is the number of frames to display per second.
 //
 // Parameters:
-//   - rf: The function that runs the display.
+//   - frameRate: The frame rate to display the table at.
 //
 // Returns:
 //   - *Display: A pointer to the new display.
 //   - error: An error if the display could not be created
-//     or *ers.ErrInvalidParameter if rf is nil.
-func NewDisplayScreen(rf RunFunc) (*Display, error) {
-	if rf == nil {
-		return nil, ers.NewErrNilParameter("rf")
+//     or *ers.ErrInvalidParameter if the frame rate is less than or equal to 0.
+//
+// Example:
+//
+//	display, err := NewDisplay(60)
+//	if err != nil {
+//		panic(err)
+//	}
+//	defer display.Close()
+//
+//	errChan, err := display.Init(tcell.StyleDefault.Background(tcell.ColorBlack))
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	table, err := display.GetTable()
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	display.Start()
+//
+//	// Do something with the table.
+func NewDisplay(frameRate float64) (*Display, error) {
+	if frameRate <= 0 {
+		return nil, ers.NewErrInvalidParameter(
+			"frameRate",
+			errors.New("value must be greater than 0"),
+		)
 	}
 
 	d := &Display{
-		rf:        rf,
+		frameRate: time.Duration(1/frameRate) * time.Second,
 		eventChan: make(chan tcell.Event),
 		errChan:   make(chan error),
 	}
@@ -112,7 +140,7 @@ func (d *Display) Start() {
 		d.wg.Add(2)
 
 		go d.handleEvents()
-		go d.rf(d)
+		go d.drawLoop()
 	})
 }
 
@@ -128,6 +156,10 @@ func (d *Display) Wait() {
 // may cause deadlock.
 // It cleans up the resources used by the display.
 func (d *Display) Close() {
+	if d.shouldStop == nil {
+		return
+	}
+
 	d.shouldStop.Set(true)
 
 	d.wg.Wait()
@@ -148,100 +180,10 @@ func (d *Display) Close() {
 	}
 }
 
-// eventListener is a helper method of Display that listens for events.
-func (d *Display) eventListener() {
-	for {
-		ev := d.screen.PollEvent()
-		if ev == nil {
-			break
-		}
-
-		d.eventChan <- ev
-	}
-}
-
-// displayLoop is a helper method of Display that displays the table.
-func (d *Display) displayOnce() {
-	d.screen.Clear()
-
-	height := d.table.GetHeight()
-	width := d.table.GetWidth()
-
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			if cell := d.table.GetCellAt(x, y); cell != nil {
-				d.screen.SetContent(x, y, cell.Content, nil, cell.Style)
-			}
-		}
-	}
-
-	d.screen.Show()
-}
-
-// setTable is a helper method of Display that sets the table.
-//
-// Parameters:
-//   - table: The table to set.
-//
-// Returns:
-//   - error: An error if the table could not be set.
-func (d *Display) setTable(table *dtt.DtTable) error {
-	err := table.ResizeWidth(d.table.GetWidth())
-	if err != nil {
-		return err
-	}
-
-	err = table.ResizeHeight(d.table.GetHeight())
-	if err != nil {
-		return err
-	}
-
-	d.table = table
-
-	return nil
-}
-
 // GetTable is a method of Display that returns the table.
 //
 // Returns:
 //   - dtt.WriteOnlyDTer: The table in Write Only mode.
 func (d *Display) GetTable() dtt.WriteOnlyDTer {
 	return d.table
-}
-
-// handleEvents is an helper method of Display that handles events.
-func (d *Display) handleEvents() {
-	defer d.wg.Done()
-
-	for {
-		select {
-		case <-time.After(100 * time.Millisecond):
-			if d.shouldStop.Get() {
-				return
-			}
-		case ev := <-d.eventChan:
-			switch ev := ev.(type) {
-			case *tcell.EventKey:
-				if ev.Key() == tcell.KeyCtrlC {
-					d.errChan <- NewErrESCPressed()
-				} else {
-					d.errChan <- fmt.Errorf("unknown key: %v", ev.Key())
-				}
-			case *tcell.EventResize:
-				width, height := ev.Size()
-
-				err := d.table.ResizeHeight(height)
-				if err != nil {
-					d.errChan <- err
-				}
-
-				err = d.table.ResizeWidth(width)
-				if err != nil {
-					d.errChan <- err
-				}
-			default:
-				d.errChan <- fmt.Errorf("unknown event: %v", ev)
-			}
-		}
-	}
 }

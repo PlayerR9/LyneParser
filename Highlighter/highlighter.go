@@ -6,7 +6,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	"github.com/gdamore/tcell"
 
-	dtt "github.com/PlayerR9/LyneParser/DtTable"
+	dtt "github.com/PlayerR9/MyGoLib/Safe/DtTable"
 )
 
 // Highlighter is a highlighter that applies styles to tokens.
@@ -23,8 +23,8 @@ type Highlighter struct {
 // Returns:
 //   - []ds.DtCell: The cells with the applied styles.
 //   - error: An error if the rules could not be applied.
-func (h *Highlighter) Apply(inputStream gr.TokenStream) ([]dtt.DtCell, error) {
-	result := make([]dtt.DtCell, 0)
+func (h *Highlighter) Apply(inputStream gr.TokenStream) ([]*dtt.DtCell, error) {
+	result := make([]*dtt.DtCell, 0)
 
 	tokens := inputStream.GetTokens()
 

@@ -6,6 +6,36 @@ import (
 	"unicode"
 )
 
+const (
+	// EOFTokenID is the identifier of the end-of-file token.
+	EOFTokenID string = "EOF"
+)
+
+// NewEOFToken creates a new end-of-file token.
+//
+// Returns:
+//
+//   - *LeafToken: A pointer to the new end-of-file token.
+func NewEOFToken() *LeafToken {
+	tok := &LeafToken{
+		ID:   EOFTokenID,
+		Data: "",
+		At:   -1,
+	}
+
+	return tok
+}
+
+func NewRootToken() *LeafToken {
+	tok := &LeafToken{
+		ID:   "ROOT",
+		Data: "",
+		At:   -1,
+	}
+
+	return tok
+}
+
 // IsTerminal checks if the given identifier is a terminal. Terminals are identifiers
 // that start with an uppercase letter.
 //
@@ -151,9 +181,9 @@ func (t *LeafToken) SetLookahead(lookahead *LeafToken) {
 //
 // Returns:
 //
-//   - LeafToken: The new leaf token.
-func NewLeafToken(id string, data string, at int) LeafToken {
-	return LeafToken{
+//   - *LeafToken: A pointer to the new leaf token.
+func NewLeafToken(id string, data string, at int) *LeafToken {
+	return &LeafToken{
 		id,
 		data,
 		at,
@@ -263,9 +293,9 @@ func (t *NonLeafToken) SetLookahead(lookahead *LeafToken) {
 //
 // Returns:
 //
-//   - NonLeafToken: The new non-leaf token.
-func NewNonLeafToken(id string, at int, data ...Tokener) NonLeafToken {
-	return NonLeafToken{
+//   - *NonLeafToken: A pointer to the new non-leaf token.
+func NewNonLeafToken(id string, at int, data ...Tokener) *NonLeafToken {
+	return &NonLeafToken{
 		ID:        id,
 		At:        at,
 		Data:      data,

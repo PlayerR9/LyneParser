@@ -121,8 +121,7 @@ func (l *Lexer) Lex(b []byte) error {
 		return errors.New("no tokens to parse")
 	}
 
-	tok := gr.NewLeafToken("root", "", -1)
-	root := nd.NewNode(newHelperToken(&tok))
+	root := nd.NewNode(newHelperToken(gr.NewRootToken()))
 
 	l.root = &root
 
@@ -194,11 +193,11 @@ func (l *Lexer) GetTokens() ([]gr.TokenStream, error) {
 			continue
 		}
 
-		ts := make([]gr.LeafToken, len(branch)-1)
+		ts := make([]*gr.LeafToken, len(branch)-1)
 
 		// branch[1:] to skip the root token.
 		for j, token := range branch[1:] {
-			ts[j] = *token.Tok
+			ts[j] = token.Tok
 		}
 
 		result[i] = gr.NewTokenStream(ts)

@@ -29,13 +29,7 @@ type Parser struct {
 	productions []gr.Production
 
 	// inputStream represents the stream of tokens that the parser will parse.
-	inputStream []gr.LeafToken
-
-	// inputSize represents the size of the input stream.
-	inputSize int
-
-	// currentIndex represents the current index of the input stream.
-	currentIndex int
+	inputStream gr.TokenStream
 
 	// stack represents the stack that the parser will use.
 	stack *ds.DoubleStack[gr.Tokener]
@@ -120,28 +114,24 @@ func (p *Parser) SetDecisionFunc(decisionFunc DecisionFunc) error {
 // Returns:
 //
 //   - error: An error if the input stream could not be set.
-func (p *Parser) SetInputStream(inputStream []gr.LeafToken) error {
-	if len(inputStream) == 0 {
+func (p *Parser) SetInputStream(inputStream gr.TokenStream) error {
+	if inputStream.IsEmpty() {
 		return ers.NewErrInvalidParameter(
 			"inputStream",
 			errors.New("value is empty"),
 		)
 	}
 
-	// Add EOF token to the end of the input stream (if it is not already present).
-	if inputStream[len(inputStream)-1].GetID() != "EOF" {
-		eofTok := gr.NewLeafToken("EOF", "", -1)
+	// Reset the input stream to the beginning.
+	inputStream.Reset()
 
-		inputStream = append(inputStream, eofTok)
-	}
+	// Add EOF token to the end of the input stream (if it is not already present).
+	inputStream.SetEOFToken()
 
 	// Add lookahead to all tokens
-	for i := 0; i < len(inputStream)-1; i++ {
-		inputStream[i].SetLookahead(&inputStream[i+1])
-	}
+	inputStream.SetLookahead()
 
 	p.inputStream = inputStream
-	p.inputSize = len(inputStream)
 
 	return nil
 }
@@ -155,14 +145,13 @@ func (p *Parser) SetInputStream(inputStream []gr.LeafToken) error {
 //
 //   - error: An error if the input stream could not be parsed.
 func (p *Parser) Parse() error {
-	if p.inputSize == 0 {
+	if p.inputStream.Size() == 0 || p.inputStream.IsDone() {
 		return errors.New("call SetInputStream() first")
 	} else if p.decisionFunc == nil {
 		return errors.New("call SetDecisionFunc() first")
 	}
 
 	p.stack = ds.NewDoubleLinkedStack[gr.Tokener]()
-	p.currentIndex = 0
 
 	// Initial shift
 	decision := NewShiftAction()
@@ -244,12 +233,13 @@ func (p *Parser) GetParseTree() ([]gr.NonLeafToken, error) {
 //
 //   - error: An error if the token could not be shifted.
 func (p *Parser) shift() error {
-	if p.currentIndex >= p.inputSize {
+	if p.inputStream.IsDone() {
 		return NewErrNoAccept()
 	}
 
-	p.stack.Push(&p.inputStream[p.currentIndex])
-	p.currentIndex++
+	tok := p.inputStream.Consume()
+
+	p.stack.Push(tok)
 
 	return nil
 }
@@ -290,7 +280,7 @@ func (p *Parser) reduce(rule int) error {
 	data := p.stack.GetExtracted()
 	tok := gr.NewNonLeafToken(lhs, 0, data...)
 	tok.Lookahead = lookahead
-	p.stack.Push(&tok)
+	p.stack.Push(tok)
 
 	return nil
 }
@@ -308,7 +298,7 @@ func (p *Parser) reduce(rule int) error {
 //
 //   - []gr.NonLeafToken: The parse tree.
 //   - error: An error if the input stream could not be parsed.
-func FullParse(grammar *gr.Grammar, inputStream []gr.LeafToken, decisionFunc DecisionFunc) ([]gr.NonLeafToken, error) {
+func FullParse(grammar *gr.Grammar, inputStream gr.TokenStream, decisionFunc DecisionFunc) ([]gr.NonLeafToken, error) {
 	parser, err := NewParser(grammar)
 	if err != nil {
 		return nil, fmt.Errorf("could not create parser: %v", err)

@@ -9,20 +9,20 @@ import (
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
 
-// ParseBranch is a function that, given a parser and a branch of tokens,
+// ParseBranch is a function that, given a parser and an input stream of tokens,
 // returns a slice of non-leaf tokens.
 //
 // Parameters:
 //
 //   - parser: The parser to use.
-//   - branch: The branch of tokens to parse.
+//   - inputStream: The input stream of tokens to parse.
 //
 // Returns:
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branch cannot be parsed.
-func ParseBranch(parser *Parser, branch []gr.LeafToken) ([]gr.NonLeafToken, error) {
-	err := parser.SetInputStream(branch)
+func ParseBranch(parser *Parser, inputStream gr.TokenStream) ([]gr.NonLeafToken, error) {
+	err := parser.SetInputStream(inputStream)
 	if err != nil {
 		return nil, ers.NewErrIgnorable(err)
 	}
@@ -56,7 +56,7 @@ func ParseBranch(parser *Parser, branch []gr.LeafToken) ([]gr.NonLeafToken, erro
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branches cannot be parsed.
-func ParseIS(parser *Parser, branches [][]gr.LeafToken) ([]gr.NonLeafToken, error) {
+func ParseIS(parser *Parser, branches []gr.TokenStream) ([]gr.NonLeafToken, error) {
 	solutions := make([]hp.HResult[gr.NonLeafToken], 0)
 
 	for _, branch := range branches {

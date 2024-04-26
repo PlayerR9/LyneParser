@@ -8,6 +8,9 @@ import (
 type Builder struct {
 	// rules is a map of rules to apply.
 	rules map[string]tcell.Style
+
+	// errorStyle is the style to apply to errors.
+	errorStyle tcell.Style
 }
 
 // AddRule is a method of Builder that adds a rule to the builder.
@@ -26,6 +29,14 @@ func (b *Builder) AddRule(style tcell.Style, ids ...string) {
 	}
 }
 
+// SetErrorStyle is a method of Builder that sets the error style.
+//
+// Parameters:
+//   - style: The style to apply to errors.
+func (b *Builder) SetErrorStyle(style tcell.Style) {
+	b.errorStyle = style
+}
+
 // Build is a method of Builder that builds a Highlighter from the rules.
 // It resets the builder after building the Highlighter.
 //
@@ -33,7 +44,8 @@ func (b *Builder) AddRule(style tcell.Style, ids ...string) {
 //   - Highlighter: The new Highlighter.
 func (b *Builder) Build() Highlighter {
 	h := Highlighter{
-		rules: make(map[string]tcell.Style),
+		rules:      make(map[string]tcell.Style),
+		errorStyle: b.errorStyle,
 	}
 
 	for id, style := range b.rules {

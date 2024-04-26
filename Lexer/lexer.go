@@ -12,7 +12,43 @@ import (
 )
 
 // Lexer is a lexer that uses a grammar to tokenize a string.
+//
+// Example:
+//
+//	lexer, err := NewLexer(grammar)
+//	if err != nil {
+//	    // Handle error.
+//	}
+//
+//	lexer.SetSource([]byte("1 + 2"))
+//
+//	err = lexer.Lex()
+//	if err != nil {
+//	    // Handle error.
+//	}
+//
+//	tokenBranches, err := lexer.GetTokens()
+//	if err != nil {
+//	    // Handle error.
+//	} else if len(tokenBranches) == 0 {
+//	    // No tokens found.
+//	}
+//
+//	tokenBranches = lexer.RemoveToSkipTokens(tokenBranches) // prepare for parsing
+//
+// // DEBUG: Print tokens.
+//
+//	for _, branch := range tokenBranches {
+//	    for _, token := range branch {
+//	        fmt.Println(token)
+//	    }
+//	}
+//
+// // Continue with parsing.
 type Lexer struct {
+	// source is the source to lex.
+	source []byte
+
 	// grammar is the grammar used by the lexer.
 	grammar *gr.Grammar
 
@@ -48,76 +84,24 @@ func NewLexer(grammar *gr.Grammar) (Lexer, error) {
 	return lex, nil
 }
 
-// addFirstLeaves is a helper function that adds the first leaves to the lexer.
+// SetSource sets the source to lex.
 //
 // Parameters:
-//   - matches: The matches to add to the lexer.
-func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult) {
-	// Get the longest match.
-	matches = getLongestMatches(matches)
-	for _, match := range matches {
-		leafToken, ok := match.Matched.(*gr.LeafToken)
-		if !ok {
-			panic("this should not happen: match.Matched is not a *LeafToken")
-		}
-
-		l.root.AddChild(helperToken{
-			Status: TkIncomplete,
-			Tok:    leafToken,
-		})
-		l.leaves = l.root.GetLeaves()
+//   - source: The source to lex.
+func (l *Lexer) SetSource(source []byte) {
+	if len(source) == 0 {
+		l.source = make([]byte, 0)
+	} else {
+		l.source = source
 	}
-}
-
-// processLeaf is a helper function that processes a leaf
-// by adding children to it.
-//
-// Parameters:
-//   - leaf: The leaf to process.
-//   - b: The byte slice to lex.
-func (l *Lexer) processLeaf(leaf *nd.Node[helperToken], b []byte) {
-	nextAt := leaf.Data.Tok.GetPos() + len(leaf.Data.Tok.Data)
-	if nextAt >= len(b) {
-		leaf.Data.SetStatus(TkComplete)
-		return
-	}
-	subset := b[nextAt:]
-
-	matches := l.grammar.Match(nextAt, subset)
-
-	if len(matches) == 0 {
-		// Branch is done but no match found.
-		leaf.Data.SetStatus(TkError)
-		return
-	}
-
-	// Get the longest match.
-	matches = getLongestMatches(matches)
-	for _, match := range matches {
-		leafToken, ok := match.Matched.(*gr.LeafToken)
-		if !ok {
-			leaf.Data.SetStatus(TkError)
-			return
-		}
-
-		leaf.AddChild(helperToken{
-			Status: TkIncomplete,
-			Tok:    leafToken,
-		})
-	}
-
-	leaf.Data.SetStatus(TkComplete)
 }
 
 // Lex is the main function of the lexer.
 //
-// Parameters:
-//   - b: The byte slice to lex.
-//
 // Returns:
 //   - error: An error if lexing fails.
-func (l *Lexer) Lex(b []byte) error {
-	if len(b) == 0 {
+func (l *Lexer) Lex() error {
+	if len(l.source) == 0 {
 		return errors.New("no tokens to parse")
 	}
 
@@ -125,7 +109,7 @@ func (l *Lexer) Lex(b []byte) error {
 
 	l.root = &root
 
-	matches := l.grammar.Match(0, b)
+	matches := l.grammar.Match(0, l.source)
 	if len(matches) == 0 {
 		return errors.New("no matches found at index 0")
 	}
@@ -157,7 +141,7 @@ func (l *Lexer) Lex(b []byte) error {
 		var newLeaves []*nd.Node[helperToken]
 
 		for _, leaf := range todo {
-			l.processLeaf(leaf, b)
+			l.processLeaf(leaf, l.source)
 			newLeaves = append(newLeaves, leaf.GetLeaves()...)
 		}
 
@@ -173,9 +157,9 @@ func (l *Lexer) Lex(b []byte) error {
 // are not needed for the parser (i.e., marked as to skip in the grammar).
 //
 // Returns:
-//   - []gr.TokenStream: The tokens that have been lexed.
+//   - []*gr.TokenStream: The tokens that have been lexed.
 //   - error: An error if the lexer has not been run yet.
-func (l *Lexer) GetTokens() ([]gr.TokenStream, error) {
+func (l *Lexer) GetTokens() ([]*gr.TokenStream, error) {
 	if l.root == nil {
 		return nil, errors.New("must call Lexer.Lex() first")
 	}
@@ -185,7 +169,7 @@ func (l *Lexer) GetTokens() ([]gr.TokenStream, error) {
 	branches, invalidTokIndex := filterInvalidBranches(tokenBranches)
 
 	// Convert the tokens to gr.TokenStream.
-	result := make([]gr.TokenStream, len(branches))
+	result := make([]*gr.TokenStream, len(branches))
 
 	for i, branch := range branches {
 		if len(branch) == 0 {
@@ -250,13 +234,15 @@ func (l *Lexer) RemoveToSkipTokens(branches []gr.TokenStream) []gr.TokenStream {
 // Returns:
 //   - []gr.TokenStream: The tokens that have been lexed.
 //   - error: An error if lexing fails.
-func FullLexer(grammar *gr.Grammar, content string) ([]gr.TokenStream, error) {
+func FullLexer(grammar *gr.Grammar, content string) ([]*gr.TokenStream, error) {
 	lexer, err := NewLexer(grammar)
 	if err != nil {
 		return nil, err
 	}
 
-	err = lexer.Lex([]byte(content))
+	lexer.SetSource([]byte(content))
+
+	err = lexer.Lex()
 	tokens, _ := lexer.GetTokens()
 
 	return tokens, err

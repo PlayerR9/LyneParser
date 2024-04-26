@@ -259,8 +259,11 @@ func (p *Parser) reduce(rule int) error {
 
 	var lookahead *gr.LeafToken = nil
 
-	for rhss.Next() {
-		value, _ := rhss.Value()
+	for {
+		value, err := rhss.Consume()
+		if err != nil {
+			break
+		}
 
 		if p.stack.IsEmpty() {
 			return fmt.Errorf("after %s: %v", lhs, ers.NewErrUnexpected(nil, value))

@@ -59,6 +59,31 @@ func IsToken(root gr.Tokener, id string) (bool, error) {
 }
 
 // ASTer is a helper struct for AST checks.
+//
+// The ASTer is used to check if a list of children matches an expected list of IDs.
+//
+// Example:
+//
+//	ast := NewASTer([]string{
+//		"lhs -> rhs1",
+//		"lhs -> rhs2",
+//	})
+//
+//	err := ast.Check([]gr.Tokener{
+//		&gr.NonLeafToken{
+//			ID:   "lhs",
+//			Data: []gr.Tokener{
+//				&gr.LeafToken{
+//					ID:   "rhs1",
+//					Data: "data1",
+//				},
+//			},
+//		},
+//	})
+//
+//	if err != nil {
+//		// Handle error.
+//	}
 type ASTer struct {
 	// table is the table of ASTs.
 	table [][]string

@@ -324,8 +324,8 @@ func (p *Production) GetRhsAt(index int) (string, error) {
 	return p.rhs[index], nil
 }
 
-// IndexOfRhs is a method of Production that returns the index of the
-// given symbol in the right-hand side of the production.
+// IndexOfRhs is a method of Production that returns the indices of the
+// symbol in the right-hand side of the production.
 //
 // Parameters:
 //
@@ -333,10 +333,18 @@ func (p *Production) GetRhsAt(index int) (string, error) {
 //
 // Returns:
 //
-//   - int: The index of the symbol in the right-hand side of the
-//     production. Returns -1 if the symbol is not found.
-func (p *Production) IndexOfRhs(rhs string) int {
-	return slices.Index(p.rhs, rhs)
+//   - []int: The indices of the symbol in the right-hand side of the
+//     production.
+func (p *Production) IndexOfRhs(rhs string) []int {
+	results := make([]int, 0)
+
+	for i, symbol := range p.rhs {
+		if symbol == rhs {
+			results = append(results, i)
+		}
+	}
+
+	return results
 }
 
 // RegProduction represents a production in a grammar that matches a

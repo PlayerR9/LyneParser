@@ -19,7 +19,7 @@ import (
 //
 // Returns:
 //   - Action: The action to take.
-type DecisionFunc func(stack *ds.DoubleStack[gr.Tokener]) Action
+type DecisionFunc func(stack *ds.DoubleStack[gr.Tokener]) Actioner
 
 // Parser is a parser that uses a stack to parse a stream of tokens.
 type Parser struct {
@@ -143,43 +143,49 @@ func (p *Parser) Parse() error {
 	p.stack = ds.NewDoubleLinkedStack[gr.Tokener]()
 
 	// Initial shift
-	decision := NewShiftAction()
+	var decision Actioner
+
+	decision = NewActShift()
 
 	err := p.shift()
 	if err != nil {
 		return err
 	}
 
-	for !p.stack.IsEmpty() && decision.Type != ActAccept {
+	for !p.stack.IsEmpty() {
+		if _, ok := decision.(*ActAccept); ok {
+			break
+		}
+
 		decision = p.decisionFunc(p.stack)
 		p.stack.Refuse()
 
-		switch decision.Type {
-		case ActShift:
+		switch decision := decision.(type) {
+		case *ActShift:
 			err := p.shift()
 			if err != nil {
 				return err
 			}
-		case ActReduce:
-			err := p.reduce(decision.Data.(int))
+		case *ActReduce:
+			err := p.reduce(decision.RuleIndex)
 			if err != nil {
 				p.stack.Refuse()
 				return err
 			}
 
 			p.stack.Accept()
-		case ActAccept:
-			err := p.reduce(decision.Data.(int))
+		case *ActAccept:
+			err := p.reduce(decision.RuleIndex)
 			if err != nil {
 				p.stack.Refuse()
 				return err
 			}
 
 			p.stack.Accept()
-		case ActError:
-			return decision.Data.(error)
+		case *ActError:
+			return decision.Reason
 		default:
-			return fmt.Errorf("unknown action type: %v", decision.Type)
+			return fmt.Errorf("unknown action type: %T", decision)
 		}
 	}
 

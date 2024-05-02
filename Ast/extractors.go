@@ -42,6 +42,28 @@ func ExtractString(root gr.Tokener, id string) (string, error) {
 type CoreFunc[O any] func(roots []gr.Tokener, result O, pos int) (O, error)
 
 // Extractor extracts strings from a rule.
+type Extractor[O any] struct {
+	// lhs is the left-hand side of the rule.
+	lhs string
+
+	// checker is the AST checker.
+	checker ASTer
+
+	// core is the core function.
+	core CoreFunc[O]
+}
+
+// NewExtractor creates a new extractor.
+//
+// Parameters:
+//
+//   - lhs: The left-hand side of the rule.
+//   - checker: The AST checker.
+//   - core: The core function.
+//
+// Returns:
+//
+//   - Extractor: The new extractor.
 //
 // The extractor extracts strings from a rule with the following structure:
 //
@@ -65,28 +87,6 @@ type CoreFunc[O any] func(roots []gr.Tokener, result O, pos int) (O, error)
 //
 //	fieldCls1 -> ATTR
 //	fieldCls1 -> ATTR SEP fieldCls1
-type Extractor[O any] struct {
-	// lhs is the left-hand side of the rule.
-	lhs string
-
-	// checker is the AST checker.
-	checker ASTer
-
-	// core is the core function.
-	core CoreFunc[O]
-}
-
-// NewExtractor creates a new extractor.
-//
-// Parameters:
-//
-//   - lhs: The left-hand side of the rule.
-//   - checker: The AST checker.
-//   - core: The core function.
-//
-// Returns:
-//
-//   - Extractor: The new extractor.
 func NewExtractor[O any](lhs string, checker ASTer, core CoreFunc[O]) Extractor[O] {
 	return Extractor[O]{
 		lhs:     lhs,

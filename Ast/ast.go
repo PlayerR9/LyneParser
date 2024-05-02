@@ -59,6 +59,20 @@ func IsToken(root gr.Tokener, id string) (bool, error) {
 }
 
 // ASTer is a helper struct for AST checks.
+type ASTer struct {
+	// table is the table of ASTs.
+	table [][]string
+}
+
+// NewASTer creates a new ASTer.
+//
+// Parameters:
+//
+//   - rules: The rules to create the ASTer.
+//
+// Returns:
+//
+//   - ASTer: The new ASTer.
 //
 // The ASTer is used to check if a list of children matches an expected list of IDs.
 //
@@ -84,20 +98,6 @@ func IsToken(root gr.Tokener, id string) (bool, error) {
 //	if err != nil {
 //		// Handle error.
 //	}
-type ASTer struct {
-	// table is the table of ASTs.
-	table [][]string
-}
-
-// NewASTer creates a new ASTer.
-//
-// Parameters:
-//
-//   - rules: The rules to create the ASTer.
-//
-// Returns:
-//
-//   - ASTer: The new ASTer.
 func NewASTer(rules []string) ASTer {
 	ast := ASTer{
 		table: make([][]string, 0, len(rules)),

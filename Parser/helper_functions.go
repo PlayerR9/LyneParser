@@ -21,7 +21,7 @@ import (
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branch cannot be parsed.
-func ParseBranch(parser *Parser, inputStream gr.TokenStream) ([]gr.NonLeafToken, error) {
+func ParseBranch(parser *Parser, inputStream *gr.TokenStream) ([]gr.NonLeafToken, error) {
 	err := parser.SetInputStream(inputStream)
 	if err != nil {
 		return nil, ers.NewErrIgnorable(err)
@@ -56,7 +56,7 @@ func ParseBranch(parser *Parser, inputStream gr.TokenStream) ([]gr.NonLeafToken,
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branches cannot be parsed.
-func ParseIS(parser *Parser, branches []gr.TokenStream) ([]gr.NonLeafToken, error) {
+func ParseIS(parser *Parser, branches []*gr.TokenStream) ([]gr.NonLeafToken, error) {
 	solutions := make([]hp.HResult[gr.NonLeafToken], 0)
 
 	for _, branch := range branches {

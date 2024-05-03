@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
@@ -19,7 +20,7 @@ import (
 //
 // Returns:
 //   - Action: The action to take.
-type DecisionFunc func(stack *ds.DoubleStack[gr.Tokener]) Actioner
+type DecisionFunc func(stack *ds.DoubleStack[gr.Tokener]) cs.Actioner
 
 // Parser is a parser that uses a stack to parse a stream of tokens.
 type Parser struct {
@@ -143,9 +144,9 @@ func (p *Parser) Parse() error {
 	p.stack = ds.NewDoubleLinkedStack[gr.Tokener]()
 
 	// Initial shift
-	var decision Actioner
+	var decision cs.Actioner
 
-	decision = NewActShift()
+	decision = cs.NewActShift()
 
 	err := p.shift()
 	if err != nil {
@@ -153,7 +154,7 @@ func (p *Parser) Parse() error {
 	}
 
 	for !p.stack.IsEmpty() {
-		if _, ok := decision.(*ActAccept); ok {
+		if _, ok := decision.(*cs.ActAccept); ok {
 			break
 		}
 
@@ -161,12 +162,12 @@ func (p *Parser) Parse() error {
 		p.stack.Refuse()
 
 		switch decision := decision.(type) {
-		case *ActShift:
+		case *cs.ActShift:
 			err := p.shift()
 			if err != nil {
 				return err
 			}
-		case *ActReduce:
+		case *cs.ActReduce:
 			err := p.reduce(decision.RuleIndex)
 			if err != nil {
 				p.stack.Refuse()
@@ -174,7 +175,7 @@ func (p *Parser) Parse() error {
 			}
 
 			p.stack.Accept()
-		case *ActAccept:
+		case *cs.ActAccept:
 			err := p.reduce(decision.RuleIndex)
 			if err != nil {
 				p.stack.Refuse()
@@ -182,7 +183,7 @@ func (p *Parser) Parse() error {
 			}
 
 			p.stack.Accept()
-		case *ActError:
+		case *cs.ActError:
 			return decision.Reason
 		default:
 			return fmt.Errorf("unknown action type: %T", decision)

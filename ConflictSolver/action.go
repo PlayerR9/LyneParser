@@ -4,12 +4,16 @@ import (
 	"errors"
 	"fmt"
 
+	gr "github.com/PlayerR9/LyneParser/Grammar"
+	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
 
 // Actioner represents an action that the parser will take.
 type Actioner interface {
 	AppendRhs(rhs string) error
+	Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error
+	Size() int
 }
 
 // ActShift represents a shift action.
@@ -33,6 +37,36 @@ func (a *ActShift) AppendRhs(rhs string) error {
 	a.Rhs = append(a.Rhs, rhs)
 
 	return nil
+}
+
+func (a *ActShift) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+	if a.Lookahead != nil {
+		lookahead := top.GetLookahead()
+
+		if lookahead == nil {
+			return ers.NewErrUnexpected(nil, *a.Lookahead)
+		} else if lookahead.ID != *a.Lookahead {
+			return ers.NewErrUnexpected(top.GetLookahead(), *a.Lookahead)
+		}
+	}
+
+	for _, rhs := range a.Rhs {
+		if stack.IsEmpty() {
+			return ers.NewErrUnexpected(nil, rhs)
+		}
+
+		top := stack.Pop()
+
+		if top.GetID() != rhs {
+			return ers.NewErrUnexpected(top, rhs)
+		}
+	}
+
+	return nil
+}
+
+func (a *ActShift) Size() int {
+	return len(a.Rhs)
 }
 
 // NewActShift creates a new shift action.
@@ -75,6 +109,26 @@ func (a *ActReduce) AppendRhs(rhs string) error {
 	a.Rhs = append(a.Rhs, rhs)
 
 	return nil
+}
+
+func (a *ActReduce) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+	for _, rhs := range a.Rhs {
+		if stack.IsEmpty() {
+			return ers.NewErrUnexpected(nil, rhs)
+		}
+
+		top := stack.Pop()
+
+		if top.GetID() != rhs {
+			return ers.NewErrUnexpected(top, rhs)
+		}
+	}
+
+	return nil
+}
+
+func (a *ActReduce) Size() int {
+	return len(a.Rhs)
 }
 
 // NewActReduce creates a new reduce action.
@@ -121,6 +175,14 @@ func (a *ActError) AppendRhs(rhs string) error {
 	return errors.New("cannot append right-hand side token to error action")
 }
 
+func (a *ActError) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+	return a.Reason
+}
+
+func (a *ActError) Size() int {
+	return 0
+}
+
 // NewErrorAction creates a new error action.
 //
 // Parameters:
@@ -155,6 +217,26 @@ func (a *ActAccept) AppendRhs(rhs string) error {
 	a.Rhs = append(a.Rhs, rhs)
 
 	return nil
+}
+
+func (a *ActAccept) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+	for _, rhs := range a.Rhs {
+		if stack.IsEmpty() {
+			return ers.NewErrUnexpected(nil, rhs)
+		}
+
+		top := stack.Pop()
+
+		if top.GetID() != rhs {
+			return ers.NewErrUnexpected(top, rhs)
+		}
+	}
+
+	return nil
+}
+
+func (a *ActAccept) Size() int {
+	return len(a.Rhs)
 }
 
 // NewAcceptAction creates a new accept action.

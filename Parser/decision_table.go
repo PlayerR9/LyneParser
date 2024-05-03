@@ -5,7 +5,9 @@ import (
 	"slices"
 	"strings"
 
+	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
@@ -15,9 +17,7 @@ import (
 )
 
 type DecisionTable struct {
-	table map[string][]*Item
-
-	actions map[string][]Actioner
+	table map[string][]*cs.Helper
 }
 
 func (dt *DecisionTable) FString(indentLevel int) []string {
@@ -30,13 +30,13 @@ func (dt *DecisionTable) FString(indentLevel int) []string {
 
 	var builder strings.Builder
 
-	for _, items := range dt.table {
-		for _, item := range items {
+	for _, elems := range dt.table {
+		for _, elem := range elems {
 			builder.WriteString(indent)
 			builder.WriteString(fmt.Sprintf("%d", counter))
 			builder.WriteRune('.')
 			builder.WriteRune(' ')
-			builder.WriteString(item.String())
+			builder.WriteString(elem.Item.String())
 
 			result = append(result, builder.String())
 			builder.Reset()
@@ -54,8 +54,7 @@ func (dt *DecisionTable) FString(indentLevel int) []string {
 
 func NewDecisionTable() *DecisionTable {
 	return &DecisionTable{
-		table:   make(map[string][]*Item),
-		actions: make(map[string][]Actioner),
+		table: make(map[string][]*cs.Helper),
 	}
 }
 
@@ -77,109 +76,55 @@ func (dt *DecisionTable) GenerateItems(rules []*gr.Production) error {
 	}
 
 	for _, s := range symbols {
-		items := make([]*Item, 0)
+		elems := make([]*cs.Helper, 0)
 
 		for j, r := range rules {
 			indices := r.IndexOfRhs(s)
 			lastIndex := r.Size() - 1
 
 			for _, i := range indices {
-				item, err := NewItem(r, i, i == lastIndex, j)
+				elem, err := cs.NewItem(r, i, i == lastIndex, j)
 				if err != nil {
 					return err
 				}
 
-				items = append(items, item)
+				elems = append(elems, cs.NewHelper(elem, nil))
 			}
 		}
 
-		dt.table[s] = items
+		dt.table[s] = elems
 	}
 
 	return nil
 }
 
-func (dt *DecisionTable) HasShiftReduceConflict() bool {
-	for _, items := range dt.table {
-		shifts := make([]*Item, 0)
-		reduces := make([]*Item, 0)
-
-		for _, item := range items {
-			if item.IsReduce {
-				reduces = append(reduces, item)
-			} else {
-				shifts = append(shifts, item)
-			}
-		}
-
-		if len(shifts) > 0 && len(reduces) > 0 {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) Action {
+func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) cs.Actioner {
 	top := stack.Pop()
 
-	items, ok := dt.table[top.GetID()]
+	elems, ok := dt.table[top.GetID()]
 	if !ok {
-		return NewErrorAction(fmt.Errorf("no items found for symbol %s", top.GetID()))
+		return cs.NewErrorAction(fmt.Errorf("no elems found for symbol %s", top.GetID()))
 	}
 
-	// If there are no reduce items, then we can only shift.
-	// Therefore, we do not care about finding the exact shift rule.
-	shifts, reduces := SplitShiftReduce(items)
-
-	if len(reduces) == 0 {
-		if len(shifts) == 0 {
-			return NewErrorAction(fmt.Errorf("no actions found for symbol %s", top.GetID()))
-		}
-
-		// We can only shift.
-		return NewShiftAction()
+	if len(elems) == 1 {
+		return elems[0].Action
 	}
 
-	type Helper struct {
-		Elem   *Item
-		Reason error
-	}
+	results := make([]hlp.HResult[cs.Actioner], 0, len(elems))
 
-	results := make([]*Helper, 0, len(reduces))
+	for _, elem := range elems {
+		err := elem.Action.Match(top, stack)
+		results = append(results, hlp.NewHResult(elem.Action, err))
 
-	for _, item := range reduces {
-		if item.Pos == 0 {
-			results = append(results, &Helper{Elem: item, Reason: nil})
-
-			continue
-		}
-
-		var reason error = nil
-
-		for i := item.Pos - 1; i >= 0; i-- {
-			rhs, err := item.Rule.GetRhsAt(i)
-			if err != nil {
-				reason = fmt.Errorf("could not get RHS at index %d", i)
-				break
-			} else if stack.IsEmpty() {
-				reason = ers.NewErrUnexpected(nil, rhs)
-				break
-			}
-
-			if top := stack.Pop(); top.GetID() != rhs {
-				reason = ers.NewErrUnexpected(top, rhs)
-				break
-			}
-		}
-
-		results = append(results, &Helper{Elem: item, Reason: reason})
-
+		// Refuse the stack
 		stack.Refuse()
+
+		// Pop the top token
+		stack.Pop()
 	}
 
-	success := make([]*Helper, 0)
-	fail := make([]*Helper, 0)
+	success := make([]hlp.HResult[cs.Actioner], 0)
+	fail := make([]hlp.HResult[cs.Actioner], 0)
 
 	for _, r := range results {
 		if r.Reason == nil {
@@ -190,31 +135,46 @@ func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) Action {
 	}
 
 	if len(success) == 0 {
-		if len(shifts) == 0 {
-			// Return the most likely error
-			// As of now, we will return the first error
-			return NewErrorAction(fail[0].Reason)
-		}
-
-		// We can only shift
-		return NewShiftAction()
+		// Return the most likely error
+		// As of now, we will return the first error
+		return cs.NewErrorAction(fail[0].Reason)
+	} else if len(success) == 1 {
+		return success[0].Result
 	}
 
-	// Find the actual reduce item
-
-	weights := slext.ApplyWeightFunc(success, func(h *Helper) (float64, bool) {
-		return float64(h.Elem.Pos), true
+	// Get the longest match
+	weights := slext.ApplyWeightFunc(success, func(h hlp.HResult[cs.Actioner]) (float64, bool) {
+		return float64(h.Result.Size()), true
 	})
 
-	final := slext.FilterByPositiveWeight(weights)
+	finals := slext.FilterByPositiveWeight(weights)
 
-	if len(final) == 1 {
-		return NewReduceAction(final[0].Elem.ruleIndex)
+	if len(finals) == 1 {
+		return finals[0].Result
+	} else {
+		return cs.NewErrorAction(fmt.Errorf("ambiguous grammar"))
+	}
+}
+
+func (dt *DecisionTable) FixConflicts() error {
+	for symbol, elems := range dt.table {
+		items := make([]*cs.Item, 0, len(elems))
+
+		for _, elem := range elems {
+			items = append(items, elem.Item)
+		}
+
+		solver := cs.NewConflictSolver(symbol, items)
+
+		err := solver.SolveConflicts()
+		if err != nil {
+			return err
+		}
+
+		dt.table[symbol] = solver.Elements
 	}
 
-	// AMBIGUOUS GRAMMAR
-
-	// SHIFT-REDUCE CONFLICT
+	return nil
 }
 
 /*

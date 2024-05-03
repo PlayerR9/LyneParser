@@ -5,7 +5,42 @@ import (
 	"testing"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	lx "github.com/PlayerR9/LyneParser/Lexer"
+	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
 )
+
+var LexerGrammar *gr.Grammar = func() *gr.Grammar {
+	var builder gr.GrammarBuilder
+
+	// Fragments
+	builder.AddProduction(gr.NewRegProduction("WORD", `[a-zA-Z]+`))
+
+	// Literals
+	builder.AddProduction(gr.NewRegProduction("ATTR", `".*?"`))
+
+	// Brackets
+	builder.AddProduction(gr.NewRegProduction("OP_PAREN", `\(`))
+	builder.AddProduction(gr.NewRegProduction("CL_PAREN", `\)`))
+	builder.AddProduction(gr.NewRegProduction("OP_SQUARE", `\[`))
+	builder.AddProduction(gr.NewRegProduction("CL_SQUARE", `\]`))
+	builder.AddProduction(gr.NewRegProduction("OP_CURLY", `\{`))
+	builder.AddProduction(gr.NewRegProduction("CL_CURLY", `\}`))
+
+	// Operators
+	builder.AddProduction(gr.NewRegProduction("SEP", `[+]`))
+
+	// Whitespace
+	builder.AddProduction(gr.NewRegProduction("WS", `[ \t\r\n]+`))
+
+	builder.SetToSkip("WS")
+
+	grammar, err := builder.Build()
+	if err != nil {
+		panic(err)
+	}
+
+	return grammar
+}()
 
 var ParserGrammar *gr.Grammar = func() *gr.Grammar {
 	var builder gr.GrammarBuilder
@@ -44,6 +79,88 @@ var ParserGrammar *gr.Grammar = func() *gr.Grammar {
 
 	return grammar
 }()
+
+var TestParser *Parser = func() *Parser {
+	p, err := NewParser(ParserGrammar)
+	if err != nil {
+		panic(err)
+	}
+
+	return &p
+}()
+
+var TestLexer *lx.Lexer = func() *lx.Lexer {
+	l, err := lx.NewLexer(LexerGrammar)
+	if err != nil {
+		panic(err)
+	}
+
+	return &l
+}()
+
+func TestParsing(t *testing.T) {
+	const (
+		Source string = "[char(\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\"Caring\")\n}]"
+	)
+
+	TestLexer.SetSource([]byte(Source))
+
+	err := TestLexer.Lex()
+	if err != nil {
+		t.Errorf("Lexer.Lex() returned an error: %s", err.Error())
+	}
+
+	tokenBranches, err := TestLexer.GetTokens()
+	if err != nil {
+		t.Errorf("Lexer.GetTokens() returned an error: %s", err.Error())
+	}
+
+	tokenBranches = TestLexer.RemoveToSkipTokens(tokenBranches)
+	if len(tokenBranches) == 0 {
+		t.Errorf("Lexer.GetTokens() returned no tokens")
+	}
+
+	results := make([]hlp.HResult[*gr.TokenStream], 0)
+
+	roots := make([]gr.NonLeafToken, 0)
+
+	for _, branch := range tokenBranches {
+		err := TestParser.SetInputStream(branch)
+		if err != nil {
+			results = append(results, hlp.HResult[*gr.TokenStream]{Result: branch, Reason: err})
+
+			continue
+		}
+
+		err = TestParser.Parse()
+		if err != nil {
+			results = append(results, hlp.HResult[*gr.TokenStream]{Result: branch, Reason: err})
+
+			continue
+		}
+
+		tmp, err := TestParser.GetParseTree()
+		if err != nil {
+			results = append(results, hlp.HResult[*gr.TokenStream]{Result: branch, Reason: err})
+
+			continue
+		}
+
+		roots = append(roots, tmp...)
+	}
+
+	if len(roots) == 0 {
+		for _, result := range results {
+			if result.Reason != nil {
+				t.Errorf("Failed to parse: %s", result.Reason.Error())
+			}
+		}
+	}
+
+	fmt.Println(roots[0].String())
+
+	t.Errorf("TestParsing() is not implemented")
+}
 
 func TestDecisionTable(t *testing.T) {
 	rules := make([]*gr.Production, 0)

@@ -14,11 +14,9 @@ type ASTNoder interface {
 	// ToAST converts the parser node to an AST node.
 	//
 	// Parameters:
-	//
 	//   - root: The root to convert.
 	//
 	// Returns:
-	//
 	//   - error: The error if the conversion fails.
 	ToAST(root gr.Tokener) error
 
@@ -28,14 +26,16 @@ type ASTNoder interface {
 // IsToken checks if a root is a token with a specific ID.
 //
 // Parameters:
-//
 //   - root: The root to check.
 //   - id: The ID to check.
 //
 // Returns:
-//
 //   - bool: True if the root is a token with the ID, false otherwise.
 //   - error: The error if the root is not a token or the ID does not match.
+//
+// Errors:
+//   - *ers.ErrInvalidParameter: If the root is nil.
+//   - ErrInvalidParsing: If the root is not a token.
 func IsToken(root gr.Tokener, id string) (bool, error) {
 	if root == nil {
 		return false, NewErrExpectedNonNil("root")
@@ -64,17 +64,14 @@ type ASTer struct {
 	table [][]string
 }
 
-// NewASTer creates a new ASTer.
+// NewASTer creates a new ASTer. The ASTer is used to check if a list of
+// children matches an expected list of IDs.
 //
 // Parameters:
-//
 //   - rules: The rules to create the ASTer.
 //
 // Returns:
-//
 //   - ASTer: The new ASTer.
-//
-// The ASTer is used to check if a list of children matches an expected list of IDs.
 //
 // Example:
 //
@@ -114,12 +111,10 @@ func NewASTer(rules []string) ASTer {
 // of the table is reached.
 //
 // Parameters:
-//
 //   - top: The top of the table.
 //   - i: The current index.
 //
 // Returns:
-//
 //   - bool: True if the last element is reached, false otherwise.
 func (ast *ASTer) isLastOfTable(top, i int) bool {
 	return top == 0 && i == len(ast.table)-1

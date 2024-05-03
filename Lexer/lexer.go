@@ -201,7 +201,7 @@ func (l *Lexer) GetTokens() ([]*gr.TokenStream, error) {
 //
 // Returns:
 //   - []gr.TokenStream: The branches with the tokens removed.
-func (l *Lexer) RemoveToSkipTokens(branches []gr.TokenStream) []gr.TokenStream {
+func (l *Lexer) RemoveToSkipTokens(branches []*gr.TokenStream) []*gr.TokenStream {
 	for _, toSkip := range l.toSkip {
 		if len(branches) == 0 {
 			break

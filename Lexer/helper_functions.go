@@ -1,6 +1,8 @@
 package Lexer
 
 import (
+	"fmt"
+
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	nd "github.com/PlayerR9/MyGoLib/CustomData/Node"
@@ -11,13 +13,13 @@ import (
 //
 // Parameters:
 //   - matches: The matches to add to the lexer.
-func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult) {
+func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult) error {
 	// Get the longest match.
 	matches = getLongestMatches(matches)
 	for _, match := range matches {
 		leafToken, ok := match.Matched.(*gr.LeafToken)
 		if !ok {
-			panic("this should not happen: match.Matched is not a *LeafToken")
+			return fmt.Errorf("this should not happen: match.Matched is not a *LeafToken")
 		}
 
 		l.root.AddChild(helperToken{
@@ -26,6 +28,8 @@ func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult) {
 		})
 		l.leaves = l.root.GetLeaves()
 	}
+
+	return nil
 }
 
 // processLeaf is a helper function that processes a leaf
@@ -42,7 +46,7 @@ func (l *Lexer) processLeaf(leaf *nd.Node[helperToken], b []byte) {
 	}
 	subset := b[nextAt:]
 
-	matches := l.grammar.Match(nextAt, subset)
+	matches := l.grammar.RegexMatch(nextAt, subset)
 
 	if len(matches) == 0 {
 		// Branch is done but no match found.

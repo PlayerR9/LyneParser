@@ -112,7 +112,7 @@ func (h *Helper) IndicesOfRhs(rhs string) []int {
 		return nil
 	}
 
-	return h.Item.Rule.IndexOfRhs(rhs)
+	return h.Item.Rule.IndicesOfRhs(rhs)
 }
 
 // GetRhsAt returns the right-hand side of the item at the specified index.

@@ -7,10 +7,12 @@ import (
 	"strings"
 
 	itf "github.com/PlayerR9/MyGoLib/CustomData/Iterators"
-	Stacker "github.com/PlayerR9/MyGoLib/ListLike/Common"
-	impl "github.com/PlayerR9/MyGoLib/ListLike/Stack"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 	itff "github.com/PlayerR9/MyGoLib/Units/Interfaces"
+
+	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+
+	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 )
 
 // Productioner is an interface that defines methods for a production in a grammar.
@@ -20,18 +22,15 @@ type Productioner interface {
 	// right-hand sides are equal.
 	//
 	// Parameters:
-	//
 	//   - other: The other production to compare to.
 	//
 	// Returns:
-	//
 	//   - bool: Whether the production is equal to the other production.
 	Equals(other Productioner) bool
 
 	// GetLhs returns the left-hand side of the production.
 	//
 	// Returns:
-	//
 	//   - string: The left-hand side of the production.
 	GetLhs() string
 
@@ -40,38 +39,30 @@ type Productioner interface {
 	// of the production, with no duplicates.
 	//
 	// Returns:
-	//
 	//   - []string: A slice of symbols in the production.
 	GetSymbols() []string
 
-	// Match returns a token that matches the production at the given index
-	// in the given stack. The token is a non-leaf token if the production is
-	// a non-terminal production, and a leaf token if the production is a
-	// terminal production.
-	//
-
-	// Match returns a token that matches the production in the given stack.
-	// The token is a non-leaf token if the production is a non-terminal
-	// production, and a leaf token if the production is a terminal production.
-	//
-	// Parameters:
-	//
-	//   - at: The current index in the input stack.
-	//   - b: The input stream or stack to match the production against.
-	//
-	// Returns:
-	//
-	//   - Tokener: A token that matches the production in the input stream or stack.
-	// 	nil if there is no match.
-	//
-	// Information:
-	//
-	//  - 'at' is the current index where the match is being attempted.
-	//   It is used by the lexer to specify the position of the token in the
-	//   input string. In parsers, however, it is not really used (at = 0).
-	//   Despite that, it can be used to provide additional information to
-	//   the parser for error reporting or debugging.
-	Match(at int, b any) Tokener
+	/*
+		// Match returns a token that matches the production in the given stack.
+		// The token is a non-leaf token if the production is a non-terminal
+		// production, and a leaf token if the production is a terminal production.
+		//
+		// Parameters:
+		//   - at: The current index in the input stack.
+		//   - b: The input stream or stack to match the production against.
+		//
+		// Returns:
+		//   - Tokener: A token that matches the production in the input stream or stack.
+		// 	nil if there is no match.
+		//
+		// Information:
+		//  - 'at' is the current index where the match is being attempted.
+		//   It is used by the lexer to specify the position of the token in the
+		//   input string. In parsers, however, it is not really used (at = 0).
+		//   Despite that, it can be used to provide additional information to
+		//   the parser for error reporting or debugging.
+		Match(at int, b any) Tokener
+	*/
 
 	fmt.Stringer
 	itff.Copier
@@ -90,18 +81,21 @@ type Production struct {
 // of a Production.
 //
 // Returns:
-//
 //   - string: A string representation of a Production.
 func (p *Production) String() string {
 	if p == nil {
-		return "Production[nil]"
+		return ""
 	}
 
+	var rhs string
+
 	if len(p.rhs) == 0 {
-		return fmt.Sprintf("Production[%s %s]", p.lhs, LeftToRight)
+		rhs = EpsilonSymbolID
 	} else {
-		return fmt.Sprintf("Production[%s %s %s]", p.lhs, LeftToRight, strings.Join(p.rhs, " "))
+		rhs = strings.Join(p.rhs, " ")
 	}
+
+	return fmt.Sprintf("%s %s %s", p.lhs, LeftToRight, rhs)
 }
 
 // Equals is a method of Production that returns whether the production
@@ -109,11 +103,9 @@ func (p *Production) String() string {
 // left-hand sides are equal and their right-hand sides are equal.
 //
 // Parameters:
-//
 //   - other: The other production to compare to.
 //
 // Returns:
-//
 //   - bool: Whether the production is equal to the other production.
 func (p *Production) Equals(other Productioner) bool {
 	if p == nil || other == nil || other.GetLhs() != p.lhs {
@@ -138,7 +130,6 @@ func (p *Production) Equals(other Productioner) bool {
 // the production.
 //
 // Returns:
-//
 //   - string: The left-hand side of the production.
 func (p *Production) GetLhs() string {
 	return p.lhs
@@ -148,7 +139,6 @@ func (p *Production) GetLhs() string {
 // production that iterates over the right-hand side of the production.
 //
 // Returns:
-//
 //   - itf.Iterater[string]: An iterator for the production.
 func (p *Production) Iterator() itf.Iterater[string] {
 	return itf.IteratorFromSlice(p.rhs)
@@ -159,7 +149,6 @@ func (p *Production) Iterator() itf.Iterater[string] {
 // the production in reverse.
 //
 // Returns:
-//
 //   - itf.Iterater[string]: A reverse iterator for the production.
 func (p *Production) ReverseIterator() itf.Iterater[string] {
 	slice := make([]string, len(p.rhs))
@@ -175,7 +164,6 @@ func (p *Production) ReverseIterator() itf.Iterater[string] {
 // duplicates.
 //
 // Returns:
-//
 //   - []string: A slice of symbols in the production.
 func (p *Production) GetSymbols() []string {
 	symbols := make([]string, len(p.rhs)+1)
@@ -183,18 +171,7 @@ func (p *Production) GetSymbols() []string {
 
 	symbols[len(symbols)-1] = p.lhs
 
-	// Remove duplicates
-	for i := 0; i < len(symbols); {
-		index := slices.Index(symbols[i+1:], symbols[i])
-
-		if index != -1 {
-			symbols = append(symbols[:index], symbols[index+1:]...)
-		} else {
-			i++
-		}
-	}
-
-	return symbols
+	return slext.RemoveDuplicates(symbols)
 }
 
 // Match is a method of Production that returns a token that matches the
@@ -203,86 +180,74 @@ func (p *Production) GetSymbols() []string {
 // production is a terminal production.
 //
 // Parameters:
-//
 //   - at: The current index in the input stack.
-//   - b: The stack to match the production against.
+//   - stack: The stack to match the production against.
 //
 // Returns:
-//
 //   - Tokener: A token that matches the production in the stack.
 //
 // Information:
-//
 //   - 'at' is the current index where the match is being attempted. It is
 //     used by the lexer to specify the position of the token in the input
 //     string. In parsers, however, it is not really used (at = 0). Despite
 //     that, it can be used to provide additional information to the parser
 //     for error reporting or debugging.
-//   - as of now, only Stack.Stacker[Tokener] is supported as the type of
-//     'b'.
-func (p *Production) Match(at int, b any) Tokener {
-	switch val := b.(type) {
-	case Stacker.Stacker[Tokener]:
-		popped := impl.NewArrayStack[Tokener]()
+func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (Tokener, error) {
+	solutions := make([]Tokener, 0)
 
-		for i := len(p.rhs) - 1; i >= 0; i-- {
-			if val.IsEmpty() {
-				// Push back the popped symbols.
-				for !popped.IsEmpty() {
-					val.Push(popped.Pop())
-				}
+	var reason error = nil
 
-				return nil
-			}
+	for i := len(p.rhs) - 1; i >= 0; i-- {
+		rhs := p.rhs[i]
 
-			top := val.Peek()
-
-			// FIXME: Implement a way to check if the top of the stack is a
-			// non-leaf token.
-
-			popped.Push(top)
-			val.Pop()
+		if stack.IsEmpty() {
+			reason = ers.NewErrUnexpected(nil, rhs)
+			break
 		}
 
-		slice := popped.Slice()
-		slices.Reverse(slice)
+		top := stack.Pop()
 
-		// Push back the popped symbols.
-		for !popped.IsEmpty() {
-			val.Push(popped.Pop())
+		if top.GetID() != rhs {
+			reason = ers.NewErrUnexpected(top, rhs)
+			break
 		}
 
-		return NewNonLeafToken(p.lhs, at, slice...)
-	default:
-		return nil
+		solutions = append(solutions, top)
 	}
+
+	stack.Refuse()
+
+	if reason != nil {
+		return nil, reason
+	}
+
+	slices.Reverse(solutions)
+
+	return NewNonLeafToken(p.lhs, at, solutions...), nil
 }
 
 // Copy is a method of Production that returns a copy of the production.
 //
 // Returns:
-//
 //   - itff.Copier: A copy of the production.
 func (p *Production) Copy() itff.Copier {
-	rhsCopy := make([]string, len(p.rhs))
-	copy(rhsCopy, p.rhs)
-
-	return &Production{
+	pCopy := &Production{
 		lhs: p.lhs,
-		rhs: rhsCopy,
+		rhs: make([]string, len(p.rhs)),
 	}
+	copy(pCopy.rhs, p.rhs)
+
+	return pCopy
 }
 
 // NewProduction is a function that returns a new Production with the
 // given left-hand side and right-hand side.
 //
 // Parameters:
-//
 //   - lhs: The left-hand side of the production.
 //   - rhs: The right-hand side of the production.
 //
 // Returns:
-//
 //   - *Production: A new Production with the given left-hand side and
 //     right-hand side.
 func NewProduction(lhs string, rhs string) *Production {
@@ -293,7 +258,6 @@ func NewProduction(lhs string, rhs string) *Production {
 // the right-hand side of the production.
 //
 // Returns:
-//
 //   - int: The number of symbols in the right-hand side of the
 //     production.
 func (p *Production) Size() int {
@@ -304,11 +268,9 @@ func (p *Production) Size() int {
 // given index in the right-hand side of the production.
 //
 // Parameters:
-//
 //   - index: The index of the symbol to get.
 //
 // Returns:
-//
 //   - string: The symbol at the given index in the right-hand side of
 //     the production.
 //   - error: An error of type *ErrInvalidParameter if the index is
@@ -324,18 +286,16 @@ func (p *Production) GetRhsAt(index int) (string, error) {
 	return p.rhs[index], nil
 }
 
-// IndexOfRhs is a method of Production that returns the indices of the
+// IndicesOfRhs is a method of Production that returns the indices of the
 // symbol in the right-hand side of the production.
 //
 // Parameters:
-//
 //   - rhs: The symbol to find the index of.
 //
 // Returns:
-//
 //   - []int: The indices of the symbol in the right-hand side of the
 //     production.
-func (p *Production) IndexOfRhs(rhs string) []int {
+func (p *Production) IndicesOfRhs(rhs string) []int {
 	results := make([]int, 0)
 
 	for i, symbol := range p.rhs {
@@ -433,18 +393,21 @@ type RegProduction struct {
 // It should only be used for debugging and logging purposes.
 //
 // Returns:
-//
 //   - string: A string representation of a RegProduction.
 func (r *RegProduction) String() string {
 	if r == nil {
 		return "RegProduction[nil]"
 	}
 
+	var rxp string
+
 	if r.rxp == nil {
-		return fmt.Sprintf("RegProduction[lhs=%s, rhs=%s, rxp=N/A]", r.lhs, r.rhs)
+		rxp = "N/A"
+	} else {
+		rxp = r.rxp.String()
 	}
 
-	return fmt.Sprintf("RegProduction[lhs=%s, rhs=%s, rxp=%v]", r.lhs, r.rhs, r.rxp)
+	return fmt.Sprintf("RegProduction[lhs=%s, rhs=%s, rxp=%s]", r.lhs, r.rhs, rxp)
 }
 
 // Equals is a method of RegProduction that returns whether the production
@@ -452,11 +415,9 @@ func (r *RegProduction) String() string {
 // left-hand sides are equal and their right-hand sides are equal.
 //
 // Parameters:
-//
 //   - other: The other production to compare to.
 //
 // Returns:
-//
 //   - bool: Whether the production is equal to the other production.
 func (p *RegProduction) Equals(other Productioner) bool {
 	if p == nil || other == nil || other.GetLhs() != p.lhs {
@@ -471,7 +432,6 @@ func (p *RegProduction) Equals(other Productioner) bool {
 // the production.
 //
 // Returns:
-//
 //   - string: The left-hand side of the production.
 func (p *RegProduction) GetLhs() string {
 	return p.lhs
@@ -482,7 +442,6 @@ func (p *RegProduction) GetLhs() string {
 // production.
 //
 // Returns:
-//
 //   - []string: A slice of symbols in the production.
 func (p *RegProduction) GetSymbols() []string {
 	return []string{p.lhs}
@@ -494,21 +453,14 @@ func (p *RegProduction) GetSymbols() []string {
 // production is a terminal production.
 //
 // Parameters:
-//
 //   - at: The current index in the input stack.
 //   - b: The slice of bytes to match the production against.
 //
 // Returns:
-//
 //   - Tokener: A token that matches the production in the stack. nil if
 //     there is no match.
-func (p *RegProduction) Match(at int, b any) Tokener {
-	val, ok := b.([]byte)
-	if !ok {
-		return nil
-	}
-
-	data := p.rxp.Find(val)
+func (p *RegProduction) Match(at int, b []byte) Tokener {
+	data := p.rxp.Find(b)
 	if data == nil {
 		return nil
 	}
@@ -519,7 +471,6 @@ func (p *RegProduction) Match(at int, b any) Tokener {
 // Copy is a method of RegProduction that returns a copy of the production.
 //
 // Returns:
-//
 //   - itff.Copier: A copy of the production.
 func (p *RegProduction) Copy() itff.Copier {
 	return &RegProduction{
@@ -536,18 +487,15 @@ func (p *RegProduction) Copy() itff.Copier {
 // match the beginning of the input string.
 //
 // Parameters:
-//
 //   - lhs: The left-hand side of the production.
 //   - regex: The regular expression to match the right-hand side of the
 //     production.
 //
 // Returns:
-//
 //   - *RegProduction: A new RegProduction with the given left-hand side
 //     and regular expression.
 //
 // Information:
-//
 //   - Must call Compile() on the returned RegProduction to compile the
 //     regular expression.
 func NewRegProduction(lhs string, regex string) *RegProduction {
@@ -561,7 +509,6 @@ func NewRegProduction(lhs string, regex string) *RegProduction {
 // expression of the production.
 //
 // Returns:
-//
 //   - error: An error if the regular expression cannot be compiled.
 func (r *RegProduction) Compile() error {
 	rxp, err := regexp.Compile(r.rhs)

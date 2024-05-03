@@ -211,37 +211,29 @@ type NonLeafToken struct {
 // It should only be used for debugging and logging purposes.
 //
 // Returns:
-//
 //   - string: A string representation of the non-leaf token.
 func (t *NonLeafToken) String() string {
 	if t == nil {
 		return "NonLeafToken[nil]"
 	}
 
-	if len(t.Data) == 0 {
-		return fmt.Sprintf("NonLeafToken[id=%s, data=[], at=%d]",
-			t.ID,
-			t.At,
-		)
+	values := make([]string, 0, len(t.Data))
+
+	for _, token := range t.Data {
+		values = append(values, token.String())
 	}
 
-	var builder strings.Builder
-
-	fmt.Fprintf(&builder, "NonLeafToken[id=%s, data=[%v", t.ID, t.Data[0])
-
-	for _, token := range t.Data[1:] {
-		fmt.Fprintf(&builder, ", %v", token)
-	}
-
-	fmt.Fprintf(&builder, "], at=%d]", t.At)
-
-	return builder.String()
+	return fmt.Sprintf(
+		"NonLeafToken[id=%s, data=[%s], at=%d]",
+		t.ID,
+		strings.Join(values, ", "),
+		t.At,
+	)
 }
 
 // GetID returns the identifier of the token.
 //
 // Returns:
-//
 //   - string: The identifier of the token.
 func (t *NonLeafToken) GetID() string {
 	return t.ID

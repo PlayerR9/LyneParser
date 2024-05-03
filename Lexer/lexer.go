@@ -109,12 +109,15 @@ func (l *Lexer) Lex() error {
 
 	l.root = &root
 
-	matches := l.grammar.Match(0, l.source)
+	matches := l.grammar.RegexMatch(0, l.source)
 	if len(matches) == 0 {
 		return errors.New("no matches found at index 0")
 	}
 
-	l.addFirstLeaves(matches)
+	err := l.addFirstLeaves(matches)
+	if err != nil {
+		return err
+	}
 
 	l.root.Data.SetStatus(TkComplete)
 

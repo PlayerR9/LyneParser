@@ -1,7 +1,8 @@
 package Grammar
 
 import (
-	Stream "github.com/PlayerR9/MyGoLib/CustomData/Stream"
+	"github.com/PlayerR9/MyGoLib/CustomData/Stream"
+	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )
 
 // TokenStream is a stream of tokens.
@@ -36,32 +37,32 @@ func (ts *TokenStream) Reset() {
 }
 
 // Peek returns the next token in the stream without consuming it.
-// It panics if there are no more tokens in the stream.
 //
 // Returns:
 //   - *LeafToken: A pointer to the next token in the stream.
-func (ts *TokenStream) Peek() *LeafToken {
+//   - error: An error if there are no more tokens in the stream.
+func (ts *TokenStream) Peek() (*LeafToken, error) {
 	if ts.currentIndex >= len(ts.tokens) {
-		panic(Stream.NewErrNoMoreItems())
+		return nil, Stream.NewErrNoMoreItems()
 	}
 
-	return ts.tokens[ts.currentIndex]
+	return ts.tokens[ts.currentIndex], nil
 }
 
 // Consume consumes the next token in the stream.
-// It panics if there are no more tokens in the stream.
 //
 // Returns:
 //   - *LeafToken: A pointer to the consumed token.
-func (ts *TokenStream) Consume() *LeafToken {
+//   - error: An error if there are no more tokens in the stream.
+func (ts *TokenStream) Consume() (*LeafToken, error) {
 	if ts.currentIndex >= len(ts.tokens) {
-		panic(Stream.NewErrNoMoreItems())
+		return nil, Stream.NewErrNoMoreItems()
 	}
 
 	token := ts.tokens[ts.currentIndex]
 	ts.currentIndex++
 
-	return token
+	return token, nil
 }
 
 // IsDone returns true if the token stream has been fully consumed.
@@ -115,20 +116,9 @@ func NewTokenStream(tokens []*LeafToken) *TokenStream {
 // Parameters:
 //   - id: The token ID to remove.
 func (ts *TokenStream) RemoveByTokenID(id string) {
-	if len(ts.tokens) == 0 {
-		return
-	}
-
-	top := 0
-
-	for _, token := range ts.tokens {
-		if token.ID != id {
-			ts.tokens[top] = token
-			top++
-		}
-	}
-
-	ts.tokens = ts.tokens[:top]
+	ts.tokens = slext.SliceFilter(ts.tokens, func(token *LeafToken) bool {
+		return token.ID != id
+	})
 }
 
 // SetEOFToken sets the end-of-file token in the token stream.

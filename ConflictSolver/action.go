@@ -56,12 +56,7 @@ func (a *ActShift) String() string {
 		builder.WriteRune(' ')
 	}
 
-	builder.WriteString(a.Rhs[0])
-
-	for _, r := range a.Rhs[1:] {
-		builder.WriteRune(' ')
-		builder.WriteString(r)
-	}
+	builder.WriteString(strings.Join(a.Rhs, " "))
 
 	builder.WriteRune('}')
 
@@ -159,20 +154,7 @@ func (a *ActReduce) String() string {
 
 	builder.WriteString("reduce")
 	builder.WriteRune('{')
-
-	if len(a.Rhs) == 0 {
-		builder.WriteRune('}')
-
-		return builder.String()
-	}
-
-	builder.WriteString(a.Rhs[0])
-
-	for _, r := range a.Rhs[1:] {
-		builder.WriteRune(' ')
-		builder.WriteString(r)
-	}
-
+	builder.WriteString(strings.Join(a.Rhs, " "))
 	builder.WriteRune('}')
 
 	return builder.String()

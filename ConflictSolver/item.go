@@ -155,9 +155,13 @@ func (item *Item) ReplaceRhsAt(index int, otherI *Item) (*Item, error) {
 // Returns:
 //   - string: The right-hand side of the production rule.
 func (item *Item) GetRhs() string {
+	if item.Rule == nil {
+		return ""
+	}
+
 	rhs, err := item.Rule.GetRhsAt(item.Pos)
 	if err != nil {
-		panic(err)
+		return ""
 	}
 
 	return rhs

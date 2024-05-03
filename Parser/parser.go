@@ -209,11 +209,10 @@ func (p *Parser) GetParseTree() ([]gr.NonLeafToken, error) {
 // Returns:
 //   - error: An error of type *ErrNoAccept if the input stream is done.
 func (p *Parser) shift() error {
-	if p.inputStream.IsDone() {
+	tok, err := p.inputStream.Consume()
+	if err != nil {
 		return NewErrNoAccept()
 	}
-
-	tok := p.inputStream.Consume()
 
 	p.stack.Push(tok)
 

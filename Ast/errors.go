@@ -48,7 +48,7 @@ type ErrInvalidParsing struct {
 //
 //   - string: The error message.
 func (e *ErrInvalidParsing) Error() string {
-	return fmt.Sprintf("invalid parsing: %v", e.Root)
+	return fmt.Sprintf("invalid parsing: %s", e.Root.String())
 }
 
 // NewErrInvalidParsing creates a new ErrInvalidParsing.

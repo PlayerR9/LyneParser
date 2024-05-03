@@ -80,7 +80,7 @@ func (dt *DecisionTable) GenerateItems(rules []*gr.Production) error {
 		elems := make([]*cs.Helper, 0)
 
 		for j, r := range rules {
-			indices := r.IndexOfRhs(s)
+			indices := r.IndicesOfRhs(s)
 			lastIndex := r.Size() - 1
 
 			for _, i := range indices {

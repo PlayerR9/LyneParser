@@ -2,10 +2,13 @@ package ConflictSolver
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+
+	intf "github.com/PlayerR9/MyGoLib/Units/Interfaces"
 )
 
 // Item represents an item in a decision table.
@@ -15,9 +18,6 @@ type Item struct {
 
 	// Pos is the position of the item in the production rule.
 	Pos int
-
-	// IsReduce is a flag that indicates if the item is a reduce item.
-	IsReduce bool
 
 	// ruleIndex is the index of the rule in the decision table.
 	ruleIndex int
@@ -56,23 +56,19 @@ func (i *Item) String() string {
 	builder.WriteRune(' ')
 	builder.WriteRune('(')
 
-	if i.IsReduce {
-		builder.WriteString("reduce")
-	} else {
-		builder.WriteString("shift")
-	}
-
-	builder.WriteRune(' ')
-
-	builder.WriteRune(':')
-
-	builder.WriteRune(' ')
-
 	builder.WriteString(fmt.Sprintf("%d", i.ruleIndex))
 
 	builder.WriteRune(')')
 
 	return builder.String()
+}
+
+func (i *Item) Copy() intf.Copier {
+	return &Item{
+		Rule:      i.Rule.Copy().(*gr.Production),
+		Pos:       i.Pos,
+		ruleIndex: i.ruleIndex,
+	}
 }
 
 // NewItem is a constructor of Item.
@@ -106,7 +102,6 @@ func NewItem(rule *gr.Production, pos int, isReduce bool, ruleIndex int) (*Item,
 	return &Item{
 		Rule:      rule,
 		Pos:       pos,
-		IsReduce:  isReduce,
 		ruleIndex: ruleIndex,
 	}, nil
 }
@@ -119,34 +114,144 @@ func (i *Item) Size() int {
 	return i.Rule.Size()
 }
 
-// SetAction sets the action of the item.
+// ReplaceRhsAt replaces the right-hand side of the production rule at the given
+// index with the right-hand side of the other item.
 //
 // Parameters:
-//   - isReduce: A flag that indicates if the item is a reduce item.
-func (i *Item) SetAction(isReduce bool) {
-	i.IsReduce = isReduce
-}
-
-// SplitShiftReduce splits the items into two slices: one for the shifts and
-// one for the reduces.
-//
-// Parameters:
-//   - items: The items to split.
+//   - index: The index of the right-hand side to replace.
+//   - otherI: The other item to replace the right-hand side with.
 //
 // Returns:
-//   - []*Item: The shifts.
-//   - []*Item: The reduces.
-func SplitShiftReduce(items []*Item) ([]*Item, []*Item) {
-	shifts := make([]*Item, 0)
-	reduces := make([]*Item, 0)
-
-	for _, item := range items {
-		if item.IsReduce {
-			reduces = append(reduces, item)
-		} else {
-			shifts = append(shifts, item)
-		}
+//   - *Item: The new item with the replaced right-hand side.
+//   - error: An error if it is unable to replace the right-hand side.
+//
+// Errors:
+//   - *ers.ErrInvalidParameter: If the other item is nil, otherI.Rule is nil,
+//     or the index is out of bounds.
+//   - *gr.ErrLhsRhsMismatch: If the left-hand side of the production rule does
+//     not match the right-hand side.
+func (item *Item) ReplaceRhsAt(index int, otherI *Item) (*Item, error) {
+	if otherI == nil {
+		return nil, ers.NewErrNilParameter("otherI")
 	}
 
-	return shifts, reduces
+	newItem := &Item{
+		Pos:       index,
+		ruleIndex: item.ruleIndex,
+	}
+
+	var err error
+
+	newItem.Rule, err = item.Rule.ReplaceRhsAt(index, otherI.Rule)
+	if err != nil {
+		return nil, err
+	}
+
+	return newItem, nil
+}
+
+// GetRhs returns the right-hand side of the production rule at the current position.
+//
+// Returns:
+//   - string: The right-hand side of the production rule.
+func (item *Item) GetRhs() string {
+	rhs, err := item.Rule.GetRhsAt(item.Pos)
+	if err != nil {
+		panic(err)
+	}
+
+	return rhs
+}
+
+// GetRhsAt returns the right-hand side of the production rule at the specified index.
+//
+// Parameters:
+//   - index: The index of the right-hand side to get.
+//
+// Returns:
+//   - string: The right-hand side of the production rule.
+//   - error: An error if it is unable to get the right-hand side.
+//
+// Errors:
+//   - *ers.ErrInvalidParameter: If the index is out of bounds or the item's rule
+//     is nil.
+func (item *Item) GetRhsAt(index int) (string, error) {
+	if item.Rule == nil {
+		return "", ers.NewErrNilParameter("item.Rule")
+	}
+
+	return item.Rule.GetRhsAt(index)
+}
+
+// GetPos returns the position of the item in the production rule.
+//
+// Returns:
+//   - int: The position of the item.
+func (item *Item) GetPos() int {
+	return item.Pos
+}
+
+// IsReduce returns true if the item is a reduce item.
+//
+// Returns:
+//   - bool: True if the item is a reduce item. Otherwise, false.
+//
+// Behaviors:
+//   - If the item's rule is nil, it returns false.
+func (item *Item) IsReduce() bool {
+	if item.Rule == nil {
+		return false
+	}
+
+	return item.Pos == item.Rule.Size()
+}
+
+// GetRuleIndex returns the index of the rule in the decision table.
+//
+// Returns:
+//   - int: The index of the rule in the decision table.
+func (item *Item) GetRuleIndex() int {
+	return item.ruleIndex
+}
+
+// GetSymbolsUpToPos returns the symbols of the production rule up to the current position.
+//
+// Returns:
+//   - []string: The symbols of the production rule up to the current position.
+//
+// Behaviors:
+//   - The symbols are reversed. Thus, the symbol at index 0 is the current symbol
+//     of the item.
+func (item *Item) GetSymbolsUpToPos() []string {
+	symbols := item.Rule.GetSymbols()
+
+	symbols = symbols[:item.Pos+1]
+
+	slices.Reverse(symbols)
+
+	return symbols
+}
+
+// GetRule returns the production rule that the item represents.
+//
+// Returns:
+//   - *gr.Production: The production rule that the item represents.
+func (item *Item) GetRule() *gr.Production {
+	return item.Rule
+}
+
+// IsLhsRhs returns true if the left-hand side of the production rule matches the
+// right-hand side.
+//
+// Parameters:
+//   - rhs: The right-hand side to compare with the left-hand side.
+//
+// Returns:
+//   - bool: True if the left-hand side matches the right-hand side. Otherwise, false.
+func (item *Item) IsLhsRhs(rhs string) bool {
+	if item.Rule == nil {
+		return false
+	}
+
+	return item.Rule.GetLhs() == rhs
 }

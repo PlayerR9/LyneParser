@@ -347,6 +347,73 @@ func (p *Production) IndexOfRhs(rhs string) []int {
 	return results
 }
 
+// ReplaceRhsAt is a method of Production that replaces the symbol at the
+// given index in the right-hand side of the production with the right-hand
+// side of another production.
+//
+// Parameters:
+//   - index: The index of the symbol to replace.
+//   - otherP: The other production to replace the symbol with.
+//
+// Returns:
+//   - *Production: A new production with the symbol at the given index
+//     replaced with the right-hand side of the other production.
+//   - error: An error if the index is invalid or the other production is nil.
+//
+// Errors:
+//   - *ers.ErrInvalidParameter: If the index is invalid or the other production is nil.
+//   - *ErrLhsRhsMismatch: If the left-hand side of the other production does
+//     not match the symbol at the given index in the right-hand side of the
+//     production.
+func (p *Production) ReplaceRhsAt(index int, otherP *Production) (*Production, error) {
+	if index < 0 || index >= len(p.rhs) {
+		return nil, ers.NewErrInvalidParameter(
+			"index",
+			ers.NewErrOutOfBounds(index, 0, len(p.rhs)),
+		)
+	} else if otherP == nil {
+		return nil, ers.NewErrNilParameter("otherP")
+	}
+
+	if p.rhs[index] != otherP.lhs {
+		return nil, NewErrLhsRhsMismatch(otherP.lhs, p.rhs[index])
+	}
+
+	newP := &Production{
+		lhs: p.lhs,
+	}
+
+	if index == 0 {
+		newP.rhs = append(otherP.rhs, p.rhs[1:]...)
+	} else if index == len(p.rhs)-1 {
+		newP.rhs = append(p.rhs[:index], otherP.rhs...)
+	} else {
+		newP.rhs = append(p.rhs[:index], otherP.rhs...)
+		newP.rhs = append(newP.rhs, p.rhs[index+1:]...)
+	}
+
+	return newP, nil
+}
+
+// HasRhs is a method of Production that returns whether the right-hand
+// side of the production contains the given symbol.
+//
+// Parameters:
+//   - rhs: The symbol to check for.
+//
+// Returns:
+//   - bool: Whether the right-hand side of the production contains the
+//     given symbol.
+func (p *Production) HasRhs(rhs string) bool {
+	for _, symbol := range p.rhs {
+		if symbol == rhs {
+			return true
+		}
+	}
+
+	return false
+}
+
 // RegProduction represents a production in a grammar that matches a
 // regular expression.
 type RegProduction struct {

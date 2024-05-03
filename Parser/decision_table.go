@@ -158,22 +158,38 @@ func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) cs.Actioner {
 }
 
 func (dt *DecisionTable) FixConflicts() error {
-	for symbol, elems := range dt.table {
-		items := make([]*cs.Item, 0, len(elems))
+	items := make([]*cs.Item, 0)
 
+	for _, elems := range dt.table {
 		for _, elem := range elems {
 			items = append(items, elem.Item)
 		}
-
-		solver := cs.NewConflictSolver(symbol, items)
-
-		err := solver.SolveConflicts()
-		if err != nil {
-			return err
-		}
-
-		dt.table[symbol] = solver.Elements
 	}
+
+	solver := cs.NewConflictSolver(items)
+
+	err := solver.SolveConflicts()
+	if err != nil {
+		return err
+	}
+
+	/*
+		WHILE TRUE DO:
+			 conflict <- findConflict(s)
+
+			 IF len(conflict) = 0 THEN:
+				  BREAK
+
+			 ok, err <- solveAmbiguous(s)
+			 IF NOT(err = NULL) THEN:
+				  ERROR err
+
+			 IF NOT(ok) THEN:
+				  // We cannot continue
+				  BREAK
+
+			 solve(rules)
+	*/
 
 	return nil
 }

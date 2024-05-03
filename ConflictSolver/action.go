@@ -8,6 +8,8 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+
+	intf "github.com/PlayerR9/MyGoLib/Units/Interfaces"
 )
 
 // Actioner represents an action that the parser will take.
@@ -15,7 +17,10 @@ type Actioner interface {
 	AppendRhs(rhs string) error
 	Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error
 	Size() int
+
 	fmt.Stringer
+
+	intf.Copier
 }
 
 // ActShift represents a shift action.
@@ -75,6 +80,16 @@ func (a *ActShift) AppendRhs(rhs string) error {
 	a.Rhs = append(a.Rhs, rhs)
 
 	return nil
+}
+
+func (a *ActShift) Copy() intf.Copier {
+	rhsCopy := make([]string, len(a.Rhs))
+	copy(rhsCopy, a.Rhs)
+
+	return &ActShift{
+		Lookahead: a.Lookahead,
+		Rhs:       rhsCopy,
+	}
 }
 
 func (a *ActShift) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
@@ -197,6 +212,16 @@ func (a *ActReduce) Size() int {
 	return len(a.Rhs)
 }
 
+func (a *ActReduce) Copy() intf.Copier {
+	rhsCopy := make([]string, len(a.Rhs))
+	copy(rhsCopy, a.Rhs)
+
+	return &ActReduce{
+		RuleIndex: a.RuleIndex,
+		Rhs:       rhsCopy,
+	}
+}
+
 // NewActReduce creates a new reduce action.
 //
 // If the rule index is less than 0, an error action will be returned instead.
@@ -272,6 +297,12 @@ func NewErrorAction(reason error) *ActError {
 	}
 }
 
+func (a *ActError) Copy() intf.Copier {
+	return &ActError{
+		Reason: a.Reason,
+	}
+}
+
 // ActAccept represents an accept action.
 type ActAccept struct {
 	// RuleIndex is the index of the rule to reduce by.
@@ -341,6 +372,16 @@ func (a *ActAccept) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) err
 
 func (a *ActAccept) Size() int {
 	return len(a.Rhs)
+}
+
+func (a *ActAccept) Copy() intf.Copier {
+	rhsCopy := make([]string, len(a.Rhs))
+	copy(rhsCopy, a.Rhs)
+
+	return &ActAccept{
+		RuleIndex: a.RuleIndex,
+		Rhs:       rhsCopy,
+	}
 }
 
 // NewAcceptAction creates a new accept action.

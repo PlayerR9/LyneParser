@@ -3,6 +3,7 @@ package ConflictSolver
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
@@ -14,6 +15,7 @@ type Actioner interface {
 	AppendRhs(rhs string) error
 	Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error
 	Size() int
+	fmt.Stringer
 }
 
 // ActShift represents a shift action.
@@ -23,6 +25,42 @@ type ActShift struct {
 
 	// Rhs is the right-hand side tokens of the rule.
 	Rhs []string
+}
+
+func (a *ActShift) String() string {
+	if a == nil {
+		return "shift{}"
+	}
+
+	var builder strings.Builder
+
+	builder.WriteString("shift")
+	builder.WriteRune('{')
+
+	if a.Lookahead != nil {
+		builder.WriteString(*a.Lookahead)
+		builder.WriteRune(' ')
+		builder.WriteRune('|')
+	}
+
+	if len(a.Rhs) == 0 {
+		builder.WriteRune('}')
+
+		return builder.String()
+	} else if a.Lookahead != nil {
+		builder.WriteRune(' ')
+	}
+
+	builder.WriteString(a.Rhs[0])
+
+	for _, r := range a.Rhs[1:] {
+		builder.WriteRune(' ')
+		builder.WriteString(r)
+	}
+
+	builder.WriteRune('}')
+
+	return builder.String()
 }
 
 // AppendRhs appends a right-hand side token to the shift action.
@@ -97,6 +135,34 @@ type ActReduce struct {
 	Rhs []string
 }
 
+func (a *ActReduce) String() string {
+	if a == nil {
+		return "reduce{}"
+	}
+
+	var builder strings.Builder
+
+	builder.WriteString("reduce")
+	builder.WriteRune('{')
+
+	if len(a.Rhs) == 0 {
+		builder.WriteRune('}')
+
+		return builder.String()
+	}
+
+	builder.WriteString(a.Rhs[0])
+
+	for _, r := range a.Rhs[1:] {
+		builder.WriteRune(' ')
+		builder.WriteString(r)
+	}
+
+	builder.WriteRune('}')
+
+	return builder.String()
+}
+
 // AppendRhs appends a right-hand side token to the reduce action.
 // It never returns an error.
 //
@@ -163,6 +229,16 @@ type ActError struct {
 	Reason error
 }
 
+func (a *ActError) String() string {
+	if a == nil {
+		return "error{}"
+	} else if a.Reason == nil {
+		return "error{no error}"
+	} else {
+		return fmt.Sprintf("error{%s}", a.Reason.Error())
+	}
+}
+
 // AppendRhs appends a right-hand side token to the error action.
 // It always returns an error.
 //
@@ -203,6 +279,34 @@ type ActAccept struct {
 
 	// Rhs is the right-hand side tokens of the rule.
 	Rhs []string
+}
+
+func (a *ActAccept) String() string {
+	if a == nil {
+		return "accept{}"
+	}
+
+	var builder strings.Builder
+
+	builder.WriteString("accept")
+	builder.WriteRune('{')
+
+	if len(a.Rhs) == 0 {
+		builder.WriteRune('}')
+
+		return builder.String()
+	}
+
+	builder.WriteString(a.Rhs[0])
+
+	for _, r := range a.Rhs[1:] {
+		builder.WriteRune(' ')
+		builder.WriteString(r)
+	}
+
+	builder.WriteRune('}')
+
+	return builder.String()
 }
 
 // AppendRhs appends a right-hand side token to the accept action.

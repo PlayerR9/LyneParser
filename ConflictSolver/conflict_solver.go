@@ -1,6 +1,7 @@
 package ConflictSolver
 
 import (
+	"errors"
 	"fmt"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
@@ -42,7 +43,7 @@ func NewConflictSolver(leadingSymbol string, items []*Item) *ConflictSolver {
 	}
 }
 
-func solveMinimum(elems []*Helper) error {
+func solveSubgroup(elems []*Helper) error {
 	// 1. Bucket sort the items by their position.
 	buckets := make(map[int][]*Helper)
 
@@ -51,7 +52,7 @@ func solveMinimum(elems []*Helper) error {
 	}
 
 	for limit, bucket := range buckets {
-		err := minimum(bucket, limit)
+		err := minimumUnique(bucket, limit)
 		if err != nil {
 			return err
 		}
@@ -63,11 +64,10 @@ func solveMinimum(elems []*Helper) error {
 	return nil
 }
 
-// Find the minimum number of elements required to uniquely identify
-// any item.
-func minimum(helpers []*Helper, limit int) error {
+func minimumUnique(helpers []*Helper, limit int) error {
 	// Set all helpers to not done.
 	elemsEval := make(map[*Helper]bool)
+	doneCount := 0
 
 	for _, h := range helpers {
 		elemsEval[h] = false
@@ -79,36 +79,41 @@ func minimum(helpers []*Helper, limit int) error {
 		for j, h := range helpers {
 			isDone, ok := elemsEval[h]
 			if !ok {
-				panic(fmt.Sprintf("item %v not found in doneMap", h))
+				return fmt.Errorf("item %v not found in doneMap", h)
 			} else if isDone {
 				continue
 			}
 
 			rhs, err := h.Item.Rule.GetRhsAt(i)
 			if err != nil {
-				panic(err)
+				return err
 			}
 
 			rhsPerLevel[rhs] = append(rhsPerLevel[rhs], j)
 		}
 
 		for rhs, indices := range rhsPerLevel {
-			currentH := helpers[indices[0]]
-
-			// Add the RHS.
-			err := currentH.Action.AppendRhs(rhs)
-			if err != nil {
-				panic(err)
-			}
-
 			if len(indices) == 1 {
 				// No conflict. Mark it as done.
-				elemsEval[currentH] = true
+				elemsEval[helpers[indices[0]]] = true
+				doneCount++
+			}
+
+			for _, index := range indices {
+				currentH := helpers[index]
+
+				// Add the RHS.
+				err := currentH.Action.AppendRhs(rhs)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
 
-	// FIXME: Check if it was successful
+	if doneCount != len(helpers) {
+		return errors.New("ambiguous grammar")
+	}
 
 	return nil
 }
@@ -160,7 +165,7 @@ func (cs *ConflictSolver) SolveConflicts() error {
 			elemsEval[elems[0]] = true
 		} else {
 			// Solve conflicts.
-			err := solveMinimum(elems)
+			err := solveSubgroup(elems)
 			if err != nil {
 				return fmt.Errorf("ambiguous grammar")
 			}

@@ -11,21 +11,10 @@ import (
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
 
-// DecisionFunc is a function that is used to determine the next action to take
-// in the parser.
-//
-// Parameters:
-//   - stack: The stack that the parser is using.
-//   - lookahead: The lookahead token.
-//
-// Returns:
-//   - Action: The action to take.
-type DecisionFunc func(stack *ds.DoubleStack[gr.Tokener]) cs.Actioner
-
 // Parser is a parser that uses a stack to parse a stream of tokens.
 type Parser struct {
 	// productions represents the productions that the parser will use.
-	productions []gr.Production
+	productions []*gr.Production
 
 	// inputStream represents the stream of tokens that the parser will parse.
 	inputStream *gr.TokenStream
@@ -35,7 +24,7 @@ type Parser struct {
 
 	// decisionFunc represents the function that the parser will use to determine
 	// the next action to take.
-	decisionFunc DecisionFunc
+	dt *DecisionTable
 }
 
 // NewParser creates a new parser with the given grammar.
@@ -51,7 +40,7 @@ type Parser struct {
 //   - *ers.ErrInvalidParameter: The grammar is nil.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
 func NewParser(grammar *gr.Grammar) (Parser, error) {
-	p := Parser{productions: make([]gr.Production, 0)}
+	p := Parser{productions: make([]*gr.Production, 0)}
 
 	if grammar == nil {
 		return p, ers.NewErrNilParameter("grammar")
@@ -63,33 +52,26 @@ func NewParser(grammar *gr.Grammar) (Parser, error) {
 			continue
 		}
 
-		p.productions = append(p.productions, *prod)
+		p.productions = append(p.productions, prod)
 	}
 
 	if len(p.productions) == 0 {
 		return p, gr.NewErrNoProductionRulesFound()
 	}
 
-	return p, nil
-}
+	p.dt = NewDecisionTable()
 
-// SetDecisionFunc sets the decision function that the parser will use to
-// determine the next action to take.
-//
-// Parameters:
-//   - decisionFunc: The decision function that the parser will use.
-//
-// Returns:
-//   - error: An error of type *ers.ErrInvalidParameter if the decision function
-//     is nil.
-func (p *Parser) SetDecisionFunc(decisionFunc DecisionFunc) error {
-	if decisionFunc == nil {
-		return ers.NewErrNilParameter("decisionFunc")
+	err := p.dt.GenerateItems(p.productions)
+	if err != nil {
+		return p, err
 	}
 
-	p.decisionFunc = decisionFunc
+	err = p.dt.FixConflicts()
+	if err != nil {
+		return p, err
+	}
 
-	return nil
+	return p, nil
 }
 
 // SetInputStream sets the input stream that the parser will parse. It also adds
@@ -137,8 +119,8 @@ func (p *Parser) Parse() error {
 		return errors.New("input stream is empty or done. Use SetInputStream() to set a new stream")
 	}
 
-	if p.decisionFunc == nil {
-		return errors.New("call SetDecisionFunc() first")
+	if p.dt == nil {
+		return errors.New("no grammar was set")
 	}
 
 	p.stack = ds.NewDoubleLinkedStack[gr.Tokener]()
@@ -158,7 +140,7 @@ func (p *Parser) Parse() error {
 			break
 		}
 
-		decision = p.decisionFunc(p.stack)
+		decision = p.dt.Match(p.stack)
 		p.stack.Refuse()
 
 		switch decision := decision.(type) {
@@ -293,7 +275,7 @@ func (p *Parser) reduce(rule int) error {
 //
 //   - []gr.NonLeafToken: The parse tree.
 //   - error: An error if the input stream could not be parsed.
-func FullParse(grammar *gr.Grammar, inputStream *gr.TokenStream, decisionFunc DecisionFunc) ([]gr.NonLeafToken, error) {
+func FullParse(grammar *gr.Grammar, inputStream *gr.TokenStream, dt *DecisionTable) ([]gr.NonLeafToken, error) {
 	parser, err := NewParser(grammar)
 	if err != nil {
 		return nil, fmt.Errorf("could not create parser: %s", err.Error())
@@ -302,11 +284,6 @@ func FullParse(grammar *gr.Grammar, inputStream *gr.TokenStream, decisionFunc De
 	err = parser.SetInputStream(inputStream)
 	if err != nil {
 		return nil, fmt.Errorf("could not set input stream: %s", err.Error())
-	}
-
-	err = parser.SetDecisionFunc(decisionFunc)
-	if err != nil {
-		return nil, fmt.Errorf("could not set decision function: %s", err.Error())
 	}
 
 	err = parser.Parse()

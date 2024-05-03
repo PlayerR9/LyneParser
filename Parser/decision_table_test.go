@@ -70,5 +70,16 @@ func TestDecisionTable(t *testing.T) {
 		fmt.Println(line)
 	}
 
+	err = dt.FixConflicts()
+	if err != nil {
+		t.Errorf("Conflict: %s", err.Error())
+	}
+
+	lines = dt.FString(0)
+
+	for _, line := range lines {
+		fmt.Println(line)
+	}
+
 	t.Errorf("TestDecisionTable() is not implemented")
 }

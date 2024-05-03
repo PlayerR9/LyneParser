@@ -36,7 +36,8 @@ func (dt *DecisionTable) FString(indentLevel int) []string {
 			builder.WriteString(fmt.Sprintf("%d", counter))
 			builder.WriteRune('.')
 			builder.WriteRune(' ')
-			builder.WriteString(elem.Item.String())
+
+			builder.WriteString(elem.String())
 
 			result = append(result, builder.String())
 			builder.Reset()

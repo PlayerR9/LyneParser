@@ -93,13 +93,20 @@ func NewLexer(grammar *gr.Grammar) (*Lexer, error) {
 //
 // Parameters:
 //   - matches: The matches to add to the lexer.
-func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult[*gr.LeafToken]) {
+func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult[*gr.LeafToken]) error {
 	// Get the longest match.
 	matches = getLongestMatches(matches)
+	var err error
+
 	for _, match := range matches {
 		l.root.AddChild(newHelperToken(match.Matched))
-		l.leaves = l.root.GetLeaves()
+		l.leaves, err = l.root.GetLeaves()
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // processLeaf is a helper function that processes a leaf
@@ -156,13 +163,21 @@ func (l *Lexer) filterLeaves() ([]*nd.Node[*helperToken], error) {
 //
 // Returns:
 //   - newLeaves: The new leaves generated.
-func (l *Lexer) generateNewLeaves(todo []*nd.Node[*helperToken], source *SourceStream) (newLeaves []*nd.Node[*helperToken]) {
+func (l *Lexer) generateNewLeaves(todo []*nd.Node[*helperToken], source *SourceStream) ([]*nd.Node[*helperToken], error) {
+	newLeaves := make([]*nd.Node[*helperToken], 0)
+
 	for _, leaf := range todo {
 		l.processLeaf(leaf, source)
-		newLeaves = append(newLeaves, leaf.GetLeaves()...)
+
+		newL, err := leaf.GetLeaves()
+		if err != nil {
+			return newLeaves, err
+		}
+
+		newLeaves = append(newLeaves, newL...)
 	}
 
-	return
+	return newLeaves, nil
 }
 
 // processLeaves processes the leaves in the lexer.
@@ -178,7 +193,10 @@ func (l *Lexer) processLeaves(source *SourceStream) (bool, error) {
 		return true, nil
 	}
 
-	l.leaves = l.generateNewLeaves(todo, source)
+	l.leaves, err = l.generateNewLeaves(todo, source)
+	if err != nil {
+		return false, err
+	}
 
 	return false, nil
 }
@@ -198,7 +216,7 @@ func (l *Lexer) Lex(source *SourceStream) error {
 	}
 
 	root := nd.NewNode(newHelperToken(gr.NewRootToken()))
-	l.root = &root
+	l.root = root
 
 	matches, err := source.MatchFrom(0, l.productions)
 	if err != nil {

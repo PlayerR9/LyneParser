@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	itf "github.com/PlayerR9/MyGoLib/CustomData/Iterators"
+	itf "github.com/PlayerR9/MyGoLib/ListLike/Iterator"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 	itff "github.com/PlayerR9/MyGoLib/Units/Interfaces"
 
@@ -178,12 +178,11 @@ func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToke
 	for i := len(p.rhs) - 1; i >= 0; i-- {
 		rhs := p.rhs[i]
 
-		if stack.IsEmpty() {
+		top, err := stack.Pop()
+		if err != nil {
 			reason = ers.NewErrUnexpected(nil, rhs)
 			break
 		}
-
-		top := stack.Pop()
 
 		if top.GetID() != rhs {
 			reason = ers.NewErrUnexpected(top, rhs)

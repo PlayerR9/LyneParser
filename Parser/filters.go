@@ -5,6 +5,8 @@ import (
 	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
 )
 
+/////////////////////////////////////////////////////////////
+
 // HResultWeightFunc is a function that, given a HResult, returns the weight of the result.
 //
 // Parameters:

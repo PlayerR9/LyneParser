@@ -1,7 +1,6 @@
 package ConflictSolver
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -14,8 +13,29 @@ import (
 
 // Actioner represents an action that the parser will take.
 type Actioner interface {
+	// AppendRhs appends a right-hand side token to the action.
+	//
+	// Parameters:
+	//   - rhs: The right-hand side token to append.
+	//
+	// Returns:
+	//   - error: An error if the right-hand side token could not be appended.
 	AppendRhs(rhs string) error
+
+	// Match matches the action with the top of the stack.
+	//
+	// Parameters:
+	//   - top: The top of the stack.
+	//   - stack: The stack.
+	//
+	// Returns:
+	//   - error: An error if the action does not match the top of the stack.
 	Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error
+
+	// Size returns the size of the action.
+	//
+	// Returns:
+	//   - int: The size of the action.
 	Size() int
 
 	fmt.Stringer
@@ -32,11 +52,11 @@ type ActShift struct {
 	Rhs []string
 }
 
+// String returns a string representation of the shift action.
+//
+// Returns:
+//   - string: The string representation of the shift action.
 func (a *ActShift) String() string {
-	if a == nil {
-		return "shift{}"
-	}
-
 	var builder strings.Builder
 
 	builder.WriteString("shift")
@@ -46,22 +66,112 @@ func (a *ActShift) String() string {
 		builder.WriteString(*a.Lookahead)
 		builder.WriteRune(' ')
 		builder.WriteRune('|')
-	}
-
-	if len(a.Rhs) == 0 {
-		builder.WriteRune('}')
-
-		return builder.String()
-	} else if a.Lookahead != nil {
 		builder.WriteRune(' ')
 	}
 
 	builder.WriteString(strings.Join(a.Rhs, " "))
-
 	builder.WriteRune('}')
 
 	return builder.String()
 }
+
+// NewActShift creates a new shift action.
+//
+// Returns:
+//   - *ActShift: A pointer to the new shift action.
+func NewActShift() *ActShift {
+	return &ActShift{
+		Lookahead: nil,
+		Rhs:       make([]string, 0),
+	}
+}
+
+// SetLookahead sets the lookahead token ID for the shift action.
+//
+// Parameters:
+//   - lookahead: The lookahead token ID.
+func (a *ActShift) SetLookahead(lookahead *string) {
+	a.Lookahead = lookahead
+}
+
+// ActReduce represents a reduce action.
+type ActReduce struct {
+	// Rule is the rule to reduce by.
+	Rule *gr.Production
+
+	// Rhs is the right-hand side tokens of the rule.
+	Rhs []string
+}
+
+// String returns a string representation of the reduce action.
+//
+// Returns:
+//   - string: The string representation of the reduce action.
+func (a *ActReduce) String() string {
+	return fmt.Sprintf(
+		"reduce{%s}",
+		strings.Join(a.Rhs, " "),
+	)
+}
+
+// NewActReduce creates a new reduce action.
+//
+// Parameters:
+//   - rule: The rule to reduce by.
+//
+// Returns:
+//   - *ActReduce: A pointer to the new reduce action.
+//   - error: An error of type *ers.ErrInvalidParameter if the rule is nil.
+func NewActReduce(rule *gr.Production) (*ActReduce, error) {
+	if rule == nil {
+		return nil, ers.NewErrNilParameter("rule")
+	}
+
+	return &ActReduce{
+		Rule: rule,
+	}, nil
+}
+
+// ActAccept represents an accept action.
+type ActAccept struct {
+	// Rule is the rule to reduce by.
+	Rule *gr.Production
+
+	// Rhs is the right-hand side tokens of the rule.
+	Rhs []string
+}
+
+// String returns a string representation of the accept action.
+//
+// Returns:
+//   - string: The string representation of the accept action.
+func (a *ActAccept) String() string {
+	return fmt.Sprintf(
+		"accept{%s}",
+		strings.Join(a.Rhs, " "),
+	)
+}
+
+// NewAcceptAction creates a new accept action.
+//
+// Parameters:
+//   - rule: The rule to reduce by.
+//
+// Returns:
+//   - *ActAccept: A pointer to the new accept action.
+//   - error: An error of type *ers.ErrInvalidParameter if the rule is nil.
+func NewAcceptAction(rule *gr.Production) (*ActAccept, error) {
+	if rule == nil {
+		return nil, ers.NewErrNilParameter("rule")
+	}
+
+	return &ActAccept{
+		Rule: rule,
+		Rhs:  make([]string, 0),
+	}, nil
+}
+
+/////////////////////////////////////////////////////////////
 
 // AppendRhs appends a right-hand side token to the shift action.
 // It never returns an error.
@@ -99,11 +209,10 @@ func (a *ActShift) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) erro
 	}
 
 	for _, rhs := range a.Rhs {
-		if stack.IsEmpty() {
+		top, err := stack.Pop()
+		if err != nil {
 			return ers.NewErrUnexpected(nil, rhs)
 		}
-
-		top := stack.Pop()
 
 		if top.GetID() != rhs {
 			return ers.NewErrUnexpected(top, rhs)
@@ -115,49 +224,6 @@ func (a *ActShift) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) erro
 
 func (a *ActShift) Size() int {
 	return len(a.Rhs)
-}
-
-// NewActShift creates a new shift action.
-//
-// Returns:
-//   - *ActShift: A pointer to the new shift action.
-func NewActShift() *ActShift {
-	return &ActShift{
-		Lookahead: nil,
-		Rhs:       make([]string, 0),
-	}
-}
-
-// SetLookahead sets the lookahead token ID for the shift action.
-//
-// Parameters:
-//   - lookahead: The lookahead token ID.
-func (a *ActShift) SetLookahead(lookahead *string) {
-	a.Lookahead = lookahead
-}
-
-// ActReduce represents a reduce action.
-type ActReduce struct {
-	// RuleIndex is the index of the rule to reduce by.
-	RuleIndex int
-
-	// Rhs is the right-hand side tokens of the rule.
-	Rhs []string
-}
-
-func (a *ActReduce) String() string {
-	if a == nil {
-		return "reduce{}"
-	}
-
-	var builder strings.Builder
-
-	builder.WriteString("reduce")
-	builder.WriteRune('{')
-	builder.WriteString(strings.Join(a.Rhs, " "))
-	builder.WriteRune('}')
-
-	return builder.String()
 }
 
 // AppendRhs appends a right-hand side token to the reduce action.
@@ -176,11 +242,10 @@ func (a *ActReduce) AppendRhs(rhs string) error {
 
 func (a *ActReduce) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
 	for _, rhs := range a.Rhs {
-		if stack.IsEmpty() {
+		top, err := stack.Pop()
+		if err != nil {
 			return ers.NewErrUnexpected(nil, rhs)
 		}
-
-		top := stack.Pop()
 
 		if top.GetID() != rhs {
 			return ers.NewErrUnexpected(top, rhs)
@@ -199,127 +264,17 @@ func (a *ActReduce) Copy() intf.Copier {
 	copy(rhsCopy, a.Rhs)
 
 	return &ActReduce{
-		RuleIndex: a.RuleIndex,
-		Rhs:       rhsCopy,
+		Rule: a.Rule.Copy().(*gr.Production),
+		Rhs:  rhsCopy,
 	}
 }
 
-// NewActReduce creates a new reduce action.
-//
-// If the rule index is less than 0, an error action will be returned instead.
-//
-// Parameters:
-//   - ruleIndex: The index of the rule to reduce by.
+// GetRule returns the rule to reduce by.
 //
 // Returns:
-//   - Actioner: The new reduce or error action.
-func NewActReduce(ruleIndex int) Actioner {
-	if ruleIndex < 0 {
-		reason := ers.NewErrInvalidParameter(
-			"ruleIndex",
-			fmt.Errorf("value (%d) must be greater than or equal to 0", ruleIndex),
-		)
-
-		return &ActError{
-			Reason: reason,
-		}
-	}
-
-	return &ActReduce{
-		RuleIndex: ruleIndex,
-	}
-}
-
-// ActError represents an error action.
-type ActError struct {
-	// Reason is the reason for the error.
-	Reason error
-}
-
-func (a *ActError) String() string {
-	if a == nil {
-		return "error{}"
-	} else if a.Reason == nil {
-		return "error{no error}"
-	} else {
-		return fmt.Sprintf("error{%s}", a.Reason.Error())
-	}
-}
-
-// AppendRhs appends a right-hand side token to the error action.
-// It always returns an error.
-//
-// Parameters:
-//   - rhs: The right-hand side token to append.
-//
-// Returns:
-//   - error: An error if the right-hand side token could not be appended.
-func (a *ActError) AppendRhs(rhs string) error {
-	return errors.New("cannot append right-hand side token to error action")
-}
-
-func (a *ActError) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
-	return a.Reason
-}
-
-func (a *ActError) Size() int {
-	return 0
-}
-
-// NewErrorAction creates a new error action.
-//
-// Parameters:
-//   - reason: The reason for the error.
-//
-// Returns:
-//   - *ActError: A pointer to the new error action.
-func NewErrorAction(reason error) *ActError {
-	return &ActError{
-		Reason: reason,
-	}
-}
-
-func (a *ActError) Copy() intf.Copier {
-	return &ActError{
-		Reason: a.Reason,
-	}
-}
-
-// ActAccept represents an accept action.
-type ActAccept struct {
-	// RuleIndex is the index of the rule to reduce by.
-	RuleIndex int
-
-	// Rhs is the right-hand side tokens of the rule.
-	Rhs []string
-}
-
-func (a *ActAccept) String() string {
-	if a == nil {
-		return "accept{}"
-	}
-
-	var builder strings.Builder
-
-	builder.WriteString("accept")
-	builder.WriteRune('{')
-
-	if len(a.Rhs) == 0 {
-		builder.WriteRune('}')
-
-		return builder.String()
-	}
-
-	builder.WriteString(a.Rhs[0])
-
-	for _, r := range a.Rhs[1:] {
-		builder.WriteRune(' ')
-		builder.WriteString(r)
-	}
-
-	builder.WriteRune('}')
-
-	return builder.String()
+//   - *gr.Production: The rule to reduce by.
+func (a *ActReduce) GetRule() *gr.Production {
+	return a.Rule
 }
 
 // AppendRhs appends a right-hand side token to the accept action.
@@ -338,11 +293,10 @@ func (a *ActAccept) AppendRhs(rhs string) error {
 
 func (a *ActAccept) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
 	for _, rhs := range a.Rhs {
-		if stack.IsEmpty() {
+		top, err := stack.Pop()
+		if err != nil {
 			return ers.NewErrUnexpected(nil, rhs)
 		}
-
-		top := stack.Pop()
 
 		if top.GetID() != rhs {
 			return ers.NewErrUnexpected(top, rhs)
@@ -361,32 +315,15 @@ func (a *ActAccept) Copy() intf.Copier {
 	copy(rhsCopy, a.Rhs)
 
 	return &ActAccept{
-		RuleIndex: a.RuleIndex,
-		Rhs:       rhsCopy,
+		Rule: a.Rule.Copy().(*gr.Production),
+		Rhs:  rhsCopy,
 	}
 }
 
-// NewAcceptAction creates a new accept action.
-//
-// Parameters:
-//   - ruleIndex: The index of the rule to reduce by.
+// GetRule returns the rule to reduce by.
 //
 // Returns:
-//   - Actioner: The new accept or error action.
-func NewAcceptAction(ruleIndex int) Actioner {
-	if ruleIndex < 0 {
-		reason := ers.NewErrInvalidParameter(
-			"ruleIndex",
-			fmt.Errorf("value (%d) must be greater than or equal to 0", ruleIndex),
-		)
-
-		return &ActError{
-			Reason: reason,
-		}
-	}
-
-	return &ActAccept{
-		RuleIndex: ruleIndex,
-		Rhs:       make([]string, 0),
-	}
+//   - *gr.Production: The rule to reduce by.
+func (a *ActAccept) GetRule() *gr.Production {
+	return a.Rule
 }

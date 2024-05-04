@@ -2,6 +2,65 @@ package ConflictSolver
 
 import "fmt"
 
+// ErrItemIsNil is an error that is returned when an item is nil.
+type ErrItemIsNil struct{}
+
+// Error returns the error message: "item is nil".
+//
+// Returns:
+//   - string: The error message.
+func (e *ErrItemIsNil) Error() string {
+	return "item is nil"
+}
+
+// NewErrItemIsNil creates a new error of type *ErrItemIsNil.
+//
+// Returns:
+//   - *ErrItemIsNil: A pointer to the new error.
+func NewErrItemIsNil() *ErrItemIsNil {
+	return &ErrItemIsNil{}
+}
+
+// ErrInvalidPosition is an error that is returned when a position is invalid (i.e., less than 0).
+type ErrInvalidPosition struct{}
+
+// Error returns the error message: "invalid position".
+//
+// Returns:
+//   - string: The error message.
+func (e *ErrInvalidPosition) Error() string {
+	return "invalid position"
+}
+
+// NewErrInvalidPosition creates a new error of type *ErrInvalidPosition.
+//
+// Returns:
+//   - *ErrInvalidPosition: A pointer to the new error.
+func NewErrInvalidPosition() *ErrInvalidPosition {
+	return &ErrInvalidPosition{}
+}
+
+// ErrCannotCreateItem is an error that is returned when an item cannot be created.
+type ErrCannotCreateItem struct{}
+
+// Error returns the error message: "cannot create item".
+//
+// Returns:
+//   - string: The error message.
+func (e *ErrCannotCreateItem) Error() string {
+	return "cannot create item"
+}
+
+// NewErrCannotCreateItem creates a new error of type *ErrCannotCreateItem.
+//
+// Returns:
+//   - *ErrCannotCreateItem: A pointer to the new error.
+func NewErrCannotCreateItem() *ErrCannotCreateItem {
+	return &ErrCannotCreateItem{}
+}
+
+/////////////////////////////////////////////////////////////
+
 // ErrNoElementsFound is an error that is returned when no
 // elements are found for a symbol.
 type ErrNoElementsFound struct {
@@ -28,25 +87,6 @@ func NewErrNoElementsFound(symbol string) *ErrNoElementsFound {
 	return &ErrNoElementsFound{
 		Symbol: symbol,
 	}
-}
-
-// ErrItemIsNil is an error that is returned when an item is nil.
-type ErrItemIsNil struct{}
-
-// Error returns the error message: "item is nil".
-//
-// Returns:
-//   - string: The error message.
-func (e *ErrItemIsNil) Error() string {
-	return "item is nil"
-}
-
-// NewErrItemIsNil creates a new error of type *ErrItemIsNil.
-//
-// Returns:
-//   - *ErrItemIsNil: A pointer to the new error.
-func NewErrItemIsNil() *ErrItemIsNil {
-	return &ErrItemIsNil{}
 }
 
 // ErrHelper is an error that is returned when something goes wrong

@@ -1,5 +1,7 @@
 package ConflictSolver
 
+/////////////////////////////////////////////////////////////
+
 // FilterNonShiftHelper filters out non-shift helpers.
 //
 // Parameters:

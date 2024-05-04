@@ -147,33 +147,3 @@ func TestParsing(t *testing.T) {
 
 	t.Errorf("TestParsing() is not implemented")
 }
-
-func TestDecisionTable(t *testing.T) {
-	rules := ParserGrammar.GetProductions()
-
-	dt := NewDecisionTable()
-
-	err := dt.GenerateItems(rules)
-	if err != nil {
-		t.Errorf("GenerateItems() returned an error: %s", err.Error())
-	}
-
-	lines := dt.FString(0)
-
-	for _, line := range lines {
-		fmt.Println(line)
-	}
-
-	err = dt.FixConflicts()
-	if err != nil {
-		t.Errorf("Conflict: %s", err.Error())
-	}
-
-	lines = dt.FString(0)
-
-	for _, line := range lines {
-		fmt.Println(line)
-	}
-
-	t.Errorf("TestDecisionTable() is not implemented")
-}

@@ -11,11 +11,10 @@ import (
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
 
+/////////////////////////////////////////////////////////////
+
 // Parser is a parser that uses a stack to parse a stream of tokens.
 type Parser struct {
-	// productions represents the productions that the parser will use.
-	productions []*gr.Production
-
 	// stack represents the stack that the parser will use.
 	stack *ds.DoubleStack[gr.Tokener]
 
@@ -41,24 +40,20 @@ func NewParser(grammar *gr.Grammar) (*Parser, error) {
 		return nil, ers.NewErrNilParameter("grammar")
 	}
 
+	productions := grammar.GetProductions()
+	if len(productions) == 0 {
+		return nil, gr.NewErrNoProductionRulesFound()
+	}
+
+	table, err := cs.SolveConflicts(grammar.Symbols, productions)
+	if err != nil {
+		return nil, err
+	}
+
 	p := &Parser{
-		productions: grammar.GetProductions(),
-	}
-
-	if len(p.productions) == 0 {
-		return p, gr.NewErrNoProductionRulesFound()
-	}
-
-	p.dt = NewDecisionTable()
-
-	err := p.dt.GenerateItems(p.productions)
-	if err != nil {
-		return p, err
-	}
-
-	err = p.dt.FixConflicts()
-	if err != nil {
-		return p, err
+		dt: &DecisionTable{
+			table: table,
+		},
 	}
 
 	return p, nil
@@ -97,8 +92,12 @@ func (p *Parser) Parse(source *gr.TokenStream) error {
 			break
 		}
 
-		decision = p.dt.Match(p.stack)
+		decision, err = p.dt.Match(p.stack)
 		p.stack.Refuse()
+
+		if err != nil {
+			return err
+		}
 
 		switch decision := decision.(type) {
 		case *cs.ActShift:
@@ -107,7 +106,7 @@ func (p *Parser) Parse(source *gr.TokenStream) error {
 				return err
 			}
 		case *cs.ActReduce:
-			err := p.reduce(decision.RuleIndex)
+			err := p.reduce(decision.GetRule())
 			if err != nil {
 				p.stack.Refuse()
 				return err
@@ -115,15 +114,13 @@ func (p *Parser) Parse(source *gr.TokenStream) error {
 
 			p.stack.Accept()
 		case *cs.ActAccept:
-			err := p.reduce(decision.RuleIndex)
+			err := p.reduce(decision.GetRule())
 			if err != nil {
 				p.stack.Refuse()
 				return err
 			}
 
 			p.stack.Accept()
-		case *cs.ActError:
-			return decision.Reason
 		default:
 			return NewErrUnknownAction(decision)
 		}
@@ -147,8 +144,11 @@ func (p *Parser) GetParseTree() ([]gr.NonLeafToken, error) {
 
 	roots := make([]gr.NonLeafToken, 0)
 
-	for !p.stack.IsEmpty() {
-		top := p.stack.Pop()
+	for {
+		top, err := p.stack.Pop()
+		if err != nil {
+			break
+		}
 
 		root, ok := top.(*gr.NonLeafToken)
 		if !ok {
@@ -179,13 +179,13 @@ func (p *Parser) shift(source *gr.TokenStream) error {
 // reduce is a helper method that reduces the stack by a rule.
 //
 // Parameters:
-//   - rule: The index of the rule to reduce by.
+//   - rule: The rule to reduce by.
 //
 // Returns:
 //   - error: An error if the stack could not be reduced.
-func (p *Parser) reduce(rule int) error {
-	lhs := p.productions[rule].GetLhs()
-	rhss := p.productions[rule].ReverseIterator()
+func (p *Parser) reduce(rule *gr.Production) error {
+	lhs := rule.GetLhs()
+	rhss := rule.ReverseIterator()
 
 	var lookahead *gr.LeafToken = nil
 
@@ -195,11 +195,10 @@ func (p *Parser) reduce(rule int) error {
 			break
 		}
 
-		if p.stack.IsEmpty() {
+		top, err := p.stack.Pop()
+		if err != nil {
 			return NewErrAfter(lhs, ers.NewErrUnexpected(nil, value))
 		}
-
-		top := p.stack.Pop()
 
 		if lookahead == nil {
 			lookahead = top.GetLookahead()

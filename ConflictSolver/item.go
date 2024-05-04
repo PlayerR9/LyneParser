@@ -23,6 +23,62 @@ type Item struct {
 	ruleIndex int
 }
 
+// NewItem is a constructor of Item.
+//
+// Parameters:
+//   - rule: The production rule that the item represents.
+//   - pos: The position of the item in the production rule.
+//
+// Returns:
+//   - *Item: The pointer to the new Item.
+//   - error: An error of type *ers.ErrInvalidParameter if the rule is nil or
+//     the pos is out of bounds.
+func NewItem(rule *gr.Production, pos int) (*Item, error) {
+	if rule == nil {
+		return nil, ers.NewErrNilParameter("rule")
+	}
+
+	size := rule.Size()
+
+	if pos < 0 || pos >= size {
+		return nil, ers.NewErrInvalidParameter(
+			"pos",
+			ers.NewErrOutOfBounds(pos, 0, size),
+		)
+	}
+
+	return &Item{
+		Rule: rule,
+		Pos:  pos,
+	}, nil
+}
+
+// GetPos returns the position of the item in the production rule.
+//
+// Returns:
+//   - int: The position of the item.
+func (item *Item) GetPos() int {
+	return item.Pos
+}
+
+// GetRhsAt returns the right-hand side of the production rule at the specified index.
+//
+// Parameters:
+//   - index: The index of the right-hand side to get.
+//
+// Returns:
+//   - string: The right-hand side of the production rule.
+//   - error: An error if it is unable to get the right-hand side.
+//
+// Errors:
+//   - *ers.ErrInvalidParameter: If the index is out of bounds or the item's rule
+//     is nil.
+func (item *Item) GetRhsAt(index int) (string, error) {
+	return item.Rule.GetRhsAt(index)
+}
+
+/////////////////////////////////////////////////////////////
+
 // String returns a string representation of the item.
 //
 // Returns:
@@ -69,41 +125,6 @@ func (i *Item) Copy() intf.Copier {
 		Pos:       i.Pos,
 		ruleIndex: i.ruleIndex,
 	}
-}
-
-// NewItem is a constructor of Item.
-//
-// Parameters:
-//   - rule: The production rule that the item represents.
-//   - pos: The position of the item in the production rule.
-//   - isReduce: A flag that indicates if the item is a reduce item.
-//
-// Returns:
-//   - *Item: The pointer to the new Item.
-//   - error: An error of type *ers.ErrInvalidParameter if the rule is nil or
-//     the pos is out of bounds.
-//
-// Behaviors:
-//   - By default the IsReduce flag is set to false.
-func NewItem(rule *gr.Production, pos int, isReduce bool, ruleIndex int) (*Item, error) {
-	if rule == nil {
-		return nil, ers.NewErrNilParameter("rule")
-	}
-
-	size := rule.Size()
-
-	if pos < 0 || pos >= size {
-		return nil, ers.NewErrInvalidParameter(
-			"pos",
-			ers.NewErrOutOfBounds(pos, 0, size),
-		)
-	}
-
-	return &Item{
-		Rule:      rule,
-		Pos:       pos,
-		ruleIndex: ruleIndex,
-	}, nil
 }
 
 // Size returns the size of the production rule that the item represents.
@@ -155,44 +176,12 @@ func (item *Item) ReplaceRhsAt(index int, otherI *Item) (*Item, error) {
 // Returns:
 //   - string: The right-hand side of the production rule.
 func (item *Item) GetRhs() string {
-	if item.Rule == nil {
-		return ""
-	}
-
 	rhs, err := item.Rule.GetRhsAt(item.Pos)
 	if err != nil {
 		return ""
 	}
 
 	return rhs
-}
-
-// GetRhsAt returns the right-hand side of the production rule at the specified index.
-//
-// Parameters:
-//   - index: The index of the right-hand side to get.
-//
-// Returns:
-//   - string: The right-hand side of the production rule.
-//   - error: An error if it is unable to get the right-hand side.
-//
-// Errors:
-//   - *ers.ErrInvalidParameter: If the index is out of bounds or the item's rule
-//     is nil.
-func (item *Item) GetRhsAt(index int) (string, error) {
-	if item.Rule == nil {
-		return "", ers.NewErrNilParameter("item.Rule")
-	}
-
-	return item.Rule.GetRhsAt(index)
-}
-
-// GetPos returns the position of the item in the production rule.
-//
-// Returns:
-//   - int: The position of the item.
-func (item *Item) GetPos() int {
-	return item.Pos
 }
 
 // IsReduce returns true if the item is a reduce item.
@@ -203,10 +192,6 @@ func (item *Item) GetPos() int {
 // Behaviors:
 //   - If the item's rule is nil, it returns false.
 func (item *Item) IsReduce() bool {
-	if item.Rule == nil {
-		return false
-	}
-
 	return item.Pos == item.Rule.Size()
 }
 
@@ -253,9 +238,17 @@ func (item *Item) GetRule() *gr.Production {
 // Returns:
 //   - bool: True if the left-hand side matches the right-hand side. Otherwise, false.
 func (item *Item) IsLhsRhs(rhs string) bool {
-	if item.Rule == nil {
-		return false
-	}
-
 	return item.Rule.GetLhs() == rhs
+}
+
+// IndicesOfRhs returns the indices of the right-hand side of the item
+// that match the specified right-hand side.
+//
+// Parameters:
+//   - rhs: The right-hand side to search for.
+//
+// Returns:
+//   - []int: The indices of the right-hand side.
+func (item *Item) IndicesOfRhs(rhs string) []int {
+	return item.Rule.IndicesOfRhs(rhs)
 }

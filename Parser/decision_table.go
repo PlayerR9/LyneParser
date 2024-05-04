@@ -2,117 +2,34 @@ package Parser
 
 import (
 	"fmt"
-	"slices"
-	"strings"
 
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
-	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
-
-	sfs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )
+
+/////////////////////////////////////////////////////////////
 
 type DecisionTable struct {
 	table map[string][]*cs.Helper
 }
 
-func (dt *DecisionTable) FString(indentLevel int) []string {
-	indentation := sfs.NewIndentConfig(sfs.DefaultIndentation, indentLevel, true, false)
-	indent := indentation.String()
-
-	result := make([]string, 0)
-
-	counter := 0
-
-	var builder strings.Builder
-
-	helpers := dt.getHelpers()
-
-	for _, h := range helpers {
-		builder.WriteString(indent)
-		builder.WriteString(fmt.Sprintf("%d", counter))
-		builder.WriteRune('.')
-		builder.WriteRune(' ')
-
-		builder.WriteString(h.String())
-
-		result = append(result, builder.String())
-		builder.Reset()
-
-		counter++
+func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) (cs.Actioner, error) {
+	top, err := stack.Pop()
+	if err != nil {
+		return nil, fmt.Errorf("no top token found")
 	}
-
-	return result
-}
-
-func NewDecisionTable() *DecisionTable {
-	return &DecisionTable{
-		table: make(map[string][]*cs.Helper),
-	}
-}
-
-func (dt *DecisionTable) getHelpers() (helpers []*cs.Helper) {
-	for _, elems := range dt.table {
-		helpers = append(helpers, elems...)
-	}
-
-	return
-}
-
-func (dt *DecisionTable) GenerateItems(rules []*gr.Production) error {
-	if len(rules) == 0 {
-		return ers.NewErrInvalidParameter("rules", ers.NewErrEmptySlice())
-	}
-
-	symbols := make([]string, 0)
-
-	for _, r := range rules {
-		tmp := r.GetSymbols()
-
-		for _, s := range tmp {
-			if !slices.Contains(symbols, s) {
-				symbols = append(symbols, s)
-			}
-		}
-	}
-
-	for _, s := range symbols {
-		elems := make([]*cs.Helper, 0)
-
-		for j, r := range rules {
-			indices := r.IndicesOfRhs(s)
-			lastIndex := r.Size() - 1
-
-			for _, i := range indices {
-				elem, err := cs.NewItem(r, i, i == lastIndex, j)
-				if err != nil {
-					return err
-				}
-
-				elems = append(elems, cs.NewHelper(elem, nil))
-			}
-		}
-
-		dt.table[s] = elems
-	}
-
-	return nil
-}
-
-func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) cs.Actioner {
-	top := stack.Pop()
 
 	elems, ok := dt.table[top.GetID()]
 	if !ok {
-		return cs.NewErrorAction(fmt.Errorf("no elems found for symbol %s", top.GetID()))
+		return nil, fmt.Errorf("no elems found for symbol %s", top.GetID())
 	}
 
 	if len(elems) == 1 {
-		return elems[0].Action
+		return elems[0].Action, nil
 	}
 
 	results := make([]hlp.HResult[cs.Actioner], 0, len(elems))
@@ -142,9 +59,9 @@ func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) cs.Actioner {
 	if len(success) == 0 {
 		// Return the most likely error
 		// As of now, we will return the first error
-		return cs.NewErrorAction(fail[0].Reason)
+		return nil, fail[0].Reason
 	} else if len(success) == 1 {
-		return success[0].Result
+		return success[0].Result, nil
 	}
 
 	// Get the longest match
@@ -153,39 +70,10 @@ func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) cs.Actioner {
 	finals := slext.FilterByPositiveWeight(weights)
 
 	if len(finals) == 1 {
-		return finals[0].Result
+		return finals[0].Result, nil
 	} else {
-		return cs.NewErrorAction(fmt.Errorf("ambiguous grammar"))
+		return nil, fmt.Errorf("ambiguous grammar")
 	}
-}
-
-func (dt *DecisionTable) FixConflicts() error {
-	solver := cs.NewConflictSolver(dt.table)
-
-	err := solver.SolveConflicts()
-	if err != nil {
-		return err
-	}
-
-	/*
-		WHILE TRUE DO:
-			 conflict <- findConflict(s)
-
-			 IF len(conflict) = 0 THEN:
-				  BREAK
-
-			 ok, err <- solveAmbiguous(s)
-			 IF NOT(err = NULL) THEN:
-				  ERROR err
-
-			 IF NOT(ok) THEN:
-				  // We cannot continue
-				  BREAK
-
-			 solve(rules)
-	*/
-
-	return nil
 }
 
 /*

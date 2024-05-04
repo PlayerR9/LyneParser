@@ -2,6 +2,8 @@ package Parser
 
 import "fmt"
 
+/////////////////////////////////////////////////////////////
+
 // ErrNoAccept is an error that is returned when the parser reaches the end of the
 // input stream without accepting the input stream.
 type ErrNoAccept struct{}

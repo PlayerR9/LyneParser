@@ -42,28 +42,6 @@ type Productioner interface {
 	//   - []string: A slice of symbols in the production.
 	GetSymbols() []string
 
-	/*
-		// Match returns a token that matches the production in the given stack.
-		// The token is a non-leaf token if the production is a non-terminal
-		// production, and a leaf token if the production is a terminal production.
-		//
-		// Parameters:
-		//   - at: The current index in the input stack.
-		//   - b: The input stream or stack to match the production against.
-		//
-		// Returns:
-		//   - Tokener: A token that matches the production in the input stream or stack.
-		// 	nil if there is no match.
-		//
-		// Information:
-		//  - 'at' is the current index where the match is being attempted.
-		//   It is used by the lexer to specify the position of the token in the
-		//   input string. In parsers, however, it is not really used (at = 0).
-		//   Despite that, it can be used to provide additional information to
-		//   the parser for error reporting or debugging.
-		Match(at int, b any) Tokener
-	*/
-
 	fmt.Stringer
 	itff.Copier
 }
@@ -192,7 +170,7 @@ func (p *Production) GetSymbols() []string {
 //     string. In parsers, however, it is not really used (at = 0). Despite
 //     that, it can be used to provide additional information to the parser
 //     for error reporting or debugging.
-func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (Tokener, error) {
+func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToken, error) {
 	solutions := make([]Tokener, 0)
 
 	var reason error = nil
@@ -459,7 +437,7 @@ func (p *RegProduction) GetSymbols() []string {
 // Returns:
 //   - Tokener: A token that matches the production in the stack. nil if
 //     there is no match.
-func (p *RegProduction) Match(at int, b []byte) Tokener {
+func (p *RegProduction) Match(at int, b []byte) *LeafToken {
 	data := p.rxp.Find(b)
 	if data == nil {
 		return nil

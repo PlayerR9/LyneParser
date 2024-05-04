@@ -21,13 +21,8 @@ import (
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branch cannot be parsed.
-func ParseBranch(parser *Parser, inputStream *gr.TokenStream) ([]gr.NonLeafToken, error) {
-	err := parser.SetInputStream(inputStream)
-	if err != nil {
-		return nil, ers.NewErrIgnorable(err)
-	}
-
-	err = parser.Parse()
+func ParseBranch(parser *Parser, source *gr.TokenStream) ([]gr.NonLeafToken, error) {
+	err := parser.Parse(source)
 	if err != nil {
 		return nil, err
 	}

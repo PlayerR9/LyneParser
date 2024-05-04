@@ -1,76 +1,10 @@
 package Lexer
 
 import (
-	"fmt"
-
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
-	nd "github.com/PlayerR9/MyGoLib/CustomData/Node"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )
-
-// addFirstLeaves is a helper function that adds the first leaves to the lexer.
-//
-// Parameters:
-//   - matches: The matches to add to the lexer.
-func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult) error {
-	// Get the longest match.
-	matches = getLongestMatches(matches)
-	for _, match := range matches {
-		leafToken, ok := match.Matched.(*gr.LeafToken)
-		if !ok {
-			return fmt.Errorf("this should not happen: match.Matched is not a *LeafToken")
-		}
-
-		l.root.AddChild(helperToken{
-			Status: TkIncomplete,
-			Tok:    leafToken,
-		})
-		l.leaves = l.root.GetLeaves()
-	}
-
-	return nil
-}
-
-// processLeaf is a helper function that processes a leaf
-// by adding children to it.
-//
-// Parameters:
-//   - leaf: The leaf to process.
-//   - b: The byte slice to lex.
-func (l *Lexer) processLeaf(leaf *nd.Node[helperToken], b []byte) {
-	nextAt := leaf.Data.Tok.GetPos() + len(leaf.Data.Tok.Data)
-	if nextAt >= len(b) {
-		leaf.Data.SetStatus(TkComplete)
-		return
-	}
-	subset := b[nextAt:]
-
-	matches := l.grammar.RegexMatch(nextAt, subset)
-
-	if len(matches) == 0 {
-		// Branch is done but no match found.
-		leaf.Data.SetStatus(TkError)
-		return
-	}
-
-	// Get the longest match.
-	matches = getLongestMatches(matches)
-	for _, match := range matches {
-		leafToken, ok := match.Matched.(*gr.LeafToken)
-		if !ok {
-			leaf.Data.SetStatus(TkError)
-			return
-		}
-
-		leaf.AddChild(helperToken{
-			Status: TkIncomplete,
-			Tok:    leafToken,
-		})
-	}
-
-	leaf.Data.SetStatus(TkComplete)
-}
 
 // getLongestMatches returns the longest matches,
 //
@@ -80,19 +14,8 @@ func (l *Lexer) processLeaf(leaf *nd.Node[helperToken], b []byte) {
 // Returns:
 //
 //   - []MatchedResult: A slice of the longest matches.
-func getLongestMatches(matches []gr.MatchedResult) []gr.MatchedResult {
-	weights := slext.ApplyWeightFunc(matches, func(match gr.MatchedResult) (float64, bool) {
-		leaf, ok := match.Matched.(*gr.LeafToken)
-		if !ok {
-			return 0, false
-		}
-
-		return float64(len(leaf.Data)), true
-	})
-	if len(weights) == 0 {
-		return []gr.MatchedResult{}
-	}
-
+func getLongestMatches(matches []gr.MatchedResult[*gr.LeafToken]) []gr.MatchedResult[*gr.LeafToken] {
+	weights := slext.ApplyWeightFunc(matches, MatchWeightFunc)
 	return slext.FilterByPositiveWeight(weights)
 }
 
@@ -104,20 +27,55 @@ func getLongestMatches(matches []gr.MatchedResult) []gr.MatchedResult {
 // Returns:
 //   - [][]helperToken: The filtered branches.
 //   - int: The index of the last invalid token. -1 if no invalid token is found.
-func filterInvalidBranches(branches [][]helperToken) ([][]helperToken, int) {
-	branches, ok := slext.SFSeparateEarly(branches, func(h []helperToken) bool {
-		return len(h) != 0 && h[len(h)-1].Status == TkComplete
-	})
+func filterInvalidBranches(branches [][]*helperToken) ([][]*helperToken, int) {
+	branches, ok := slext.SFSeparateEarly(branches, FilterIncompleteTokens)
 	if ok {
 		return branches, -1
 	}
 
 	// Return the longest branch.
-	weights := slext.ApplyWeightFunc(branches, func(h []helperToken) (float64, bool) {
-		return float64(len(h)), true
-	})
-
+	weights := slext.ApplyWeightFunc(branches, HelperWeightFunc)
 	branches = slext.FilterByPositiveWeight(weights)
 
-	return [][]helperToken{branches[0]}, len(branches[0])
+	return [][]*helperToken{branches[0]}, len(branches[0])
+}
+
+// SetEOFToken sets the end-of-file token in the token stream.
+//
+// If the end-of-file token is already present, it will not be added again.
+func setEOFToken(tokens []*gr.LeafToken) []*gr.LeafToken {
+	if len(tokens) != 0 && tokens[len(tokens)-1].ID == gr.EOFTokenID {
+		// EOF token is already present
+		return tokens
+	}
+
+	return append(tokens, gr.NewEOFToken())
+}
+
+// SetLookahead sets the lookahead token for all the tokens in the stream.
+func setLookahead(tokens []*gr.LeafToken) {
+	for i, token := range tokens[:len(tokens)-1] {
+		token.SetLookahead(tokens[i+1])
+	}
+}
+
+// convertBranchToTokenStream converts a branch to a token stream.
+//
+// Parameters:
+//   - branch: The branch to convert.
+//
+// Returns:
+//   - *gr.TokenStream: The token stream.
+func convertBranchToTokenStream(branch []*helperToken) *gr.TokenStream {
+	ts := make([]*gr.LeafToken, 0, len(branch))
+
+	for _, token := range branch {
+		ts = append(ts, token.Tok)
+	}
+
+	ts = setEOFToken(ts)
+
+	setLookahead(ts)
+
+	return gr.NewTokenStream(ts)
 }

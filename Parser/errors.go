@@ -60,3 +60,31 @@ func NewErrAfter(after string, reason error) *ErrAfter {
 		Reason: reason,
 	}
 }
+
+// ErrUnknownAction is an error that is returned when the parser encounters an unknown
+// action.
+type ErrUnknownAction struct {
+	// Action is the action that was attempted.
+	Action any
+}
+
+// Error is a method of the error interface.
+//
+// Returns:
+//  - string: The error message.
+func (e *ErrUnknownAction) Error() string {
+	return fmt.Sprintf("unknown action: %T", e.Action)
+}
+
+// NewErrUnknownAction creates a new ErrUnknownAction error.
+//
+// Parameters:
+//   - action: The action that was attempted.
+//
+// Returns:
+//   - *ErrUnknownAction: A pointer to the new ErrUnknownAction error.
+func NewErrUnknownAction(action any) *ErrUnknownAction {
+	return &ErrUnknownAction{
+		Action: action,
+	}
+}

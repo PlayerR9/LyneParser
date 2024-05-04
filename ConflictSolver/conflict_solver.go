@@ -20,13 +20,11 @@ type ConflictSolver struct {
 //
 // Returns:
 //   - *ConflictSolver: A pointer to the new conflict solver.
-func NewConflictSolver(items []*Item) *ConflictSolver {
-	elems := make(map[string][]*Helper)
-
-	for _, item := range items {
-		rhs := item.GetRhs()
-
-		elems[rhs] = append(elems[rhs], NewHelper(item, nil))
+func NewConflictSolver(elems map[string][]*Helper) *ConflictSolver {
+	for _, helpers := range elems {
+		for _, h := range helpers {
+			h.SetAction(nil)
+		}
 	}
 
 	return &ConflictSolver{

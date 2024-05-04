@@ -80,27 +80,6 @@ func (g *Grammar) String() string {
 	)
 }
 
-// MatchedResult represents the result of a match operation.
-type MatchedResult struct {
-	// Matched is the matched token.
-	Matched Tokener
-
-	// RuleIndex is the index of the production that matched.
-	RuleIndex int
-}
-
-// NewMatchResult is a constructor of MatchedResult.
-//
-// Parameters:
-//   - matched: The matched token.
-//   - ruleIndex: The index of the production that matched.
-//
-// Returns:
-//   - MatchedResult: A new MatchedResult.
-func NewMatchResult(matched Tokener, ruleIndex int) MatchedResult {
-	return MatchedResult{Matched: matched, RuleIndex: ruleIndex}
-}
-
 // RegexMatch returns a slice of MatchedResult that match the input token.
 //
 // Parameters:
@@ -109,8 +88,8 @@ func NewMatchResult(matched Tokener, ruleIndex int) MatchedResult {
 //
 // Returns:
 //   - []MatchedResult: A slice of MatchedResult that match the input token.
-func (g *Grammar) RegexMatch(at int, b []byte) []MatchedResult {
-	matches := make([]MatchedResult, 0)
+func (g *Grammar) RegexMatch(at int, b []byte) []MatchedResult[*LeafToken] {
+	matches := make([]MatchedResult[*LeafToken], 0)
 
 	for i, p := range g.Productions {
 		val, ok := p.(*RegProduction)
@@ -135,8 +114,8 @@ func (g *Grammar) RegexMatch(at int, b []byte) []MatchedResult {
 //
 // Returns:
 //   - []MatchedResult: A slice of MatchedResult that match the input token.
-func (g *Grammar) ProductionMatch(at int, stack *ds.DoubleStack[Tokener]) []MatchedResult {
-	matches := make([]MatchedResult, 0)
+func (g *Grammar) ProductionMatch(at int, stack *ds.DoubleStack[Tokener]) []MatchedResult[*NonLeafToken] {
+	matches := make([]MatchedResult[*NonLeafToken], 0)
 
 	for i, p := range g.Productions {
 		val, ok := p.(*Production)
@@ -153,13 +132,11 @@ func (g *Grammar) ProductionMatch(at int, stack *ds.DoubleStack[Tokener]) []Matc
 	return matches
 }
 
-// Compile compiles the grammar.
-//
-// It should be called before using the grammar.
+// GetRegProductions returns a slice of RegProduction in the grammar.
 //
 // Returns:
-//   - error: An error if the grammar could not be compiled.
-func (g *Grammar) compile() error {
+//   - []*RegProduction: A slice of RegProduction in the grammar.
+func (g *Grammar) GetRegProductions() []*RegProduction {
 	regProds := make([]*RegProduction, 0, len(g.Productions))
 
 	for _, p := range g.Productions {
@@ -167,6 +144,34 @@ func (g *Grammar) compile() error {
 			regProds = append(regProds, val)
 		}
 	}
+
+	return regProds
+}
+
+// GetProductions returns a slice of Production in the grammar.
+//
+// Returns:
+//   - []*Production: A slice of Production in the grammar.
+func (g *Grammar) GetProductions() []*Production {
+	prods := make([]*Production, 0, len(g.Productions))
+
+	for _, p := range g.Productions {
+		if val, ok := p.(*Production); ok {
+			prods = append(prods, val)
+		}
+	}
+
+	return prods
+}
+
+// Compile compiles the grammar.
+//
+// It should be called before using the grammar.
+//
+// Returns:
+//   - error: An error if the grammar could not be compiled.
+func (g *Grammar) compile() error {
+	regProds := g.GetRegProductions()
 
 	for _, p := range regProds {
 		err := p.Compile()

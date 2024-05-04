@@ -9,12 +9,14 @@ import (
 const (
 	// EOFTokenID is the identifier of the end-of-file token.
 	EOFTokenID string = "EOF"
+
+	// RootTokenID is the identifier of the root token.
+	RootTokenID string = "ROOT"
 )
 
 // NewEOFToken creates a new end-of-file token.
 //
 // Returns:
-//
 //   - *LeafToken: A pointer to the new end-of-file token.
 func NewEOFToken() *LeafToken {
 	tok := &LeafToken{
@@ -26,9 +28,13 @@ func NewEOFToken() *LeafToken {
 	return tok
 }
 
+// NewRootToken creates a new root token.
+//
+// Returns:
+//   - *LeafToken: A pointer to the new root token.
 func NewRootToken() *LeafToken {
 	tok := &LeafToken{
-		ID:   "ROOT",
+		ID:   RootTokenID,
 		Data: "",
 		At:   -1,
 	}
@@ -40,11 +46,9 @@ func NewRootToken() *LeafToken {
 // that start with an uppercase letter.
 //
 // Parameters:
-//
 //   - identifier: The identifier to check.
 //
 // Returns:
-//
 //   - bool: True if the identifier is a terminal, false otherwise.
 func IsTerminal(identifier string) bool {
 	firstLetter := []rune(identifier)[0]
@@ -112,7 +116,6 @@ type LeafToken struct {
 // It should only be used for debugging and logging purposes.
 //
 // Returns:
-//
 //   - string: A string representation of the leaf token.
 func (t *LeafToken) String() string {
 	if t == nil {
@@ -129,7 +132,6 @@ func (t *LeafToken) String() string {
 // GetID returns the identifier of the token.
 //
 // Returns:
-//
 //   - string: The identifier of the token.
 func (t *LeafToken) GetID() string {
 	return t.ID
@@ -138,7 +140,6 @@ func (t *LeafToken) GetID() string {
 // GetData returns the data of the token.
 //
 // Returns:
-//
 //   - any: The data of the token.
 func (t *LeafToken) GetData() any {
 	return t.Data
@@ -156,7 +157,6 @@ func (t *LeafToken) GetPos() int {
 // GetLookahead returns the next token in the input string.
 //
 // Returns:
-//
 //   - LeafToken: The next token in the input string.
 func (t *LeafToken) GetLookahead() *LeafToken {
 	return t.Lookahead
@@ -165,7 +165,6 @@ func (t *LeafToken) GetLookahead() *LeafToken {
 // SetLookahead sets the next token in the input string.
 //
 // Parameters:
-//
 //   - lookahead: The next token in the input string.
 func (t *LeafToken) SetLookahead(lookahead *LeafToken) {
 	t.Lookahead = lookahead
@@ -174,20 +173,18 @@ func (t *LeafToken) SetLookahead(lookahead *LeafToken) {
 // NewLeafToken creates a new leaf token with the given identifier, data, and position.
 //
 // Parameters:
-//
 //   - id: The identifier of the token.
 //   - data: The data of the token.
 //   - at: The position of the token in the input string.
 //
 // Returns:
-//
 //   - *LeafToken: A pointer to the new leaf token.
 func NewLeafToken(id string, data string, at int) *LeafToken {
 	return &LeafToken{
-		id,
-		data,
-		at,
-		nil,
+		ID:        id,
+		Data:      data,
+		At:        at,
+		Lookahead: nil,
 	}
 }
 
@@ -218,7 +215,6 @@ func (t *NonLeafToken) String() string {
 	}
 
 	values := make([]string, 0, len(t.Data))
-
 	for _, token := range t.Data {
 		values = append(values, token.String())
 	}
@@ -242,7 +238,6 @@ func (t *NonLeafToken) GetID() string {
 // GetData returns the data of the token.
 //
 // Returns:
-//
 //   - any: The data of the token.
 func (t *NonLeafToken) GetData() any {
 	return t.Data
@@ -251,7 +246,6 @@ func (t *NonLeafToken) GetData() any {
 // GetPos returns the position of the token in the input string.
 //
 // Returns:
-//
 //   - int: The position of the token in the input string.
 func (t *NonLeafToken) GetPos() int {
 	return t.At
@@ -260,7 +254,6 @@ func (t *NonLeafToken) GetPos() int {
 // GetLookahead returns the next token in the input string.
 //
 // Returns:
-//
 //   - LeafToken: The next token in the input string.
 func (t *NonLeafToken) GetLookahead() *LeafToken {
 	return t.Lookahead
@@ -278,13 +271,11 @@ func (t *NonLeafToken) SetLookahead(lookahead *LeafToken) {
 // NewNonLeafToken creates a new non-leaf token with the given identifier, data, and position.
 //
 // Parameters:
-//
 //   - id: The identifier of the token.
 //   - data: The data of the token.
 //   - at: The position of the token in the input string.
 //
 // Returns:
-//
 //   - *NonLeafToken: A pointer to the new non-leaf token.
 func NewNonLeafToken(id string, at int, data ...Tokener) *NonLeafToken {
 	return &NonLeafToken{

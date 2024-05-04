@@ -2,7 +2,6 @@ package Grammar
 
 import (
 	"github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )
 
 // TokenStream is a stream of tokens.
@@ -108,35 +107,5 @@ func NewTokenStream(tokens []*LeafToken) *TokenStream {
 	return &TokenStream{
 		tokens:       tokens,
 		currentIndex: 0,
-	}
-}
-
-// RemoveByTokenID removes tokens by their token ID.
-//
-// Parameters:
-//   - id: The token ID to remove.
-func (ts *TokenStream) RemoveByTokenID(id string) {
-	ts.tokens = slext.SliceFilter(ts.tokens, func(token *LeafToken) bool {
-		return token.ID != id
-	})
-}
-
-// SetEOFToken sets the end-of-file token in the token stream.
-//
-// If the end-of-file token is already present, it will not be added again.
-func (ts *TokenStream) SetEOFToken() {
-	if len(ts.tokens) != 0 && ts.tokens[len(ts.tokens)-1].ID == EOFTokenID {
-		// EOF token is already present
-		return
-	}
-
-	tok := NewEOFToken()
-	ts.tokens = append(ts.tokens, tok)
-}
-
-// SetLookahead sets the lookahead token for all the tokens in the stream.
-func (ts *TokenStream) SetLookahead() {
-	for i, token := range ts.tokens[:len(ts.tokens)-1] {
-		token.SetLookahead(ts.tokens[i+1])
 	}
 }

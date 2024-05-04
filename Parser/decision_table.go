@@ -30,25 +30,21 @@ func (dt *DecisionTable) FString(indentLevel int) []string {
 
 	var builder strings.Builder
 
-	for _, elems := range dt.table {
-		for _, elem := range elems {
-			builder.WriteString(indent)
-			builder.WriteString(fmt.Sprintf("%d", counter))
-			builder.WriteRune('.')
-			builder.WriteRune(' ')
+	helpers := dt.getHelpers()
 
-			builder.WriteString(elem.String())
+	for _, h := range helpers {
+		builder.WriteString(indent)
+		builder.WriteString(fmt.Sprintf("%d", counter))
+		builder.WriteRune('.')
+		builder.WriteRune(' ')
 
-			result = append(result, builder.String())
-			builder.Reset()
+		builder.WriteString(h.String())
 
-			counter++
-		}
+		result = append(result, builder.String())
+		builder.Reset()
 
-		result = append(result, "") // Add a blank line
+		counter++
 	}
-
-	result = result[:len(result)-1] // Remove the last blank line
 
 	return result
 }
@@ -57,6 +53,14 @@ func NewDecisionTable() *DecisionTable {
 	return &DecisionTable{
 		table: make(map[string][]*cs.Helper),
 	}
+}
+
+func (dt *DecisionTable) getHelpers() (helpers []*cs.Helper) {
+	for _, elems := range dt.table {
+		helpers = append(helpers, elems...)
+	}
+
+	return
 }
 
 func (dt *DecisionTable) GenerateItems(rules []*gr.Production) error {
@@ -144,9 +148,7 @@ func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) cs.Actioner {
 	}
 
 	// Get the longest match
-	weights := slext.ApplyWeightFunc(success, func(h hlp.HResult[cs.Actioner]) (float64, bool) {
-		return float64(h.Result.Size()), true
-	})
+	weights := slext.ApplyWeightFunc(success, HResultWeightFunc)
 
 	finals := slext.FilterByPositiveWeight(weights)
 
@@ -158,15 +160,7 @@ func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) cs.Actioner {
 }
 
 func (dt *DecisionTable) FixConflicts() error {
-	items := make([]*cs.Item, 0)
-
-	for _, elems := range dt.table {
-		for _, elem := range elems {
-			items = append(items, elem.Item)
-		}
-	}
-
-	solver := cs.NewConflictSolver(items)
+	solver := cs.NewConflictSolver(dt.table)
 
 	err := solver.SolveConflicts()
 	if err != nil {

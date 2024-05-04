@@ -86,7 +86,7 @@ var TestParser *Parser = func() *Parser {
 		panic(err)
 	}
 
-	return &p
+	return p
 }()
 
 var TestLexer *lx.Lexer = func() *lx.Lexer {
@@ -95,7 +95,7 @@ var TestLexer *lx.Lexer = func() *lx.Lexer {
 		panic(err)
 	}
 
-	return &l
+	return l
 }()
 
 func TestParsing(t *testing.T) {
@@ -103,9 +103,7 @@ func TestParsing(t *testing.T) {
 		Source string = "[char(\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\"Caring\")\n}]"
 	)
 
-	TestLexer.SetSource([]byte(Source))
-
-	err := TestLexer.Lex()
+	err := TestLexer.Lex(new(lx.SourceStream).FromString(Source))
 	if err != nil {
 		t.Errorf("Lexer.Lex() returned an error: %s", err.Error())
 	}
@@ -115,24 +113,12 @@ func TestParsing(t *testing.T) {
 		t.Errorf("Lexer.GetTokens() returned an error: %s", err.Error())
 	}
 
-	tokenBranches = TestLexer.RemoveToSkipTokens(tokenBranches)
-	if len(tokenBranches) == 0 {
-		t.Errorf("Lexer.GetTokens() returned no tokens")
-	}
-
 	results := make([]hlp.HResult[*gr.TokenStream], 0)
 
 	roots := make([]gr.NonLeafToken, 0)
 
 	for _, branch := range tokenBranches {
-		err := TestParser.SetInputStream(branch)
-		if err != nil {
-			results = append(results, hlp.HResult[*gr.TokenStream]{Result: branch, Reason: err})
-
-			continue
-		}
-
-		err = TestParser.Parse()
+		err = TestParser.Parse(branch)
 		if err != nil {
 			results = append(results, hlp.HResult[*gr.TokenStream]{Result: branch, Reason: err})
 
@@ -163,16 +149,7 @@ func TestParsing(t *testing.T) {
 }
 
 func TestDecisionTable(t *testing.T) {
-	rules := make([]*gr.Production, 0)
-
-	for _, p := range ParserGrammar.Productions {
-		rule, ok := p.(*gr.Production)
-		if !ok {
-			t.Errorf("Production is not a *gr.Production")
-		}
-
-		rules = append(rules, rule)
-	}
+	rules := ParserGrammar.GetProductions()
 
 	dt := NewDecisionTable()
 

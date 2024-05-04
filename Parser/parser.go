@@ -16,9 +16,6 @@ type Parser struct {
 	// productions represents the productions that the parser will use.
 	productions []*gr.Production
 
-	// inputStream represents the stream of tokens that the parser will parse.
-	inputStream *gr.TokenStream
-
 	// stack represents the stack that the parser will use.
 	stack *ds.DoubleStack[gr.Tokener]
 
@@ -39,20 +36,13 @@ type Parser struct {
 // Errors:
 //   - *ers.ErrInvalidParameter: The grammar is nil.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
-func NewParser(grammar *gr.Grammar) (Parser, error) {
-	p := Parser{productions: make([]*gr.Production, 0)}
-
+func NewParser(grammar *gr.Grammar) (*Parser, error) {
 	if grammar == nil {
-		return p, ers.NewErrNilParameter("grammar")
+		return nil, ers.NewErrNilParameter("grammar")
 	}
 
-	for _, production := range grammar.Productions {
-		prod, ok := production.(*gr.Production)
-		if !ok {
-			continue
-		}
-
-		p.productions = append(p.productions, prod)
+	p := &Parser{
+		productions: grammar.GetProductions(),
 	}
 
 	if len(p.productions) == 0 {
@@ -74,37 +64,6 @@ func NewParser(grammar *gr.Grammar) (Parser, error) {
 	return p, nil
 }
 
-// SetInputStream sets the input stream that the parser will parse. It also adds
-// an EOF token to the end of the input stream if it is not already present.
-//
-// Parameters:
-//   - inputStream: The input stream that the parser will parse.
-//
-// Returns:
-//   - error: An error of type *ers.ErrInvalidParameter if the input stream is nil
-//     or empty.
-func (p *Parser) SetInputStream(inputStream *gr.TokenStream) error {
-	if inputStream == nil || inputStream.IsEmpty() {
-		return ers.NewErrInvalidParameter(
-			"inputStream",
-			ers.NewErrEmptySlice(),
-		)
-	}
-
-	// Reset the input stream to the beginning.
-	inputStream.Reset()
-
-	// Add EOF token to the end of the input stream (if it is not already present).
-	inputStream.SetEOFToken()
-
-	// Add lookahead to all tokens
-	inputStream.SetLookahead()
-
-	p.inputStream = inputStream
-
-	return nil
-}
-
 // Parse parses the input stream using the parser's decision function.
 //
 // SetInputStream() and SetDecisionFunc() must be called before calling this
@@ -112,11 +71,9 @@ func (p *Parser) SetInputStream(inputStream *gr.TokenStream) error {
 //
 // Returns:
 //   - error: An error if the input stream could not be parsed.
-func (p *Parser) Parse() error {
-	if p.inputStream == nil {
-		return errors.New("call SetInputStream() first")
-	} else if p.inputStream.IsEmpty() || p.inputStream.IsDone() {
-		return errors.New("input stream is empty or done. Use SetInputStream() to set a new stream")
+func (p *Parser) Parse(source *gr.TokenStream) error {
+	if source == nil || source.IsEmpty() {
+		return errors.New("source is empty")
 	}
 
 	if p.dt == nil {
@@ -130,7 +87,7 @@ func (p *Parser) Parse() error {
 
 	decision = cs.NewActShift()
 
-	err := p.shift()
+	err := p.shift(source)
 	if err != nil {
 		return err
 	}
@@ -145,7 +102,7 @@ func (p *Parser) Parse() error {
 
 		switch decision := decision.(type) {
 		case *cs.ActShift:
-			err := p.shift()
+			err := p.shift(source)
 			if err != nil {
 				return err
 			}
@@ -168,7 +125,7 @@ func (p *Parser) Parse() error {
 		case *cs.ActError:
 			return decision.Reason
 		default:
-			return fmt.Errorf("unknown action type: %T", decision)
+			return NewErrUnknownAction(decision)
 		}
 	}
 
@@ -208,8 +165,8 @@ func (p *Parser) GetParseTree() ([]gr.NonLeafToken, error) {
 //
 // Returns:
 //   - error: An error of type *ErrNoAccept if the input stream is done.
-func (p *Parser) shift() error {
-	tok, err := p.inputStream.Consume()
+func (p *Parser) shift(source *gr.TokenStream) error {
+	tok, err := source.Consume()
 	if err != nil {
 		return NewErrNoAccept()
 	}
@@ -274,18 +231,13 @@ func (p *Parser) reduce(rule int) error {
 //
 //   - []gr.NonLeafToken: The parse tree.
 //   - error: An error if the input stream could not be parsed.
-func FullParse(grammar *gr.Grammar, inputStream *gr.TokenStream, dt *DecisionTable) ([]gr.NonLeafToken, error) {
+func FullParse(grammar *gr.Grammar, source *gr.TokenStream, dt *DecisionTable) ([]gr.NonLeafToken, error) {
 	parser, err := NewParser(grammar)
 	if err != nil {
 		return nil, fmt.Errorf("could not create parser: %s", err.Error())
 	}
 
-	err = parser.SetInputStream(inputStream)
-	if err != nil {
-		return nil, fmt.Errorf("could not set input stream: %s", err.Error())
-	}
-
-	err = parser.Parse()
+	err = parser.Parse(source)
 	if err != nil {
 		return nil, fmt.Errorf("parse error: %s", err.Error())
 	}

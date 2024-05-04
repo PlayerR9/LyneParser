@@ -47,8 +47,8 @@ type helperToken struct {
 //
 // Returns:
 //   - helperToken: The new helperToken.
-func newHelperToken(tok *gr.LeafToken) helperToken {
-	return helperToken{
+func newHelperToken(tok *gr.LeafToken) *helperToken {
+	return &helperToken{
 		Status: TkIncomplete,
 		Tok:    tok,
 	}
@@ -60,4 +60,36 @@ func newHelperToken(tok *gr.LeafToken) helperToken {
 //   - status: The status to set.
 func (ht *helperToken) SetStatus(status TokenStatus) {
 	ht.Status = status
+}
+
+// GetPos returns the position of the token in the input string.
+//
+// Returns:
+//   - int: The position of the token in the input string. If the token is nil, -1 is returned.
+func (ht *helperToken) GetPos() int {
+	if ht.Tok == nil {
+		return -1
+	}
+
+	return ht.Tok.GetPos()
+}
+
+// GetData returns the data of the token.
+//
+// Returns:
+//   - string: The data of the token. If the token is nil, an empty string is returned.
+func (ht *helperToken) GetData() string {
+	if ht.Tok == nil {
+		return ""
+	}
+
+	return ht.Tok.Data
+}
+
+func (ht *helperToken) GetID() string {
+	if ht.Tok == nil {
+		return ""
+	}
+
+	return ht.Tok.ID
 }

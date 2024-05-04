@@ -24,11 +24,7 @@ func (h *Helper) String() string {
 	builder.WriteString(h.Item.String())
 	builder.WriteRune(' ')
 	builder.WriteRune('(')
-
-	if h.Action != nil {
-		builder.WriteString(h.Action.String())
-	}
-
+	builder.WriteString(h.Action.String())
 	builder.WriteRune(')')
 
 	return builder.String()

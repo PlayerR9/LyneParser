@@ -37,6 +37,9 @@ var ParserGrammar *gr.Grammar = func() *gr.Grammar {
 	builder.AddProductions(gr.NewProduction("fieldCls1", "ATTR"))
 	builder.AddProductions(gr.NewProduction("fieldCls1", "ATTR SEP fieldCls1"))
 
+	// builder.AddProductions(gr.NewProduction("test", "e1 e2 X"))
+	// builder.AddProductions(gr.NewProduction("test", "e2 e2 X"))
+
 	grammar, err := builder.Build()
 	if err != nil {
 		panic(err)
@@ -44,6 +47,32 @@ var ParserGrammar *gr.Grammar = func() *gr.Grammar {
 
 	return grammar
 }()
+
+func TestAmbiguousShifts(t *testing.T) {
+	rules := ParserGrammar.GetProductions()
+
+	cs, err := NewConflictSolver(ParserGrammar.Symbols, rules)
+	if err != nil {
+		t.Errorf("NewConflictSolver() returned an error: %s", err.Error())
+	}
+
+	// DEBUG: Display the decision table before solving ambiguous shifts.
+	for _, line := range cs.FString(0) {
+		fmt.Println(line)
+	}
+	fmt.Println()
+
+	err = cs.SolveAmbiguousShifts()
+	if err != nil {
+		t.Errorf("ConflictSolver.SolveAmbiguousShifts() returned an error: %s", err.Error())
+	}
+
+	// DEBUG: Display the decision table after solving ambiguous shifts.
+	for _, line := range cs.FString(0) {
+		fmt.Println(line)
+	}
+	fmt.Println()
+}
 
 func TestConflictSolver(t *testing.T) {
 	rules := ParserGrammar.GetProductions()
@@ -53,22 +82,27 @@ func TestConflictSolver(t *testing.T) {
 		t.Errorf("NewConflictSolver() returned an error: %s", err.Error())
 	}
 
-	lines := cs.FString(0)
+	err = cs.SolveAmbiguousShifts()
+	if err != nil {
+		t.Errorf("ConflictSolver.SolveAmbiguousShifts() returned an error: %s", err.Error())
+	}
 
-	for _, line := range lines {
+	// DEBUG: Display the decision table before solving conflicts.
+	for _, line := range cs.FString(0) {
 		fmt.Println(line)
 	}
+	fmt.Println()
 
 	err = cs.Solve()
 	if err != nil {
 		t.Errorf("ConflictSolver.Solve() returned an error: %s", err.Error())
 	}
 
-	lines = cs.FString(0)
-
-	for _, line := range lines {
+	// DEBUG: Display the decision table after solving conflicts.
+	for _, line := range cs.FString(0) {
 		fmt.Println(line)
 	}
+	fmt.Println()
 
 	t.Errorf("TestConflictSolver() is not implemented")
 }

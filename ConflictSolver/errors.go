@@ -59,6 +59,63 @@ func NewErrCannotCreateItem() *ErrCannotCreateItem {
 	return &ErrCannotCreateItem{}
 }
 
+// ErrHelpersConflictingSize is an error that is returned when helpers have conflicting sizes.
+type ErrHelpersConflictingSize struct{}
+
+// Error returns the error message: "helpers have conflicting sizes".
+//
+// Returns:
+//   - string: The error message.
+func (e *ErrHelpersConflictingSize) Error() string {
+	return "helpers have conflicting sizes"
+}
+
+// NewErrHelpersConflictingSize creates a new error of type *ErrHelpersConflictingSize.
+//
+// Returns:
+//   - *ErrHelpersConflictingSize: A pointer to the new error.
+func NewErrHelpersConflictingSize() *ErrHelpersConflictingSize {
+	return &ErrHelpersConflictingSize{}
+}
+
+// ErrNoActionProvided is an error that is returned when no action is provided.
+type ErrNoActionProvided struct{}
+
+// Error returns the error message: "no action provided".
+//
+// Returns:
+//   - string: The error message.
+func (e *ErrNoActionProvided) Error() string {
+	return "no action provided"
+}
+
+// NewErrNoActionProvided creates a new error of type *ErrNoActionProvided.
+//
+// Returns:
+//   - *ErrNoActionProvided: A pointer to the new error.
+func NewErrNoActionProvided() *ErrNoActionProvided {
+	return &ErrNoActionProvided{}
+}
+
+// Err0thRhsNotSet is an error that is returned when the 0th right-hand side is not set.
+type Err0thRhsNotSet struct{}
+
+// Error returns the error message: "0th RHS not set".
+//
+// Returns:
+//   - string: The error message.
+func (e *Err0thRhsNotSet) Error() string {
+	return "0th RHS not set"
+}
+
+// NewErr0thRhsNotSet creates a new error of type *Err0thRhsNotSet.
+//
+// Returns:
+//   - *Err0thRhsNotSet: A pointer to the new error.
+func NewErr0thRhsNotSet() *Err0thRhsNotSet {
+	return &Err0thRhsNotSet{}
+}
+
 /////////////////////////////////////////////////////////////
 
 // ErrNoElementsFound is an error that is returned when no

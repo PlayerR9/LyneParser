@@ -17,6 +17,10 @@ type Helper struct {
 	Action Actioner
 }
 
+// String returns a string representation of the helper.
+//
+// Returns:
+//   - string: The string representation of the helper.
 func (h *Helper) String() string {
 	var builder strings.Builder
 
@@ -84,13 +88,39 @@ func (h *Helper) EvaluateLookahead() {
 	}
 }
 
-/////////////////////////////////////////////////////////////
-
-func (h *Helper) Copy() intf.Copier {
-	return &Helper{
-		Item:   h.Item.Copy().(*Item),
-		Action: h.Action.Copy().(Actioner),
+// GetLookahead returns the lookahead of the shift action. If the action is not a shift action,
+// this method returns nil.
+//
+// Returns:
+//   - *string: The lookahead token ID.
+func (h *Helper) GetLookahead() *string {
+	if h.Action == nil {
+		return nil
 	}
+
+	act, ok := h.Action.(*ActShift)
+	if !ok {
+		return nil
+	}
+
+	return act.Lookahead
+}
+
+// AppendRhs appends a symbol to the right-hand side of the action.
+//
+// Parameters:
+//   - symbol: The symbol to append.
+//
+// Returns:
+//   - error: An error of type *ErrNoActionProvided if the action is nil.
+func (h *Helper) AppendRhs(symbol string) error {
+	if h.Action == nil {
+		return NewErrNoActionProvided()
+	}
+
+	h.Action.AppendRhs(symbol)
+
+	return nil
 }
 
 // ReplaceRhsAt replaces the right-hand side of the item
@@ -115,17 +145,27 @@ func (h *Helper) ReplaceRhsAt(index int, otherH *Helper) (*Helper, error) {
 	}
 
 	newH := &Helper{
+		Item:   h.Item.Copy().(*Item),
 		Action: h.Action.Copy().(Actioner),
 	}
 
 	var err error
 
-	newH.Item, err = h.Item.ReplaceRhsAt(index, otherH.Item)
+	newH.Item, err = newH.Item.ReplaceRhsAt(index, otherH.Item)
 	if err != nil {
 		return nil, err
 	}
 
 	return newH, nil
+}
+
+/////////////////////////////////////////////////////////////
+
+func (h *Helper) Copy() intf.Copier {
+	return &Helper{
+		Item:   h.Item.Copy().(*Item),
+		Action: h.Action.Copy().(Actioner),
+	}
 }
 
 // Init initializes the helper with the specified symbol.
@@ -167,22 +207,4 @@ func (h *Helper) IsShift() bool {
 	_, ok := h.Action.(*ActShift)
 
 	return ok
-}
-
-// GetLookahead returns the lookahead of the shift action. If the action is not a shift action,
-// this method returns nil.
-//
-// Returns:
-//   - *string: The lookahead token ID.
-func (h *Helper) GetLookahead() *string {
-	if h.Action == nil {
-		return nil
-	}
-
-	act, ok := h.Action.(*ActShift)
-	if !ok {
-		return nil
-	}
-
-	return act.Lookahead
 }

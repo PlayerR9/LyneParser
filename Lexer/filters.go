@@ -2,7 +2,7 @@ package Lexer
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	nd "github.com/PlayerR9/MyGoLib/CustomData/Node"
+	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
 )
 
 // FilterIncompleteLeaves is a filter that filters out incomplete leaves.
@@ -12,7 +12,7 @@ import (
 //
 // Returns:
 //   - bool: True if the leaf is incomplete, false otherwise.
-func FilterIncompleteLeaves(leaf *nd.Node[*helperToken]) bool {
+func FilterIncompleteLeaves(leaf *tr.Node[*helperToken]) bool {
 	return leaf.Data == nil || leaf.Data.Status != TkComplete
 }
 
@@ -23,7 +23,7 @@ func FilterIncompleteLeaves(leaf *nd.Node[*helperToken]) bool {
 //
 // Returns:
 //   - bool: True if the leaf is in error, false otherwise.
-func FilterErrorLeaves(leaf *nd.Node[*helperToken]) bool {
+func FilterErrorLeaves(leaf *tr.Node[*helperToken]) bool {
 	return leaf.Data == nil || leaf.Data.Status != TkError
 }
 

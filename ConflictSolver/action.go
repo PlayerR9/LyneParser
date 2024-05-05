@@ -17,10 +17,7 @@ type Actioner interface {
 	//
 	// Parameters:
 	//   - rhs: The right-hand side token to append.
-	//
-	// Returns:
-	//   - error: An error if the right-hand side token could not be appended.
-	AppendRhs(rhs string) error
+	AppendRhs(rhs string)
 
 	// Match matches the action with the top of the stack.
 	//
@@ -75,6 +72,29 @@ func (a *ActShift) String() string {
 	return builder.String()
 }
 
+// Copy creates a copy of the shift action.
+//
+// Returns:
+//   - intf.Copier: The copy of the shift action.
+func (a *ActShift) Copy() intf.Copier {
+	rhsCopy := make([]string, len(a.Rhs))
+	copy(rhsCopy, a.Rhs)
+
+	return &ActShift{
+		Lookahead: a.Lookahead,
+		Rhs:       rhsCopy,
+	}
+}
+
+// AppendRhs appends a right-hand side token to the shift action.
+// It never returns an error.
+//
+// Parameters:
+//   - rhs: The right-hand side token to append.
+func (a *ActShift) AppendRhs(rhs string) {
+	a.Rhs = append(a.Rhs, rhs)
+}
+
 // NewActShift creates a new shift action.
 //
 // Returns:
@@ -112,6 +132,29 @@ func (a *ActReduce) String() string {
 		"reduce{%s}",
 		strings.Join(a.Rhs, " "),
 	)
+}
+
+// Copy creates a copy of the reduce action.
+//
+// Returns:
+//   - intf.Copier: The copy of the reduce action.
+func (a *ActReduce) Copy() intf.Copier {
+	rhsCopy := make([]string, len(a.Rhs))
+	copy(rhsCopy, a.Rhs)
+
+	return &ActReduce{
+		Rule: a.Rule.Copy().(*gr.Production),
+		Rhs:  rhsCopy,
+	}
+}
+
+// AppendRhs appends a right-hand side token to the reduce action.
+// It never returns an error.
+//
+// Parameters:
+//   - rhs: The right-hand side token to append.
+func (a *ActReduce) AppendRhs(rhs string) {
+	a.Rhs = append(a.Rhs, rhs)
 }
 
 // NewActReduce creates a new reduce action.
@@ -152,6 +195,29 @@ func (a *ActAccept) String() string {
 	)
 }
 
+// Copy creates a copy of the accept action.
+//
+// Returns:
+//   - intf.Copier: The copy of the accept action.
+func (a *ActAccept) Copy() intf.Copier {
+	rhsCopy := make([]string, len(a.Rhs))
+	copy(rhsCopy, a.Rhs)
+
+	return &ActAccept{
+		Rule: a.Rule.Copy().(*gr.Production),
+		Rhs:  rhsCopy,
+	}
+}
+
+// AppendRhs appends a right-hand side token to the accept action.
+// It never returns an error.
+//
+// Parameters:
+//   - rhs: The right-hand side token to append.
+func (a *ActAccept) AppendRhs(rhs string) {
+	a.Rhs = append(a.Rhs, rhs)
+}
+
 // NewAcceptAction creates a new accept action.
 //
 // Parameters:
@@ -172,30 +238,6 @@ func NewAcceptAction(rule *gr.Production) (*ActAccept, error) {
 }
 
 /////////////////////////////////////////////////////////////
-
-// AppendRhs appends a right-hand side token to the shift action.
-// It never returns an error.
-//
-// Parameters:
-//   - rhs: The right-hand side token to append.
-//
-// Returns:
-//   - error: An error if the right-hand side token could not be appended.
-func (a *ActShift) AppendRhs(rhs string) error {
-	a.Rhs = append(a.Rhs, rhs)
-
-	return nil
-}
-
-func (a *ActShift) Copy() intf.Copier {
-	rhsCopy := make([]string, len(a.Rhs))
-	copy(rhsCopy, a.Rhs)
-
-	return &ActShift{
-		Lookahead: a.Lookahead,
-		Rhs:       rhsCopy,
-	}
-}
 
 func (a *ActShift) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
 	if a.Lookahead != nil {
@@ -226,20 +268,6 @@ func (a *ActShift) Size() int {
 	return len(a.Rhs)
 }
 
-// AppendRhs appends a right-hand side token to the reduce action.
-// It never returns an error.
-//
-// Parameters:
-//   - rhs: The right-hand side token to append.
-//
-// Returns:
-//   - error: An error if the right-hand side token could not be appended.
-func (a *ActReduce) AppendRhs(rhs string) error {
-	a.Rhs = append(a.Rhs, rhs)
-
-	return nil
-}
-
 func (a *ActReduce) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
 	for _, rhs := range a.Rhs {
 		top, err := stack.Pop()
@@ -259,36 +287,12 @@ func (a *ActReduce) Size() int {
 	return len(a.Rhs)
 }
 
-func (a *ActReduce) Copy() intf.Copier {
-	rhsCopy := make([]string, len(a.Rhs))
-	copy(rhsCopy, a.Rhs)
-
-	return &ActReduce{
-		Rule: a.Rule.Copy().(*gr.Production),
-		Rhs:  rhsCopy,
-	}
-}
-
 // GetRule returns the rule to reduce by.
 //
 // Returns:
 //   - *gr.Production: The rule to reduce by.
 func (a *ActReduce) GetRule() *gr.Production {
 	return a.Rule
-}
-
-// AppendRhs appends a right-hand side token to the accept action.
-// It never returns an error.
-//
-// Parameters:
-//   - rhs: The right-hand side token to append.
-//
-// Returns:
-//   - error: An error if the right-hand side token could not be appended.
-func (a *ActAccept) AppendRhs(rhs string) error {
-	a.Rhs = append(a.Rhs, rhs)
-
-	return nil
 }
 
 func (a *ActAccept) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
@@ -308,16 +312,6 @@ func (a *ActAccept) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) err
 
 func (a *ActAccept) Size() int {
 	return len(a.Rhs)
-}
-
-func (a *ActAccept) Copy() intf.Copier {
-	rhsCopy := make([]string, len(a.Rhs))
-	copy(rhsCopy, a.Rhs)
-
-	return &ActAccept{
-		Rule: a.Rule.Copy().(*gr.Production),
-		Rhs:  rhsCopy,
-	}
 }
 
 // GetRule returns the rule to reduce by.

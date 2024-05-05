@@ -316,17 +316,15 @@ func (p *Production) ReplaceRhsAt(index int, otherP *Production) (*Production, e
 		return nil, NewErrLhsRhsMismatch(otherP.lhs, p.rhs[index])
 	}
 
-	newP := &Production{
-		lhs: p.lhs,
-	}
+	newP := p.Copy().(*Production)
 
 	if index == 0 {
-		newP.rhs = append(otherP.rhs, p.rhs[1:]...)
+		newP.rhs = append(otherP.rhs, newP.rhs[1:]...)
 	} else if index == len(p.rhs)-1 {
-		newP.rhs = append(p.rhs[:index], otherP.rhs...)
+		newP.rhs = append(newP.rhs[:index], otherP.rhs...)
 	} else {
-		newP.rhs = append(p.rhs[:index], otherP.rhs...)
-		newP.rhs = append(newP.rhs, p.rhs[index+1:]...)
+		newP.rhs = append(newP.rhs[:index], otherP.rhs...)
+		newP.rhs = append(newP.rhs, newP.rhs[index+1:]...)
 	}
 
 	return newP, nil

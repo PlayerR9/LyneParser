@@ -5,7 +5,7 @@ import (
 
 	"strings"
 
-	nd "github.com/PlayerR9/MyGoLib/CustomData/Node"
+	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
 )
 
 /////////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@ func TokenerString(root gr.Tokener) string {
 
 	var builder strings.Builder
 
-	t := nd.NewTraverser(
+	t := tr.NewTraverser(
 		func(f helper) error {
 			builder.WriteString(f.indent)
 			builder.WriteString(f.root.GetID())

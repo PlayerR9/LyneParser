@@ -23,6 +23,58 @@ type Item struct {
 	ruleIndex int
 }
 
+// String returns a string representation of the item.
+//
+// Returns:
+//   - string: The string representation of the item.
+func (i *Item) String() string {
+	var builder strings.Builder
+
+	builder.WriteString(i.Rule.GetLhs())
+	builder.WriteRune(' ')
+	builder.WriteString(gr.LeftToRight)
+
+	iter := i.Rule.Iterator()
+
+	for pos := 0; ; pos++ {
+		rhs, err := iter.Consume()
+		if err != nil {
+			break
+		}
+
+		builder.WriteRune(' ')
+
+		if pos == i.Pos {
+			builder.WriteRune('[')
+			builder.WriteString(rhs)
+			builder.WriteRune(']')
+		} else {
+			builder.WriteString(rhs)
+		}
+	}
+
+	builder.WriteRune(' ')
+	builder.WriteRune('(')
+
+	builder.WriteString(fmt.Sprintf("%d", i.ruleIndex))
+
+	builder.WriteRune(')')
+
+	return builder.String()
+}
+
+// Copy creates a copy of the item.
+//
+// Returns:
+//   - intf.Copier: The copy of the item.
+func (i *Item) Copy() intf.Copier {
+	return &Item{
+		Rule:      i.Rule.Copy().(*gr.Production),
+		Pos:       i.Pos,
+		ruleIndex: i.ruleIndex,
+	}
+}
+
 // NewItem is a constructor of Item.
 //
 // Parameters:
@@ -77,62 +129,46 @@ func (item *Item) GetRhsAt(index int) (string, error) {
 	return item.Rule.GetRhsAt(index)
 }
 
-/////////////////////////////////////////////////////////////
-
-// String returns a string representation of the item.
+// GetRhs returns the right-hand side of the production rule at the current position.
 //
 // Returns:
-//   - string: The string representation of the item.
-func (i *Item) String() string {
-	var builder strings.Builder
-
-	builder.WriteString(i.Rule.GetLhs())
-	builder.WriteRune(' ')
-	builder.WriteString(gr.LeftToRight)
-
-	iter := i.Rule.Iterator()
-
-	for pos := 0; ; pos++ {
-		rhs, err := iter.Consume()
-		if err != nil {
-			break
-		}
-
-		builder.WriteRune(' ')
-
-		if pos == i.Pos {
-			builder.WriteRune('[')
-			builder.WriteString(rhs)
-			builder.WriteRune(']')
-		} else {
-			builder.WriteString(rhs)
-		}
+//   - string: The right-hand side of the production rule.
+func (item *Item) GetRhs() string {
+	rhs, err := item.Rule.GetRhsAt(item.Pos)
+	if err != nil {
+		return ""
 	}
 
-	builder.WriteRune(' ')
-	builder.WriteRune('(')
-
-	builder.WriteString(fmt.Sprintf("%d", i.ruleIndex))
-
-	builder.WriteRune(')')
-
-	return builder.String()
+	return rhs
 }
 
-func (i *Item) Copy() intf.Copier {
-	return &Item{
-		Rule:      i.Rule.Copy().(*gr.Production),
-		Pos:       i.Pos,
-		ruleIndex: i.ruleIndex,
-	}
-}
-
-// Size returns the size of the production rule that the item represents.
+// GetSymbolsUpToPos returns the symbols of the production rule up to the current position.
 //
 // Returns:
-//   - int: The size of the production rule.
-func (i *Item) Size() int {
-	return i.Rule.Size()
+//   - []string: The symbols of the production rule up to the current position.
+//
+// Behaviors:
+//   - The symbols are reversed. Thus, the symbol at index 0 is the current symbol
+//     of the item.
+func (item *Item) GetSymbolsUpToPos() []string {
+	symbols := item.Rule.GetSymbols()
+
+	symbols = symbols[:item.Pos+1]
+
+	slices.Reverse(symbols)
+
+	return symbols
+}
+
+// IsReduce returns true if the item is a reduce item.
+//
+// Returns:
+//   - bool: True if the item is a reduce item. Otherwise, false.
+//
+// Behaviors:
+//   - If the item's rule is nil, it returns false.
+func (item *Item) IsReduce() bool {
+	return item.Pos == item.Rule.Size()
 }
 
 // ReplaceRhsAt replaces the right-hand side of the production rule at the given
@@ -156,69 +192,16 @@ func (item *Item) ReplaceRhsAt(index int, otherI *Item) (*Item, error) {
 		return nil, ers.NewErrNilParameter("otherI")
 	}
 
-	newItem := &Item{
-		Pos:       index,
-		ruleIndex: item.ruleIndex,
-	}
+	newItem := item.Copy().(*Item)
 
 	var err error
 
-	newItem.Rule, err = item.Rule.ReplaceRhsAt(index, otherI.Rule)
+	newItem.Rule, err = newItem.Rule.ReplaceRhsAt(index, otherI.Rule)
 	if err != nil {
 		return nil, err
 	}
 
 	return newItem, nil
-}
-
-// GetRhs returns the right-hand side of the production rule at the current position.
-//
-// Returns:
-//   - string: The right-hand side of the production rule.
-func (item *Item) GetRhs() string {
-	rhs, err := item.Rule.GetRhsAt(item.Pos)
-	if err != nil {
-		return ""
-	}
-
-	return rhs
-}
-
-// IsReduce returns true if the item is a reduce item.
-//
-// Returns:
-//   - bool: True if the item is a reduce item. Otherwise, false.
-//
-// Behaviors:
-//   - If the item's rule is nil, it returns false.
-func (item *Item) IsReduce() bool {
-	return item.Pos == item.Rule.Size()
-}
-
-// GetRuleIndex returns the index of the rule in the decision table.
-//
-// Returns:
-//   - int: The index of the rule in the decision table.
-func (item *Item) GetRuleIndex() int {
-	return item.ruleIndex
-}
-
-// GetSymbolsUpToPos returns the symbols of the production rule up to the current position.
-//
-// Returns:
-//   - []string: The symbols of the production rule up to the current position.
-//
-// Behaviors:
-//   - The symbols are reversed. Thus, the symbol at index 0 is the current symbol
-//     of the item.
-func (item *Item) GetSymbolsUpToPos() []string {
-	symbols := item.Rule.GetSymbols()
-
-	symbols = symbols[:item.Pos+1]
-
-	slices.Reverse(symbols)
-
-	return symbols
 }
 
 // GetRule returns the production rule that the item represents.
@@ -252,3 +235,5 @@ func (item *Item) IsLhsRhs(rhs string) bool {
 func (item *Item) IndicesOfRhs(rhs string) []int {
 	return item.Rule.IndicesOfRhs(rhs)
 }
+
+/////////////////////////////////////////////////////////////

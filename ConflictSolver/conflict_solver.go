@@ -8,7 +8,11 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+
+	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
 )
+
+var GlobalDebugMode bool = true
 
 // ConflictSolver solves conflicts in a decision table.
 type ConflictSolver struct {
@@ -122,6 +126,38 @@ func (cs *ConflictSolver) getHelpers() []*Helper {
 	return result
 }
 
+// GetElemsWithLhs is a method that returns all elements with a specific LHS.
+//
+// Parameters:
+//   - rhs: The RHS to find elements for.
+//
+// Returns:
+//   - []*Helper: The elements with the specified LHS.
+func (cs *ConflictSolver) GetElemsWithLhs(rhs string) []*Helper {
+	filter := func(h *Helper) bool {
+		return h.IsLhsRhs(rhs)
+	}
+
+	return slext.SliceFilter(cs.getHelpers(), filter)
+}
+
+// DeleteHelper is a method that removes an helper from the decision table.
+//
+// Parameters:
+//   - h: The helper to remove.
+func (cs *ConflictSolver) DeleteHelper(h *Helper) {
+	if h == nil {
+		return
+	}
+
+	for symbol, elems := range cs.table {
+		index := slices.Index(elems, h)
+		if index != -1 {
+			cs.table[symbol] = slices.Delete(elems, index, index+1)
+		}
+	}
+}
+
 // solveSetLookaheadOnShifts is a helper function that evaluates the look-ahead on shifts
 // in a simple and coarse way.
 func (cs *ConflictSolver) solveSetLookaheadOnShifts() {
@@ -132,58 +168,25 @@ func (cs *ConflictSolver) solveSetLookaheadOnShifts() {
 	}
 }
 
-/////////////////////////////////////////////////////////////
+// getHelpersWithLookahead is a helper function that returns all helpers with look-ahead
+// and groups them by the look-ahead.
+//
+// Returns:
+//   - map[string][]*Helper: The helpers with look-ahead.
+func (cs *ConflictSolver) getHelpersWithLookahead() map[string][]*Helper {
+	groups := make(map[string][]*Helper)
 
-// SolveConflicts is a method that solves conflicts in a decision table.
-func (cs *ConflictSolver) Solve() error {
-	cs.solveSetLookaheadOnShifts()
+	todo := cs.getHelpers()
 
-	// Now, those shift actions that have the look-ahead are no longer
-	// in conflict with their reduce counterparts.
-	// However, there still might be conflicts between shift actions
-	// with the same look-ahead.
+	for _, h := range todo {
+		lookahead := h.GetLookahead()
 
-	laConflicts := cs.getLookAheadConflicts()
-
-	for _, elems := range laConflicts {
-		if len(elems) != 1 {
-			// Solve conflicts.
-			err := solveSubgroup(elems)
-			if err != nil {
-				return err
-			}
+		if lookahead != nil {
+			groups[*lookahead] = append(groups[*lookahead], h)
 		}
 	}
 
-	// FIXME:
-
-	// AMBIGUOUS GRAMMAR
-
-	// SHIFT-REDUCE CONFLICT
-
-	for {
-		conflicts, limit := cs.FindConflicts()
-		if limit == -1 {
-			// No conflicts found.
-			break
-		}
-
-		ok, err := cs.SolveAmbiguous(limit, conflicts)
-		if err != nil {
-			return err
-		}
-
-		if !ok {
-			break
-		}
-
-		err = solveSubgroup(conflicts)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return groups
 }
 
 // AppendHelper is a method that appends a helper to the decision table.
@@ -197,6 +200,266 @@ func (cs *ConflictSolver) AppendHelper(h *Helper) {
 
 	rhs := h.GetRhs()
 	cs.table[rhs] = append(cs.table[rhs], h)
+}
+
+// SolveAmbiguousShifts is a method that solves ambiguous shifts in a decision table.
+//
+// Returns:
+//   - error: An error if the operation failed.
+//
+// Errors:
+//   - *ErrHelpersConflictingSize: If the helpers have conflicting sizes.
+//   - *ErrHelper: If there is an error appending the right-hand side to the helper.
+func (cs *ConflictSolver) SolveAmbiguousShifts() error {
+	cs.solveSetLookaheadOnShifts()
+
+	// Now, those shift actions that have the look-ahead are no longer
+	// in conflict with their reduce counterparts.
+	// However, there still might be conflicts between shift actions
+	// with the same look-ahead.
+
+	helpersWithLookahead := cs.getHelpersWithLookahead() // these are potential conflicts
+
+	// If there are at least two helpers with the same look-ahead, then there might be a conflict.
+
+	// To solve this, we have to find the minimal amount of information that is needed to
+	// unambiguously determine the next action.
+
+	for _, helpers := range helpersWithLookahead {
+		if len(helpers) <= 1 {
+			continue
+		}
+
+		// Solve conflicts.
+		err := solveSubgroup(helpers)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// FindConflicts is a method that finds conflicts for a specific symbol.
+//
+// Parameters:
+//   - symbol: The symbol to find conflicts for.
+//
+// Returns:
+//   - []*Helper: The conflicting helpers.
+//   - int: The index of the position of the conflict.
+func (cs *ConflictSolver) FindConflicts() ([]*Helper, int) {
+	for symbol, helpers := range cs.table {
+		todo := make([]*Helper, len(helpers))
+		copy(todo, helpers)
+
+		// 1. Remove every shift action that has a look-ahead.
+		todo = slext.SliceFilter(todo, func(h *Helper) bool {
+			return h.GetLookahead() == nil
+		})
+
+		conflicts, indexOfConflict := findConflictsPerSymbol(symbol, todo)
+		if indexOfConflict != -1 {
+			return conflicts, indexOfConflict
+		}
+	}
+
+	return nil, -1
+}
+
+func (cs *ConflictSolver) ricGenerateTreeRootedAt(h *Helper, seen map[*Helper]bool) (*tr.Node[*Helper], error) {
+	// 1. Get the 0th symbol of h.
+	rhs, err := h.GetRhsAt(0)
+	if err != nil {
+		return nil, NewErr0thRhsNotSet()
+	}
+
+	// 2. Set h as seen.
+	seen[h] = true
+
+	// 3. Get all the helpers that have the same LHS as rhs and have not been seen.
+	seenFilter := func(h *Helper) bool {
+		return !seen[h]
+	}
+
+	newHelpers := slext.SliceFilter(cs.GetElemsWithLhs(rhs), seenFilter)
+	if len(newHelpers) == 0 {
+		return nil, nil
+	}
+
+	root := tr.NewNode(h)
+
+	// 4. For each helper, generate the tree rooted at that helper.
+	for _, nh := range newHelpers {
+		subTree, err := cs.ricGenerateTreeRootedAt(nh, seen)
+		if err != nil {
+			return nil, NewErrHelper(nh, err)
+		}
+
+		if subTree != nil {
+
+			root.AddChild(subTree.Data)
+		}
+	}
+
+	return nil
+}
+
+func (cs *ConflictSolver) GenerateTreeRootedAt(h *Helper) {
+	allHelpers := cs.getHelpers()
+
+	seen := make(map[*Helper]interface{})
+
+}
+
+func (cs *ConflictSolver) ricCheckIfLookahead0(h *Helper) ([]*Helper, error) {
+	// 1. Take the 0th symbol of h.
+	rhs, err := h.GetRhsAt(0)
+	if err != nil {
+		return nil, NewErr0thRhsNotSet()
+	}
+
+	// 2. Get all the helpers that have the same LHS as rhs.
+	newHelpers := cs.GetElemsWithLhs(rhs)
+	if len(newHelpers) == 0 {
+		return nil, nil
+	}
+
+	// 3. For each helper, check if the 0th rhs is a terminal symbol (recursive).
+	solutions := make([]*Helper, 0)
+
+	for _, nh := range newHelpers {
+		results, err := cs.ricCheckIfLookahead0(nh)
+		if err != nil {
+			return solutions, NewErrHelper(nh, err)
+		}
+
+		if len(results) != 0 {
+			for _, r := range results {
+				solutions = append(solutions, append([]*Helper{nh}, r)...)
+			}
+		}
+	}
+
+	return solutions, nil
+}
+
+func (cs *ConflictSolver) CheckIfLookahead0(index int, h *Helper) ([]*Helper, error) {
+	// 1. Take the next symbol of h
+	rhs, err := h.GetRhsAt(index + 1)
+	if err != nil {
+		return nil, NewErrHelper(h, err)
+	}
+
+	// 2. Get all the helpers that have the same LHS as rhs
+	newHelpers := cs.GetElemsWithLhs(rhs)
+	if len(newHelpers) == 0 {
+		return nil, nil
+	}
+
+	// 3. For each rule, check if the 0th rhs is a terminal symbol
+	solutions := make([]*Helper, 0)
+
+	for _, nh := range newHelpers {
+		otherRhs, err := nh.GetRhsAt(0)
+		if err != nil {
+			return solutions, NewErrHelper(nh, err)
+		}
+
+		if gr.IsTerminal(otherRhs) {
+			solutions = append(solutions, nh)
+		} else {
+
+		}
+	}
+
+	return solutions, nil
+}
+
+func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, error) {
+	newHelpers := make(map[*Helper][]*Helper)
+
+	for _, c := range conflicts {
+		// 1. Take the next symbol of each conflicting rule
+		rhs, err := c.GetRhsAt(index + 1)
+		if err != nil {
+			continue
+		}
+
+		// 2. Replace the current symbol with every rule
+
+		rs := cs.GetElemsWithLhs(rhs)
+
+		/*
+			// remove the current rule from the list ???
+			index := slices.Index(rs, c)
+			if index != -1 {
+				rs = slices.Delete(rs, index, index+1)
+			}
+		*/
+
+		if len(rs) != 0 {
+			newHelpers[c] = rs
+		}
+	}
+
+	if len(newHelpers) == 0 {
+		return false, nil
+	}
+
+	for c, rs := range newHelpers {
+		cs.DeleteHelper(c)
+
+		for _, r := range rs {
+			newR, err := c.ReplaceRhsAt(index+1, r)
+			if err != nil {
+				return false, NewErrHelper(c, err)
+			}
+
+			cs.AppendHelper(newR)
+		}
+	}
+
+	return true, nil
+}
+
+/////////////////////////////////////////////////////////////
+
+// SolveConflicts is a method that solves conflicts in a decision table.
+func (cs *ConflictSolver) Solve() error {
+	for {
+		conflicts, limit := cs.FindConflicts()
+		if limit == -1 {
+			// No conflicts found.
+			break
+		}
+
+		fmt.Println("Conflicts found:")
+		for _, c := range conflicts {
+			fmt.Println(c.String())
+		}
+		fmt.Println()
+
+		ok, err := cs.SolveAmbiguous(limit, conflicts)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			break
+		}
+
+		if GlobalDebugMode {
+			return nil
+		}
+
+		err = solveSubgroup(conflicts)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Init is a method that initializes the elements for a specific symbol.
@@ -221,116 +484,4 @@ func (cs *ConflictSolver) Init(symbol string) error {
 	}
 
 	return nil
-}
-
-// RemoveElement is a method that removes an element from the decision table.
-//
-// Parameters:
-//   - elem: The element to remove.
-func (cs *ConflictSolver) RemoveElement(elem *Helper) {
-	if elem == nil {
-		return
-	}
-
-	for symbol, elems := range cs.table {
-		index := slices.Index(elems, elem)
-		if index != -1 {
-			cs.table[symbol] = slices.Delete(elems, index, index+1)
-		}
-	}
-}
-
-// FindConflicts is a method that finds conflicts for a specific symbol.
-//
-// Parameters:
-//   - symbol: The symbol to find conflicts for.
-//
-// Returns:
-//   - []*Helper: The conflicting helpers.
-//   - error: An error of type *ErrNoElementsFound if no elements are found.
-func (cs *ConflictSolver) FindConflicts() ([]*Helper, int) {
-	for symbol, helpers := range cs.table {
-		conflicts, limit := findConflictsPerSymbol(symbol, helpers)
-		if limit == -1 {
-			return conflicts, limit
-		}
-	}
-
-	return nil, -1
-}
-
-// GetElemsWithLhs is a method that returns all elements with a specific LHS.
-//
-// Parameters:
-//   - rhs: The RHS to find elements for.
-//
-// Returns:
-//   - []*Helper: The elements with the specified LHS.
-func (cs *ConflictSolver) GetElemsWithLhs(rhs string) []*Helper {
-	return slext.SliceFilter(cs.getHelpers(), func(h *Helper) bool {
-		return h.IsLhsRhs(rhs)
-	})
-}
-
-func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, error) {
-	newHelpers := make(map[*Helper][]*Helper)
-
-	for _, c := range conflicts {
-		// 1. Take the next symbol of each conflicting rule
-		rhs, err := c.GetRhsAt(index + 1)
-		if err != nil {
-			continue
-		}
-
-		// 2. Replace the current symbol with every rule
-
-		rs := cs.GetElemsWithLhs(rhs)
-
-		// remove the current rule from the list
-		index := slices.Index(rs, c)
-		if index != -1 {
-			rs = slices.Delete(rs, index, index+1)
-		}
-
-		if len(rs) != 0 {
-			newHelpers[c] = rs
-		}
-	}
-
-	if len(newHelpers) == 0 {
-		return false, nil
-	}
-
-	for c, rs := range newHelpers {
-		cs.RemoveElement(c)
-
-		for _, r := range rs {
-			newR, err := c.ReplaceRhsAt(index+1, r)
-			if err != nil {
-				return false, NewErrHelper(c, err)
-			}
-
-			cs.AppendHelper(newR)
-		}
-	}
-
-	return true, nil
-}
-
-// getLookAheadConflicts is a helper function that returns all look-ahead conflicts.
-//
-// Returns:
-//   - map[string][]*Helper: A map of look-ahead conflicts.
-func (cs *ConflictSolver) getLookAheadConflicts() map[string][]*Helper {
-	laConflicts := make(map[string][]*Helper)
-
-	todo := cs.getHelpers()
-
-	for _, h := range todo {
-		if lookahead := h.GetLookahead(); lookahead != nil {
-			laConflicts[*lookahead] = append(laConflicts[*lookahead], h)
-		}
-	}
-
-	return laConflicts
 }

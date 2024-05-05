@@ -25,6 +25,11 @@ func SolveConflicts(symbols []string, rules []*gr.Production) (map[string][]*Hel
 		return nil, err
 	}
 
+	err = cs.SolveAmbiguousShifts()
+	if err != nil {
+		return cs.table, err
+	}
+
 	err = cs.Solve()
 	if err != nil {
 		return cs.table, err

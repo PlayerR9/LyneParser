@@ -1,7 +1,7 @@
 package ConflictSolver
 
 import (
-	"errors"
+	"fmt"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
@@ -43,33 +43,169 @@ func groupProdsByRhss(symbols []string, rules []*gr.Production) (pairs []pairing
 	return
 }
 
-/////////////////////////////////////////////////////////////
+// getRhssAt is a helper function that groups helpers by their right-hand side
+// symbols at a specific index.
+//
+// Parameters:
+//   - helpers: The helpers to group.
+//   - index: The index to group by.
+//
+// Returns:
+//   - map[string][]*Helper: The grouped helpers.
+//   - error: An error of type *ErrHelpersConflictingSize if the helpers have conflicting sizes.
+func getRhssAt(helpers []*Helper, index int) (map[string][]*Helper, error) {
+	groups := make(map[string][]*Helper)
+
+	for _, h := range helpers {
+		rhs, err := h.GetRhsAt(index)
+		if err != nil {
+			return nil, NewErrHelpersConflictingSize()
+		}
+
+		groups[rhs] = append(groups[rhs], h)
+	}
+
+	return groups, nil
+}
+
+// minimumUnique is a helper function that, given a set of helpers and the limit
+// (i.e., the position of the shared symbol for all helpers), solves conflicts
+// by finding the least number of rhs symbols under the limit that are unique
+// to each helper.
+//
+// For example:
+//
+//	Helper 1: A -> B C [D]
+//	Helper 2: A -> A C [D]
+//	Helper 3: A -> E F [D]
+//
+//	Limit: 2 (i.e., the position of the shared symbol [D])
+//
+//	Then, to distinguish Helper 1 and Helper 2, we need up to (B) for Helper 1,
+//	and up to (A) for Helper 2, but (F) for Helper 3.
+//
+//	Helper 1: A -> B C [D]
+//	Helper 2: A -> A C [D]
+//	Helper 3: A -> F [D]
+//
+// In this way, we optimize the numbers of checks needed to make an informed decision.
+//
+// Parameters:
+//   - helpers: The helpers to solve conflicts for.
+//   - limit: The index of the shared symbol for all helpers.
+//
+// Returns:
+//   - error: An error if the operation failed.
+//
+// Errors:
+//   - *ErrHelpersConflictingSize: If the helpers have conflicting sizes.
+//   - *ErrHelper: If there is an error appending the right-hand side to the helper.
+func minimumUnique(helpers []*Helper, limit int) error {
+	todo := make(map[*Helper]bool)
+
+	for _, h := range helpers {
+		todo[h] = true
+	}
+
+	for i := limit; i >= 0; i-- {
+		rhsPerLevel, err := getRhssAt(helpers, i)
+		if err != nil {
+			return NewErrHelpersConflictingSize()
+		}
+
+		for rhs, helpers := range rhsPerLevel {
+			// Add the rhs to the helpers.
+			for _, h := range helpers {
+				err := h.AppendRhs(rhs)
+				if err != nil {
+					return NewErrHelper(h, err)
+				}
+			}
+
+			// However, if there is only one helper, then there is no conflict.
+			// Therefore, remove it from the todo list.
+			if len(helpers) == 1 {
+				delete(todo, helpers[0])
+			}
+		}
+	}
+
+	return nil
+}
+
+// solveSubgroup is a helper function that solves conflicts between a subgroup of helpers.
+//
+// Parameters:
+//   - helpers: The helpers to solve conflicts for.
+//
+// Returns:
+//   - error: An error if the operation failed.
+//
+// Errors:
+//   - *ErrHelpersConflictingSize: If the helpers have conflicting sizes.
+//   - *ErrHelper: If there is an error appending the right-hand side to the helper.
+func solveSubgroup(helpers []*Helper) error {
+	// 1. Bucket sort the items by their position.
+	buckets := make(map[int][]*Helper)
+
+	for _, h := range helpers {
+		pos := h.GetPos()
+		buckets[pos] = append(buckets[pos], h)
+	}
+
+	// 2. Solve conflicts for each bucket.
+	for limit, bucket := range buckets {
+		err := minimumUnique(bucket, limit)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 // findConflict is a helper function that finds conflicts between a subgroup of helpers.
 //
 // Parameters:
-//   - limit: The limit of the subgroup.
+//   - limit: The index of the shared symbol for all helpers.
 //   - helpers: The helpers to find conflicts for.
 //
 // Returns:
 //   - []*Helper: The conflicting helpers.
 func findConflict(limit int, helpers []*Helper) []*Helper {
-	// TO DO: Check if this is correct.
-
 	if len(helpers) <= 1 {
 		return nil
 	}
 
 	// 1. Fill the matrix of symbols.
-	matrixOfSymbols := make([][]string, limit)
+	matrixOfSymbols := make([][]*string, limit+1)
+	for i := range matrixOfSymbols {
+		matrixOfSymbols[i] = make([]*string, len(helpers))
+	}
 
 	for i, h := range helpers {
-		symbols := h.GetSymbolsUpToPos()
-
-		for l, symbol := range symbols {
-			matrixOfSymbols[l][i] = symbol
+		for l := 0; l <= limit; l++ {
+			rhs, err := h.GetRhsAt(l)
+			if err != nil {
+				matrixOfSymbols[l][i] = nil
+			} else {
+				matrixOfSymbols[l][i] = &rhs
+			}
 		}
 	}
+
+	// DEBUG: Print the matrix of symbols.
+	for _, row := range matrixOfSymbols {
+		for _, s := range row {
+			if s == nil {
+				fmt.Print("nil ")
+			} else {
+				fmt.Print(*s + " ")
+			}
+		}
+		fmt.Println()
+	}
+	fmt.Println()
 
 	// 2. Create a conflict matrix.
 	conflictMatrix := make([][]int, len(helpers))
@@ -82,7 +218,11 @@ func findConflict(limit int, helpers []*Helper) []*Helper {
 	for _, row := range matrixOfSymbols {
 		for i := 0; i < len(helpers); i++ {
 			for j := 0; j < len(helpers); j++ {
-				if row[i] == row[j] {
+				if row[i] == nil || row[j] == nil {
+					continue
+				}
+
+				if *row[i] == *row[j] {
 					conflictMatrix[i][j]++
 				}
 			}
@@ -111,15 +251,20 @@ func findConflict(limit int, helpers []*Helper) []*Helper {
 	return nil
 }
 
-// FindConflicts is a method that finds conflicts for a specific symbol.
+// findConflictsPerSymbol is a helper function that finds conflicts for a specific symbol.
 //
 // Parameters:
 //   - symbol: The symbol to find conflicts for.
+//   - helpers: The helpers to find conflicts for.
 //
 // Returns:
 //   - []*Helper: The conflicting helpers.
-//   - error: An error of type *ErrNoElementsFound if no elements are found.
+//   - int: The position of the conflict.
 func findConflictsPerSymbol(symbol string, helpers []*Helper) ([]*Helper, int) {
+	if len(helpers) <= 1 {
+		return nil, -1
+	}
+
 	buckets := make(map[int][]*Helper)
 
 	for _, h := range helpers {
@@ -130,10 +275,6 @@ func findConflictsPerSymbol(symbol string, helpers []*Helper) ([]*Helper, int) {
 		}
 	}
 
-	if len(buckets) == 0 {
-		return nil, -1
-	}
-
 	for limit, bucket := range buckets {
 		conflicts := findConflict(limit, bucket)
 		if conflicts != nil {
@@ -142,83 +283,4 @@ func findConflictsPerSymbol(symbol string, helpers []*Helper) ([]*Helper, int) {
 	}
 
 	return nil, -1
-}
-
-// minimumUnique is a helper function that solves conflicts between a subgroup of helpers.
-//
-// Parameters:
-//   - helpers: The helpers to solve conflicts for.
-//   - limit: The limit of the subgroup.
-func minimumUnique(helpers []*Helper, limit int) error {
-	// Set all helpers to not done.
-	elemsEval := make(map[*Helper]bool)
-
-	for _, h := range helpers {
-		elemsEval[h] = false
-	}
-
-	for i := limit; i >= 0; i-- {
-		rhsPerLevel := make(map[string][]int)
-
-		for j, h := range helpers {
-			isDone, ok := elemsEval[h]
-			if !ok {
-				return NewErrHelper(h, errors.New("item not found in doneMap"))
-			} else if isDone {
-				continue
-			}
-
-			rhs, err := h.GetRhsAt(i)
-			if err != nil {
-				return NewErrHelper(h, err)
-			}
-
-			rhsPerLevel[rhs] = append(rhsPerLevel[rhs], j)
-		}
-
-		for rhs, indices := range rhsPerLevel {
-			if len(indices) == 1 {
-				// No conflict. Mark it as done.
-				elemsEval[helpers[indices[0]]] = true
-			}
-
-			for _, index := range indices {
-				currentH := helpers[index]
-
-				// Add the RHS.
-				err := currentH.Action.AppendRhs(rhs)
-				if err != nil {
-					return NewErrHelper(currentH, err)
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-// solveSubgroup is a helper function that solves conflicts between a subgroup of helpers.
-//
-// Parameters:
-//   - helpers: The helpers to solve conflicts for.
-func solveSubgroup(helpers []*Helper) error {
-	// 1. Bucket sort the items by their position.
-	buckets := make(map[int][]*Helper)
-
-	for _, h := range helpers {
-		pos := h.GetPos()
-		buckets[pos] = append(buckets[pos], h)
-	}
-
-	for limit, bucket := range buckets {
-		err := minimumUnique(bucket, limit)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Now, find conflicts between buckets.
-	// FIXME: Solve conflicts between buckets.
-
-	return nil
 }

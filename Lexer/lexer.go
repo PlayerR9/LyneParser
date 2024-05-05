@@ -5,7 +5,7 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
-	nd "github.com/PlayerR9/MyGoLib/CustomData/Node"
+	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )
@@ -19,10 +19,10 @@ type Lexer struct {
 	toSkip []string
 
 	// root is the root node of the lexer.
-	root *nd.Node[*helperToken]
+	root *tr.Node[*helperToken]
 
 	// leaves is a list of all the leaves in the lexer.
-	leaves []*nd.Node[*helperToken]
+	leaves []*tr.Node[*helperToken]
 }
 
 // NewLexer creates a new lexer.
@@ -99,8 +99,10 @@ func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult[*gr.LeafToken]) error 
 	var err error
 
 	for _, match := range matches {
-		l.root.AddChild(newHelperToken(match.Matched))
-		l.leaves, err = l.root.GetLeaves()
+		n := tr.NewNode(newHelperToken(match.Matched))
+
+		l.root.AddChild(n)
+		l.leaves = tr.NewTree(l.root).GetLeaves()
 		if err != nil {
 			return err
 		}
@@ -115,7 +117,7 @@ func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult[*gr.LeafToken]) error 
 // Parameters:
 //   - leaf: The leaf to process.
 //   - b: The byte slice to lex.
-func (l *Lexer) processLeaf(leaf *nd.Node[*helperToken], source *SourceStream) {
+func (l *Lexer) processLeaf(leaf *tr.Node[*helperToken], source *SourceStream) {
 	nextAt := leaf.Data.GetPos() + len(leaf.Data.GetData())
 	if source.IsDone(nextAt) {
 		leaf.Data.SetStatus(TkComplete)
@@ -140,9 +142,9 @@ func (l *Lexer) processLeaf(leaf *nd.Node[*helperToken], source *SourceStream) {
 // filterLeaves filters out leaves that are incomplete or in error.
 //
 // Returns:
-//   - []*nd.Node[*helperToken]: The filtered leaves.
+//   - []*tr.Node[*helperToken]: The filtered leaves.
 //   - error: An error of type *ErrAllMatchesFailed if all matches failed.
-func (l *Lexer) filterLeaves() ([]*nd.Node[*helperToken], error) {
+func (l *Lexer) filterLeaves() ([]*tr.Node[*helperToken], error) {
 	todo := slext.SliceFilter(l.leaves, FilterIncompleteLeaves)
 	if len(todo) == 0 {
 		return nil, nil
@@ -163,8 +165,8 @@ func (l *Lexer) filterLeaves() ([]*nd.Node[*helperToken], error) {
 //
 // Returns:
 //   - newLeaves: The new leaves generated.
-func (l *Lexer) generateNewLeaves(todo []*nd.Node[*helperToken], source *SourceStream) ([]*nd.Node[*helperToken], error) {
-	newLeaves := make([]*nd.Node[*helperToken], 0)
+func (l *Lexer) generateNewLeaves(todo []*tr.Node[*helperToken], source *SourceStream) ([]*tr.Node[*helperToken], error) {
+	newLeaves := make([]*tr.Node[*helperToken], 0)
 
 	for _, leaf := range todo {
 		l.processLeaf(leaf, source)
@@ -215,7 +217,7 @@ func (l *Lexer) Lex(source *SourceStream) error {
 		return NewErrNoTokensToLex()
 	}
 
-	root := nd.NewNode(newHelperToken(gr.NewRootToken()))
+	root := tr.NewNode(newHelperToken(gr.NewRootToken()))
 	l.root = root
 
 	matches, err := source.MatchFrom(0, l.productions)

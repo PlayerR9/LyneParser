@@ -2,7 +2,8 @@ package Lexer
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
+
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 // FilterIncompleteLeaves is a filter that filters out incomplete leaves.
@@ -12,8 +13,8 @@ import (
 //
 // Returns:
 //   - bool: True if the leaf is incomplete, false otherwise.
-func FilterIncompleteLeaves(leaf *tr.Node[*helperToken]) bool {
-	return leaf.Data == nil || leaf.Data.Status != TkComplete
+func FilterIncompleteLeaves(h *helperToken) bool {
+	return h == nil || h.Status == TkIncomplete
 }
 
 // FilterErrorLeaves is a filter that filters out leaves that are in error.
@@ -23,8 +24,8 @@ func FilterIncompleteLeaves(leaf *tr.Node[*helperToken]) bool {
 //
 // Returns:
 //   - bool: True if the leaf is in error, false otherwise.
-func FilterErrorLeaves(leaf *tr.Node[*helperToken]) bool {
-	return leaf.Data == nil || leaf.Data.Status != TkError
+func FilterErrorLeaves(h *helperToken) bool {
+	return h == nil || h.Status == TkError
 }
 
 // FilterEmptyTokenStream is a filter that filters out empty token streams.
@@ -34,7 +35,7 @@ func FilterErrorLeaves(leaf *tr.Node[*helperToken]) bool {
 //
 // Returns:
 //   - bool: True if the token stream is empty, false otherwise.
-func FilterEmptyTokenStream(branch *gr.TokenStream) bool {
+func FilterEmptyTokenStream(branch *cds.Stream[*gr.LeafToken]) bool {
 	return branch.IsEmpty()
 }
 

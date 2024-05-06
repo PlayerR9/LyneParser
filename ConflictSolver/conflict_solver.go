@@ -267,6 +267,8 @@ func (cs *ConflictSolver) FindConflicts() ([]*Helper, int) {
 	return nil, -1
 }
 
+/*
+
 func (cs *ConflictSolver) ricGenerateTreeRootedAt(h *Helper, seen map[*Helper]bool) (*tr.Node[*Helper], error) {
 	// 1. Get the 0th symbol of h.
 	rhs, err := h.GetRhsAt(0)
@@ -296,20 +298,63 @@ func (cs *ConflictSolver) ricGenerateTreeRootedAt(h *Helper, seen map[*Helper]bo
 			return nil, NewErrHelper(nh, err)
 		}
 
-		if subTree != nil {
-
-			root.AddChild(subTree.Data)
-		}
+		root.AddChild(subTree)
 	}
 
 	return nil
 }
+*/
 
-func (cs *ConflictSolver) GenerateTreeRootedAt(h *Helper) {
-	allHelpers := cs.getHelpers()
+func (cs *ConflictSolver) GenerateTreeRootedAt(h *Helper) (*tr.Tree[*Helper], error) {
+	type InfoStruct struct {
+		h    *Helper
+		seen map[*Helper]bool
+	}
 
-	seen := make(map[*Helper]interface{})
+	trav := tr.NewTraverser(
+		func(is *InfoStruct) error {
+			// 1. Get the 0th symbol of h.
+			_, err := is.h.GetRhsAt(0)
+			if err != nil {
+				return NewErr0thRhsNotSet()
+			}
 
+			// 2. Set h as seen.
+			is.seen[is.h] = true
+
+			return nil
+		},
+		func(is *InfoStruct) ([]*InfoStruct, error) {
+			rhs, err := is.h.GetRhsAt(0)
+			if err != nil {
+				return nil, NewErr0thRhsNotSet()
+			}
+
+			seenFilter := func(h *Helper) bool {
+				return !is.seen[h]
+			}
+
+			newHelpers := slext.SliceFilter(cs.GetElemsWithLhs(rhs), seenFilter)
+
+			next := make([]*InfoStruct, len(newHelpers))
+
+			for i, nh := range newHelpers {
+				next[i] = &InfoStruct{
+					h:    nh,
+					seen: is.seen,
+				}
+			}
+
+			return next, nil
+		},
+	)
+
+	tree, err := trav.MakeTree(&InfoStruct{h: h, seen: make(map[*Helper]bool)})
+	if err != nil {
+		return nil, err
+	}
+
+	return tree, nil
 }
 
 func (cs *ConflictSolver) ricCheckIfLookahead0(h *Helper) ([]*Helper, error) {

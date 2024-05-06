@@ -3,6 +3,8 @@ package Lexer
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 // Lex is a shorthand function that creates a new lexer, sets the source, lexes the content,
@@ -21,7 +23,7 @@ import (
 //   - *ErrNoTokensToLex: There are no tokens to lex.
 //   - *ErrNoMatches: No matches are found in the source.
 //   - *ErrAllMatchesFailed: All matches failed.
-func Lex(lexer *Lexer, input any) ([]*gr.TokenStream, error) {
+func Lex(lexer *Lexer, input any) ([]*cds.Stream[*gr.LeafToken], error) {
 	if lexer == nil {
 		return nil, ers.NewErrNilParameter("lexer")
 	}
@@ -44,7 +46,7 @@ func Lex(lexer *Lexer, input any) ([]*gr.TokenStream, error) {
 // Returns:
 //   - []*gr.TokenStream: The tokens that have been lexed.
 //   - error: An error if lexing fails.
-func FullLexer(grammar *gr.Grammar, input any) ([]*gr.TokenStream, error) {
+func FullLexer(grammar *gr.Grammar, input any) ([]*cds.Stream[*gr.LeafToken], error) {
 	lexer, err := NewLexer(grammar)
 	if err != nil {
 		return nil, err

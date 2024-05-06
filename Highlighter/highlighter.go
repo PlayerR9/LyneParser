@@ -7,6 +7,8 @@ import (
 	"github.com/gdamore/tcell"
 
 	dtt "github.com/PlayerR9/MyGoLib/Safe/DtTable"
+
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 // Highlighter is a highlighter that applies styles to tokens.
@@ -26,10 +28,10 @@ type Highlighter struct {
 // Returns:
 //   - []ds.DtCell: The cells with the applied styles.
 //   - error: An error if the rules could not be applied.
-func (h *Highlighter) Apply(inputStream gr.TokenStream) (*HighlightedData, error) {
+func (h *Highlighter) Apply(inputStream *cds.Stream[*gr.LeafToken]) (*HighlightedData, error) {
 	result := NewHighlightedData()
 
-	tokens := inputStream.GetTokens()
+	tokens := inputStream.GetItems()
 
 	for _, token := range tokens {
 		style, ok := h.rules[token.ID]
@@ -71,7 +73,7 @@ func (h *Highlighter) Apply(inputStream gr.TokenStream) (*HighlightedData, error
 //
 //	Hello, word!
 //	       ^
-func (h *Highlighter) SyntaxError(before, after gr.TokenStream, invalid []byte) (*HighlightedData, error) {
+func (h *Highlighter) SyntaxError(before, after *cds.Stream[*gr.LeafToken], invalid []byte) (*HighlightedData, error) {
 	// 1. Highlight the tokens and split them into lines.
 	beforeHighlight, err := h.Apply(before)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lx "github.com/PlayerR9/LyneParser/Lexer"
 	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 var LexerGrammar *gr.Grammar = func() *gr.Grammar {
@@ -113,21 +114,21 @@ func TestParsing(t *testing.T) {
 		t.Errorf("Lexer.GetTokens() returned an error: %s", err.Error())
 	}
 
-	results := make([]hlp.HResult[*gr.TokenStream], 0)
+	results := make([]hlp.HResult[*cds.Stream[*gr.LeafToken]], 0)
 
 	roots := make([]gr.NonLeafToken, 0)
 
 	for _, branch := range tokenBranches {
 		err = TestParser.Parse(branch)
 		if err != nil {
-			results = append(results, hlp.HResult[*gr.TokenStream]{Result: branch, Reason: err})
+			results = append(results, hlp.HResult[*cds.Stream[*gr.LeafToken]]{Result: branch, Reason: err})
 
 			continue
 		}
 
 		tmp, err := TestParser.GetParseTree()
 		if err != nil {
-			results = append(results, hlp.HResult[*gr.TokenStream]{Result: branch, Reason: err})
+			results = append(results, hlp.HResult[*cds.Stream[*gr.LeafToken]]{Result: branch, Reason: err})
 
 			continue
 		}

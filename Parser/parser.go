@@ -9,6 +9,8 @@ import (
 
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 /////////////////////////////////////////////////////////////
@@ -21,6 +23,9 @@ type Parser struct {
 	// decisionFunc represents the function that the parser will use to determine
 	// the next action to take.
 	dt *DecisionTable
+
+	// currentIndex is the current index of the input stream.
+	currentIndex int
 }
 
 // NewParser creates a new parser with the given grammar.
@@ -66,7 +71,7 @@ func NewParser(grammar *gr.Grammar) (*Parser, error) {
 //
 // Returns:
 //   - error: An error if the input stream could not be parsed.
-func (p *Parser) Parse(source *gr.TokenStream) error {
+func (p *Parser) Parse(source *cds.Stream[*gr.LeafToken]) error {
 	if source == nil || source.IsEmpty() {
 		return errors.New("source is empty")
 	}
@@ -76,6 +81,7 @@ func (p *Parser) Parse(source *gr.TokenStream) error {
 	}
 
 	p.stack = ds.NewDoubleLinkedStack[gr.Tokener]()
+	p.currentIndex = 0
 
 	// Initial shift
 	var decision cs.Actioner
@@ -165,13 +171,18 @@ func (p *Parser) GetParseTree() ([]gr.NonLeafToken, error) {
 //
 // Returns:
 //   - error: An error of type *ErrNoAccept if the input stream is done.
-func (p *Parser) shift(source *gr.TokenStream) error {
-	tok, err := source.Consume()
-	if err != nil {
+func (p *Parser) shift(source *cds.Stream[*gr.LeafToken]) error {
+	toks, err := source.Get(p.currentIndex, 1)
+	if err != nil || len(toks) == 0 {
 		return NewErrNoAccept()
 	}
 
-	p.stack.Push(tok)
+	err = p.stack.Push(toks[0])
+	if err != nil {
+		return err
+	}
+
+	p.currentIndex++
 
 	return nil
 }
@@ -230,7 +241,7 @@ func (p *Parser) reduce(rule *gr.Production) error {
 //
 //   - []gr.NonLeafToken: The parse tree.
 //   - error: An error if the input stream could not be parsed.
-func FullParse(grammar *gr.Grammar, source *gr.TokenStream, dt *DecisionTable) ([]gr.NonLeafToken, error) {
+func FullParse(grammar *gr.Grammar, source *cds.Stream[*gr.LeafToken], dt *DecisionTable) ([]gr.NonLeafToken, error) {
 	parser, err := NewParser(grammar)
 	if err != nil {
 		return nil, fmt.Errorf("could not create parser: %s", err.Error())

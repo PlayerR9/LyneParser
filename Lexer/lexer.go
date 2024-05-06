@@ -8,6 +8,8 @@ import (
 	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 // Lexer is a lexer that uses a grammar to tokenize a string.
@@ -19,10 +21,7 @@ type Lexer struct {
 	toSkip []string
 
 	// root is the root node of the lexer.
-	root *tr.Node[*helperToken]
-
-	// leaves is a list of all the leaves in the lexer.
-	leaves []*tr.Node[*helperToken]
+	root *tr.Tree[*helperToken]
 }
 
 // NewLexer creates a new lexer.
@@ -79,7 +78,6 @@ func NewLexer(grammar *gr.Grammar) (*Lexer, error) {
 		productions: grammar.GetRegProductions(),
 		toSkip:      grammar.LhsToSkip,
 		root:        nil,
-		leaves:      nil,
 	}
 
 	if len(lex.productions) == 0 {
@@ -96,90 +94,14 @@ func NewLexer(grammar *gr.Grammar) (*Lexer, error) {
 func (l *Lexer) addFirstLeaves(matches []gr.MatchedResult[*gr.LeafToken]) error {
 	// Get the longest match.
 	matches = getLongestMatches(matches)
-	var err error
 
 	for _, match := range matches {
 		n := tr.NewNode(newHelperToken(match.Matched))
 
 		l.root.AddChild(n)
-		l.leaves = tr.NewTree(l.root).GetLeaves()
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
-}
-
-// processLeaf is a helper function that processes a leaf
-// by adding children to it.
-//
-// Parameters:
-//   - leaf: The leaf to process.
-//   - b: The byte slice to lex.
-func (l *Lexer) processLeaf(leaf *tr.Node[*helperToken], source *SourceStream) {
-	nextAt := leaf.Data.GetPos() + len(leaf.Data.GetData())
-	if source.IsDone(nextAt) {
-		leaf.Data.SetStatus(TkComplete)
-		return
-	}
-
-	matches, err := source.MatchFrom(nextAt, l.productions)
-	if err != nil {
-		leaf.Data.SetStatus(TkError)
-		return
-	}
-
-	// Get the longest match.
-	matches = getLongestMatches(matches)
-	for _, match := range matches {
-		leaf.AddChild(newHelperToken(match.Matched))
-	}
-
-	leaf.Data.SetStatus(TkComplete)
-}
-
-// filterLeaves filters out leaves that are incomplete or in error.
-//
-// Returns:
-//   - []*tr.Node[*helperToken]: The filtered leaves.
-//   - error: An error of type *ErrAllMatchesFailed if all matches failed.
-func (l *Lexer) filterLeaves() ([]*tr.Node[*helperToken], error) {
-	todo := slext.SliceFilter(l.leaves, FilterIncompleteLeaves)
-	if len(todo) == 0 {
-		return nil, nil
-	}
-
-	todo = slext.SliceFilter(todo, FilterErrorLeaves)
-	if len(todo) == 0 {
-		return nil, NewErrAllMatchesFailed()
-	}
-
-	return todo, nil
-}
-
-// generateNewLeaves generates new leaves for the lexer.
-//
-// Parameters:
-//   - todo: The leaves to generate new leaves from.
-//
-// Returns:
-//   - newLeaves: The new leaves generated.
-func (l *Lexer) generateNewLeaves(todo []*tr.Node[*helperToken], source *SourceStream) ([]*tr.Node[*helperToken], error) {
-	newLeaves := make([]*tr.Node[*helperToken], 0)
-
-	for _, leaf := range todo {
-		l.processLeaf(leaf, source)
-
-		newL, err := leaf.GetLeaves()
-		if err != nil {
-			return newLeaves, err
-		}
-
-		newLeaves = append(newLeaves, newL...)
-	}
-
-	return newLeaves, nil
 }
 
 // processLeaves processes the leaves in the lexer.
@@ -188,16 +110,45 @@ func (l *Lexer) generateNewLeaves(todo []*tr.Node[*helperToken], source *SourceS
 //   - bool: True if all leaves are complete, false otherwise.
 //   - error: An error of type *ErrAllMatchesFailed if all matches failed.
 func (l *Lexer) processLeaves(source *SourceStream) (bool, error) {
-	todo, err := l.filterLeaves()
-	if err != nil {
-		return false, err
-	} else if len(todo) == 0 {
+	for _, leaf := range l.root.GetLeaves() {
+		nextAt := leaf.Data.GetPos() + len(leaf.Data.GetData())
+		if source.IsDone(nextAt) {
+			leaf.Data.SetStatus(TkComplete)
+			break
+		}
+
+		matches, err := source.MatchFrom(nextAt, l.productions)
+		if err != nil {
+			leaf.Data.SetStatus(TkError)
+			break
+		}
+
+		// Get the longest match.
+		matches = getLongestMatches(matches)
+		for _, match := range matches {
+			n := tr.NewNode(newHelperToken(match.Matched))
+
+			leaf.AddChild(n)
+		}
+
+		leaf.Data.SetStatus(TkComplete)
+	}
+
+	l.root.UpdateLeaves()
+
+	before := l.root.Size()
+
+	l.root.SkipFilter(FilterIncompleteLeaves)
+
+	if before == l.root.Size() {
+		// No incomplete leaves.
 		return true, nil
 	}
 
-	l.leaves, err = l.generateNewLeaves(todo, source)
-	if err != nil {
-		return false, err
+	l.root.SkipFilter(FilterErrorLeaves)
+
+	if l.root.Size() == 0 {
+		return false, NewErrAllMatchesFailed()
 	}
 
 	return false, nil
@@ -217,8 +168,12 @@ func (l *Lexer) Lex(source *SourceStream) error {
 		return NewErrNoTokensToLex()
 	}
 
-	root := tr.NewNode(newHelperToken(gr.NewRootToken()))
-	l.root = root
+	tree, err := tr.NewTree(tr.NewNode(newHelperToken(gr.NewRootToken())))
+	if err != nil {
+		panic(err)
+	}
+
+	l.root = tree
 
 	matches, err := source.MatchFrom(0, l.productions)
 	if err != nil {
@@ -227,7 +182,7 @@ func (l *Lexer) Lex(source *SourceStream) error {
 
 	l.addFirstLeaves(matches)
 
-	l.root.Data.SetStatus(TkComplete)
+	l.root.Root().Data.SetStatus(TkComplete)
 
 	for {
 		isDone, err := l.processLeaves(source)
@@ -247,7 +202,7 @@ func (l *Lexer) Lex(source *SourceStream) error {
 // Returns:
 //   - result: The tokens that have been lexed.
 //   - reason: An error if the lexer has not been run yet.
-func (l *Lexer) GetTokens() (result []*gr.TokenStream, reason error) {
+func (l *Lexer) GetTokens() (result []*cds.Stream[*gr.LeafToken], reason error) {
 	if l.root == nil {
 		reason = errors.New("must call Lexer.Lex() first")
 		return

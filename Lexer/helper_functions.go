@@ -4,6 +4,8 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 // getLongestMatches returns the longest matches,
@@ -66,7 +68,7 @@ func setLookahead(tokens []*gr.LeafToken) {
 //
 // Returns:
 //   - *gr.TokenStream: The token stream.
-func convertBranchToTokenStream(branch []*helperToken) *gr.TokenStream {
+func convertBranchToTokenStream(branch []*helperToken) *cds.Stream[*gr.LeafToken] {
 	ts := make([]*gr.LeafToken, 0, len(branch))
 
 	for _, token := range branch {
@@ -77,5 +79,5 @@ func convertBranchToTokenStream(branch []*helperToken) *gr.TokenStream {
 
 	setLookahead(ts)
 
-	return gr.NewTokenStream(ts)
+	return cds.NewStream(ts)
 }

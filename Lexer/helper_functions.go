@@ -1,12 +1,11 @@
 package Lexer
 
 import (
+	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	tr "github.com/PlayerR9/LyneParser/PlayerR9/Tree"
 
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
-
-	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 // getLongestMatches returns the longest matches,
@@ -69,7 +68,7 @@ func setLookahead(tokens []*gr.LeafToken) {
 //
 // Returns:
 //   - *gr.TokenStream: The token stream.
-func convertBranchToTokenStream(branch []*helperToken) *cds.Stream[*gr.LeafToken] {
+func convertBranchToTokenStream(branch []*helperToken) *com.TokenStream {
 	ts := make([]*gr.LeafToken, 0, len(branch))
 
 	for _, token := range branch {
@@ -80,7 +79,7 @@ func convertBranchToTokenStream(branch []*helperToken) *cds.Stream[*gr.LeafToken
 
 	setLookahead(ts)
 
-	return cds.NewStream(ts)
+	return com.NewTokenStream(ts)
 }
 
 // addMatchLeaves adds the matches to a root tree as leaves.

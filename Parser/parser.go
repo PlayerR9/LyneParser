@@ -4,13 +4,12 @@ import (
 	"errors"
 	"fmt"
 
+	com "github.com/PlayerR9/LyneParser/Common"
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
-
-	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 /////////////////////////////////////////////////////////////
@@ -71,7 +70,7 @@ func NewParser(grammar *gr.Grammar) (*Parser, error) {
 //
 // Returns:
 //   - error: An error if the input stream could not be parsed.
-func (p *Parser) Parse(source *cds.Stream[*gr.LeafToken]) error {
+func (p *Parser) Parse(source *com.TokenStream) error {
 	if source == nil || source.IsEmpty() {
 		return errors.New("source is empty")
 	}
@@ -171,7 +170,7 @@ func (p *Parser) GetParseTree() ([]gr.NonLeafToken, error) {
 //
 // Returns:
 //   - error: An error of type *ErrNoAccept if the input stream is done.
-func (p *Parser) shift(source *cds.Stream[*gr.LeafToken]) error {
+func (p *Parser) shift(source *com.TokenStream) error {
 	toks, err := source.Get(p.currentIndex, 1)
 	if err != nil || len(toks) == 0 {
 		return NewErrNoAccept()
@@ -241,7 +240,7 @@ func (p *Parser) reduce(rule *gr.Production) error {
 //
 //   - []gr.NonLeafToken: The parse tree.
 //   - error: An error if the input stream could not be parsed.
-func FullParse(grammar *gr.Grammar, source *cds.Stream[*gr.LeafToken], dt *DecisionTable) ([]gr.NonLeafToken, error) {
+func FullParse(grammar *gr.Grammar, source *com.TokenStream, dt *DecisionTable) ([]gr.NonLeafToken, error) {
 	parser, err := NewParser(grammar)
 	if err != nil {
 		return nil, fmt.Errorf("could not create parser: %s", err.Error())

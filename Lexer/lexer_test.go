@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+
+	com "github.com/PlayerR9/LyneParser/Common"
 )
 
 var LexerGrammar *gr.Grammar = func() *gr.Grammar {
@@ -50,7 +52,7 @@ func TestLex(t *testing.T) {
 		t.Errorf("NewLexer() returned an error: %s", err.Error())
 	}
 
-	err = lexer.Lex(new(SourceStream).FromString(Source))
+	err = lexer.Lex(new(com.ByteStream).FromString(Source))
 	if err != nil {
 		t.Errorf("Lexer.Lex() returned an error: %s", err.Error())
 	}

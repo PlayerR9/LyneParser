@@ -1,9 +1,8 @@
 package Lexer
 
 import (
+	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-
-	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 // FilterIncompleteLeaves is a filter that filters out incomplete leaves.
@@ -35,7 +34,7 @@ func FilterErrorLeaves(h *helperToken) bool {
 //
 // Returns:
 //   - bool: True if the token stream is empty, false otherwise.
-func FilterEmptyTokenStream(branch *cds.Stream[*gr.LeafToken]) bool {
+func FilterEmptyTokenStream(branch *com.TokenStream) bool {
 	return branch.IsEmpty()
 }
 

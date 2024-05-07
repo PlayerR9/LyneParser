@@ -10,9 +10,9 @@ import (
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 
-	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
+
+	com "github.com/PlayerR9/LyneParser/Common"
 )
 
 // Lexer is a lexer that uses a grammar to tokenize a string.
@@ -25,9 +25,6 @@ type Lexer struct {
 
 	// root is the root node of the lexer.
 	root *tr.Tree[*helperToken]
-
-	// frontier is the frontier of the lexer.
-	frontier []*tr.TreeNode[*helperToken]
 }
 
 // NewLexer creates a new lexer.
@@ -98,14 +95,14 @@ func NewLexer(grammar *gr.Grammar) (*Lexer, error) {
 // Returns:
 //   - bool: True if all leaves are complete, false otherwise.
 //   - error: An error of type *ErrAllMatchesFailed if all matches failed.
-func (l *Lexer) processLeaves(source *SourceStream) tr.LeafProcessor[*helperToken] {
+func (l *Lexer) processLeaves(source *com.ByteStream) tr.LeafProcessor[*helperToken] {
 	return func(data *helperToken) ([]*helperToken, error) {
 		nextAt := data.GetPos() + len(data.GetData())
 
 		// DEBUG:
 		fmt.Printf("Processing leaf at %d\n", nextAt)
 
-		if source.IsDone(nextAt) {
+		if source.IsDone(nextAt, 1) {
 			data.SetStatus(TkComplete)
 
 			return nil, nil
@@ -157,7 +154,7 @@ func (l *Lexer) canContinue() bool {
 //   - *ErrNoTokensToLex: There are no tokens to lex.
 //   - *ErrNoMatches: No matches are found in the source.
 //   - *ErrAllMatchesFailed: All matches failed.
-func (l *Lexer) Lex(source *SourceStream) error {
+func (l *Lexer) Lex(source *com.ByteStream) error {
 	if source == nil || source.IsEmpty() {
 		return NewErrNoTokensToLex()
 	}
@@ -224,7 +221,7 @@ func (l *Lexer) Lex(source *SourceStream) error {
 // Returns:
 //   - result: The tokens that have been lexed.
 //   - reason: An error if the lexer has not been run yet.
-func (l *Lexer) GetTokens() (result []*cds.Stream[*gr.LeafToken], reason error) {
+func (l *Lexer) GetTokens() (result []*com.TokenStream, reason error) {
 	if l.root == nil {
 		reason = errors.New("must call Lexer.Lex() first")
 		return

@@ -1,16 +1,17 @@
-package Lexer
+package Common
 
 import (
 	"fmt"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
-// SourceStream is a stream of bytes that can be matched against production rules.
-type SourceStream struct {
-	// bytes is the byte stream.
-	bytes []byte
+// ByteStream is a stream of bytes that can be matched against production rules.
+type ByteStream struct {
+	*cds.Stream[byte]
 }
 
 // NewSourceStream creates a new source stream from a given source.
@@ -28,17 +29,15 @@ type SourceStream struct {
 //   - If the source is a fmt.Stringer, the source stream will be created from the stringer.
 //   - If the source is a *SourceStream, the source stream will return the source stream as is.
 //   - Otherwise, the source stream will be created from the string representation of the source.
-func NewSourceStream(source any) *SourceStream {
+func NewSourceStream(source any) *ByteStream {
 	if source == nil {
-		return &SourceStream{
-			bytes: []byte{},
-		}
+		return &ByteStream{cds.NewStream([]byte{})}
 	}
 
 	var b []byte
 
 	switch source := source.(type) {
-	case *SourceStream:
+	case *ByteStream:
 		return source
 	case []byte:
 		b = source
@@ -50,9 +49,7 @@ func NewSourceStream(source any) *SourceStream {
 		b = []byte(fmt.Sprintf("%v", source))
 	}
 
-	return &SourceStream{
-		bytes: b,
-	}
+	return &ByteStream{cds.NewStream(b)}
 }
 
 // FromString sets the source stream to a string.
@@ -62,10 +59,8 @@ func NewSourceStream(source any) *SourceStream {
 //
 // Returns:
 //   - *SourceStream: The source stream.
-func (s *SourceStream) FromString(str string) *SourceStream {
-	s.bytes = []byte(str)
-
-	return s
+func (s *ByteStream) FromString(str string) *ByteStream {
+	return &ByteStream{cds.NewStream([]byte(str))}
 }
 
 // FromBytes sets the source stream to a byte slice.
@@ -75,22 +70,12 @@ func (s *SourceStream) FromString(str string) *SourceStream {
 //
 // Returns:
 //   - *SourceStream: The source stream.
-func (s *SourceStream) FromBytes(b []byte) *SourceStream {
+func (s *ByteStream) FromBytes(b []byte) *ByteStream {
 	if b == nil {
 		b = []byte{}
 	}
 
-	s.bytes = b
-
-	return s
-}
-
-// IsEmpty checks if the source stream is empty.
-//
-// Returns:
-//   - bool: True if the source stream is empty, false otherwise.
-func (s *SourceStream) IsEmpty() bool {
-	return len(s.bytes) == 0
+	return &ByteStream{cds.NewStream(b)}
 }
 
 // MatchFrom matches the source stream from a given index with a list of production rules.
@@ -106,17 +91,22 @@ func (s *SourceStream) IsEmpty() bool {
 // Errors:
 //   - *ers.ErrInvalidParameter: The from index is out of bounds.
 //   - *ErrNoMatches: No matches are found.
-func (s *SourceStream) MatchFrom(from int, ps []*gr.RegProduction) (matches []gr.MatchedResult[*gr.LeafToken], reason error) {
-	if from < 0 || from >= len(s.bytes) {
+func (s *ByteStream) MatchFrom(from int, ps []*gr.RegProduction) (matches []gr.MatchedResult[*gr.LeafToken], reason error) {
+	size := s.Size()
+
+	if from < 0 || from >= size {
 		reason = ers.NewErrInvalidParameter(
 			"from",
-			ers.NewErrOutOfBounds(from, 0, len(s.bytes)),
+			ers.NewErrOutOfBounds(from, 0, size),
 		)
 
 		return
 	}
 
-	subSet := s.bytes[from:]
+	subSet, err := s.Get(from, size)
+	if err != nil {
+		panic(err)
+	}
 
 	for i, p := range ps {
 		matched := p.Match(from, subSet)
@@ -132,13 +122,27 @@ func (s *SourceStream) MatchFrom(from int, ps []*gr.RegProduction) (matches []gr
 	return
 }
 
-// IsDone checks if the source stream is done.
+// TokenStream is a stream of tokens that have been lexed.
+type TokenStream struct {
+	*cds.Stream[*gr.LeafToken]
+}
+
+// NewTokenStream creates a new token stream from a given slice of tokens.
 //
 // Parameters:
-//   - from: The index to check if the source stream is done.
+//   - tokens: The tokens to create the stream from.
 //
 // Returns:
-//   - bool: True if the source stream is done, false otherwise.
-func (s *SourceStream) IsDone(from int) bool {
-	return from >= len(s.bytes)
+//   - *TokenStream: The new token stream.
+//
+// Behaviors:
+//   - If the tokens are nil, the token stream will be created from a empty token slice.
+//   - If the tokens are a *TokenStream, the token stream will return the token stream as is.
+//   - Otherwise, the token stream will be created from the token slice.
+func NewTokenStream(tokens []*gr.LeafToken) *TokenStream {
+	if tokens == nil {
+		tokens = []*gr.LeafToken{}
+	}
+
+	return &TokenStream{cds.NewStream(tokens)}
 }

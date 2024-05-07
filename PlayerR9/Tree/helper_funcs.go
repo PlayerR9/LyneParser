@@ -1,12 +1,14 @@
 package Tree
 
-import slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+import (
+	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+)
 
 // recCleanup is a helper function that removes every node in the tree rooted at n.
 //
 // Behaviors:
 //   - This function is recursive.
-func recCleanup[T any](n *treeNode[T]) {
+func recCleanup[T any](n *TreeNode[T]) {
 	n.parent = nil
 
 	for _, child := range n.children {
@@ -29,7 +31,7 @@ func recCleanup[T any](n *treeNode[T]) {
 // Behaviors:
 //   - The paths are returned in the order of a BFS traversal.
 //   - It is a recursive function.
-func recSnakeTraversal[T any](n *treeNode[T]) [][]T {
+func recSnakeTraversal[T any](n *TreeNode[T]) [][]T {
 	if len(n.children) == 0 {
 		return [][]T{
 			{n.Data},
@@ -62,7 +64,7 @@ func recSnakeTraversal[T any](n *treeNode[T]) [][]T {
 //
 // Behaviors:
 //   - This function is recursive.
-func recPruneFunc[T any](filter slext.PredicateFilter[T], highest *treeNode[T], n *treeNode[T]) (*treeNode[T], bool) {
+func recPruneFunc[T any](filter slext.PredicateFilter[T], highest *TreeNode[T], n *TreeNode[T]) (*TreeNode[T], bool) {
 	if filter(n.Data) {
 		// Delete all children
 		recCleanup(n)
@@ -87,51 +89,4 @@ func recPruneFunc[T any](filter slext.PredicateFilter[T], highest *treeNode[T], 
 	n.children = n.children[:top]
 
 	return highest, false
-}
-
-// recSkipFunc is an helper function that removes all the children of the
-// node that satisfy the given filter without removing their children.
-//
-// Parameters:
-//   - filter: The filter to apply.
-//
-// Returns:
-//   - []*treeNode[T]: A slice of pointers to the children of the node.
-//   - int: The total number of nodes removed.
-//   - bool: True if the node satisfies the filter, false otherwise.
-func recSkipFunc[T any](filter slext.PredicateFilter[T], n *treeNode[T]) ([]*treeNode[T], int, bool) {
-	// 1. Check if the children satisfy the filter
-	newChildren := make([]*treeNode[T], 0)
-
-	total := 0
-
-	for i := 0; i < len(n.children); i++ {
-		sub, amount, ok := recSkipFunc(filter, n.children[i])
-		if ok {
-			n.children[i] = nil
-			newChildren = append(newChildren, sub...)
-		} else {
-			newChildren = append(newChildren, n.children[i])
-		}
-
-		total += amount
-
-		newChildren = append(newChildren, sub...)
-	}
-
-	n.children = newChildren
-
-	// 2. Check if the node satisfies the filter
-	if filter(n.Data) {
-		n.parent = nil
-
-		return n.children, total + 1, true
-	}
-
-	// 3. Update the parent of the children
-	for i := 0; i < len(n.children); i++ {
-		n.children[i].parent = n
-	}
-
-	return nil, total, false
 }

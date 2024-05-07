@@ -25,6 +25,9 @@ type Lexer struct {
 
 	// root is the root node of the lexer.
 	root *tr.Tree[*helperToken]
+
+	// frontier is the frontier of the lexer.
+	frontier []*tr.TreeNode[*helperToken]
 }
 
 // NewLexer creates a new lexer.
@@ -179,7 +182,17 @@ func (l *Lexer) Lex(source *SourceStream) error {
 		fmt.Println(ffs.FString(l.root))
 		fmt.Println()
 
-		l.root.SkipFilter(FilterErrorLeaves)
+		for {
+			target := l.root.SearchNodes(FilterErrorLeaves)
+			if target == nil {
+				break
+			}
+
+			err = l.root.DeleteBranchContaining(target)
+			if err != nil {
+				return err
+			}
+		}
 
 		if l.root.Size() == 0 {
 			return NewErrAllMatchesFailed()
@@ -190,9 +203,17 @@ func (l *Lexer) Lex(source *SourceStream) error {
 		}
 	}
 
-	l.root.SkipFilter(FilterIncompleteLeaves)
+	for {
+		target := l.root.SearchNodes(FilterIncompleteLeaves)
+		if target == nil {
+			return nil
+		}
 
-	return nil
+		err = l.root.DeleteBranchContaining(target)
+		if err != nil {
+			return err
+		}
+	}
 }
 
 // GetTokens returns the tokens that have been lexed.

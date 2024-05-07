@@ -12,7 +12,7 @@ import (
 //
 // Returns:
 //   - *treeNode[T]: A pointer to the common ancestor. Nil if no such node is found.
-func FindCommonAncestor[T any](n1, n2 *treeNode[T]) *treeNode[T] {
+func FindCommonAncestor[T any](n1, n2 *TreeNode[T]) *TreeNode[T] {
 	if n1 == nil {
 		return n2
 	} else if n2 == nil {
@@ -44,7 +44,7 @@ func FindCommonAncestor[T any](n1, n2 *treeNode[T]) *treeNode[T] {
 //
 // Returns:
 //   - []T: A slice of the values of the nodes.
-func ExtractData[T any](nodes []*treeNode[T]) []T {
+func ExtractData[T any](nodes []*TreeNode[T]) []T {
 	data := make([]T, 0, len(nodes))
 
 	for _, node := range nodes {

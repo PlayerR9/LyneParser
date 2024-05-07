@@ -18,7 +18,7 @@ import (
 type ObserverFunc[T any, I intf.Copier] func(data T, info I) error
 
 // helper is a helper struct for traversing the tree.
-type helper[T any, I intf.Copier] up.Pair[*treeNode[T], I]
+type helper[T any, I intf.Copier] up.Pair[*TreeNode[T], I]
 
 // newHelper creates a new helper.
 //
@@ -28,7 +28,7 @@ type helper[T any, I intf.Copier] up.Pair[*treeNode[T], I]
 //
 // Returns:
 //   - *helper[T, I]: A pointer to the helper.
-func newHelper[T any, I intf.Copier](node *treeNode[T], info I) *helper[T, I] {
+func newHelper[T any, I intf.Copier](node *TreeNode[T], info I) *helper[T, I] {
 	return &helper[T, I]{
 		First:  node,
 		Second: info.Copy().(I),
@@ -120,7 +120,7 @@ func (t *Traversor[T, I]) BFS() error {
 // Returns:
 //   - Traversor[T, I]: The traversor.
 func Traverse[T any, I intf.Copier](tree *Tree[T], init I, f ObserverFunc[T, I]) *Traversor[T, I] {
-	var root *treeNode[T]
+	var root *TreeNode[T]
 
 	if tree == nil {
 		root = nil
@@ -166,7 +166,7 @@ func MakeTree[T any, I intf.Copier](elem T, info I, f NextsFunc[T, I]) (*Tree[T]
 
 	// 2. Create a stack and push the first element
 	type StackElement struct {
-		Prev *treeNode[T]
+		Prev *TreeNode[T]
 		Elem *helper[T, I]
 	}
 

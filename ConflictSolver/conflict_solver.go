@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	intf "github.com/PlayerR9/LyneParser/PlayerR9/Common"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 
-	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
+	tr "github.com/PlayerR9/LyneParser/PlayerR9/Tree"
 )
 
 var GlobalDebugMode bool = true
@@ -305,51 +306,37 @@ func (cs *ConflictSolver) ricGenerateTreeRootedAt(h *Helper, seen map[*Helper]bo
 }
 */
 
-func (cs *ConflictSolver) GenerateTreeRootedAt(h *Helper) (*tr.Tree[*Helper], error) {
-	type InfoStruct struct {
-		h    *Helper
-		seen map[*Helper]bool
+type InfoStruct struct {
+	seen map[*Helper]bool
+}
+
+func (is *InfoStruct) Copy() intf.Copier {
+	isCopy := &InfoStruct{
+		seen: make(map[*Helper]bool),
 	}
 
-	trav := tr.NewTraverser(
-		func(is *InfoStruct) error {
-			// 1. Get the 0th symbol of h.
-			_, err := is.h.GetRhsAt(0)
-			if err != nil {
-				return NewErr0thRhsNotSet()
-			}
+	for k, v := range is.seen {
+		isCopy.seen[k] = v
+	}
 
-			// 2. Set h as seen.
-			is.seen[is.h] = true
+	return isCopy
+}
 
-			return nil
-		},
-		func(is *InfoStruct) ([]*InfoStruct, error) {
-			rhs, err := is.h.GetRhsAt(0)
-			if err != nil {
-				return nil, NewErr0thRhsNotSet()
-			}
+func (cs *ConflictSolver) GenerateTreeRootedAt(h *Helper) (*tr.Tree[*Helper], error) {
+	tree, err := tr.MakeTree(h, &InfoStruct{
+		seen: make(map[*Helper]bool),
+	}, func(elem *Helper, is *InfoStruct) ([]*Helper, error) {
+		rhs, err := elem.GetRhsAt(0)
+		if err != nil {
+			return nil, NewErr0thRhsNotSet()
+		}
 
-			seenFilter := func(h *Helper) bool {
-				return !is.seen[h]
-			}
+		seenFilter := func(h *Helper) bool {
+			return !is.seen[h]
+		}
 
-			newHelpers := slext.SliceFilter(cs.GetElemsWithLhs(rhs), seenFilter)
-
-			next := make([]*InfoStruct, len(newHelpers))
-
-			for i, nh := range newHelpers {
-				next[i] = &InfoStruct{
-					h:    nh,
-					seen: is.seen,
-				}
-			}
-
-			return next, nil
-		},
-	)
-
-	tree, err := trav.MakeTree(&InfoStruct{h: h, seen: make(map[*Helper]bool)})
+		return slext.SliceFilter(cs.GetElemsWithLhs(rhs), seenFilter), nil
+	})
 	if err != nil {
 		return nil, err
 	}

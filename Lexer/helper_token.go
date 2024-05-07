@@ -1,6 +1,8 @@
 package Lexer
 
 import (
+	"fmt"
+
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
 
@@ -38,6 +40,18 @@ type helperToken struct {
 
 	// Tok is the *gr.LeafToken to wrap.
 	Tok *gr.LeafToken
+}
+
+func (ht *helperToken) String() string {
+	var tok string
+
+	if ht.Tok != nil {
+		tok = ht.Tok.String()
+	} else {
+		tok = "nil"
+	}
+
+	return fmt.Sprintf("%s [%s]", tok, ht.Status.String())
 }
 
 // newHelperToken creates a new helperToken, marking it as incomplete.

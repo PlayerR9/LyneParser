@@ -2,6 +2,7 @@ package Lexer
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	tr "github.com/PlayerR9/LyneParser/PlayerR9/Tree"
 
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 
@@ -80,4 +81,23 @@ func convertBranchToTokenStream(branch []*helperToken) *cds.Stream[*gr.LeafToken
 	setLookahead(ts)
 
 	return cds.NewStream(ts)
+}
+
+// addMatchLeaves adds the matches to a root tree as leaves.
+//
+// Parameters:
+//   - root: The root of the tree to add the leaves to.
+//   - matches: The matches to add to the lexer.
+func addMatchLeaves(root *tr.Tree[*helperToken], matches []gr.MatchedResult[*gr.LeafToken]) {
+	// Get the longest match.
+	matches = getLongestMatches(matches)
+
+	children := make([]*tr.Tree[*helperToken], 0, len(matches))
+
+	for _, match := range matches {
+		ht := newHelperToken(match.Matched)
+		children = append(children, tr.NewTree(ht))
+	}
+
+	root.SetChildren(children)
 }

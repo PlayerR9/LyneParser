@@ -1,14 +1,44 @@
 package Parser
 
 import (
+	"fmt"
+
+	com "github.com/PlayerR9/LyneParser/Common"
+	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-
-	"strings"
-
-	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
-
-	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 )
+
+// FullParse parses the input stream using the given grammar and decision
+// function. It is a convenience function intended for simple parsing tasks.
+//
+// Parameters:
+//
+//   - grammar: The grammar that the parser will use.
+//   - inputStream: The input stream that the parser will parse.
+//   - decisionFunc: The decision function that the parser will use.
+//
+// Returns:
+//
+//   - []gr.NonLeafToken: The parse tree.
+//   - error: An error if the input stream could not be parsed.
+func FullParse(grammar *gr.Grammar, source *com.TokenStream, dt *cs.ConflictSolver) ([]*com.TokenTree, error) {
+	parser, err := NewParser(grammar)
+	if err != nil {
+		return nil, fmt.Errorf("could not create parser: %s", err.Error())
+	}
+
+	err = parser.Parse(source)
+	if err != nil {
+		return nil, fmt.Errorf("parse error: %s", err.Error())
+	}
+
+	roots, err := parser.GetParseTree()
+	if err != nil {
+		return nil, fmt.Errorf("could not get parse tree: %s", err.Error())
+	}
+
+	return roots, nil
+}
 
 /////////////////////////////////////////////////////////////
 
@@ -48,7 +78,7 @@ func findInvalidTokenIndex(branch []gr.LeafToken, data []byte) int {
 
 	return pos
 }
-*/
+
 
 // FormatSyntaxError formats a syntax error in the data.
 // The function returns a string with the faulty line and a caret pointing to the invalid token.
@@ -125,82 +155,5 @@ func FormatSyntaxError(root gr.Tokener, data []byte) string {
 		}
 
 		return builder.String()
-	*/
 }
-
-func TokenerString(root gr.Tokener) string {
-	type helper struct {
-		indent string
-		root   gr.Tokener
-	}
-	func (h *helper) Copy() intf.Copier {
-
-	}
-
-	var builder strings.Builder
-
-	tree, err := tr.MakeTree(root, helper{
-
-	}, func(elem gr.Tokener, h helper) ([]helper, error) {
-		
-	})
-	if err != nil {
-		return ""
-	}
-
-	t := tr.NewTraverser(
-		func(f helper) error {
-			builder.WriteString(f.indent)
-			builder.WriteString(f.root.GetID())
-
-			switch root := f.root.(type) {
-			case *gr.LeafToken:
-				builder.WriteString(" -> ")
-				builder.WriteString(root.Data)
-			case *gr.NonLeafToken:
-				builder.WriteString(" :")
-			}
-
-			builder.WriteString("\n")
-
-			return nil
-		},
-		func(f helper) ([]helper, error) {
-			switch root := f.root.(type) {
-			case *gr.LeafToken:
-				return nil, nil
-			case *gr.NonLeafToken:
-				if len(root.Data) == 0 {
-					return nil, nil
-				}
-
-				children := make([]helper, 0, len(root.Data))
-
-				newIndent := f.indent + Indentation
-
-				for _, child := range root.Data {
-					children = append(children, helper{
-						indent: newIndent,
-						root:   child,
-					})
-				}
-
-				return children, nil
-			}
-
-			return nil, nil
-		},
-	)
-
-	rootNode := helper{
-		indent: "",
-		root:   root,
-	}
-
-	err := t.DFS(rootNode)
-	if err != nil {
-		return ""
-	}
-
-	return builder.String()
-}
+*/

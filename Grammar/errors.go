@@ -54,3 +54,37 @@ func NewErrLhsRhsMismatch(lhs, rhs string) *ErrLhsRhsMismatch {
 		Rhs: rhs,
 	}
 }
+
+// ErrUnknownToken is an error that is returned when an unknown token is found.
+type ErrUnknowToken struct {
+	// Token is the unknown token.
+	Token Tokener
+}
+
+// Error returns the error message: "unknown token type: (type)".
+//
+// Returns:
+//  	- string: The error message.
+//
+// Behaviors:
+//  	- If the token is nil, the error message is "token is nil".
+func (e *ErrUnknowToken) Error() string {
+	if e.Token == nil {
+		return "token is nil"
+	} else {
+		return fmt.Sprintf("unknown token type: %T", e.Token)
+	}
+}
+
+// NewErrUnknowToken creates a new error of type *ErrUnknowToken.
+//
+// Parameters:
+//  	- token: The unknown token.
+//
+// Returns:
+//  	- *ErrUnknowToken: The new error.
+func NewErrUnknowToken(token Tokener) *ErrUnknowToken {
+	return &ErrUnknowToken{
+		Token: token,
+	}
+}

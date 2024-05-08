@@ -116,6 +116,25 @@ func NewErr0thRhsNotSet() *Err0thRhsNotSet {
 	return &Err0thRhsNotSet{}
 }
 
+// ErrAmbiguousGrammar is an error that is returned when a grammar is ambiguous.
+type ErrAmbiguousGrammar struct{}
+
+// Error returns the error message: "grammar is ambiguous".
+//
+// Returns:
+//   - string: The error message.
+func (e *ErrAmbiguousGrammar) Error() string {
+	return "grammar is ambiguous"
+}
+
+// NewErrAmbiguousGrammar creates a new error of type *ErrAmbiguousGrammar.
+//
+// Returns:
+//   - *ErrAmbiguousGrammar: A pointer to the new error.
+func NewErrAmbiguousGrammar() *ErrAmbiguousGrammar {
+	return &ErrAmbiguousGrammar{}
+}
+
 /////////////////////////////////////////////////////////////
 
 // ErrNoElementsFound is an error that is returned when no

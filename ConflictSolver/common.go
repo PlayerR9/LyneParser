@@ -15,7 +15,7 @@ import (
 // Returns:
 //   - map[string][]*Helper: The elements in the decision table with conflicts solved.
 //   - error: An error if the operation failed.
-func SolveConflicts(symbols []string, rules []*gr.Production) (map[string][]*Helper, error) {
+func SolveConflicts(symbols []string, rules []*gr.Production) (*ConflictSolver, error) {
 	if len(rules) == 0 {
 		return nil, ers.NewErrInvalidParameter("rules", ers.NewErrEmptySlice())
 	}
@@ -27,13 +27,13 @@ func SolveConflicts(symbols []string, rules []*gr.Production) (map[string][]*Hel
 
 	err = cs.SolveAmbiguousShifts()
 	if err != nil {
-		return cs.table, err
+		return cs, err
 	}
 
 	err = cs.Solve()
 	if err != nil {
-		return cs.table, err
+		return cs, err
 	}
 
-	return cs.table, nil
+	return cs, nil
 }

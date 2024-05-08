@@ -82,6 +82,31 @@ var ParserGrammar *gr.Grammar = func() *gr.Grammar {
 	return grammar
 }()
 
+var LexedContents []*com.TokenStream = func() []*com.TokenStream {
+	l, err := lx.NewLexer(LexerGrammar)
+	if err != nil {
+		panic(err)
+	}
+
+	const (
+		Source string = "[char(\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\"Caring\")\n}]"
+	)
+
+	err = l.Lex(new(com.ByteStream).FromString(Source))
+	if err != nil {
+		panic(err)
+	}
+
+	tokenBranches, err := l.GetTokens()
+	if err != nil {
+		panic(err)
+	} else if len(tokenBranches) == 0 {
+		panic("no token branches found")
+	}
+
+	return tokenBranches
+}()
+
 var TestParser *Parser = func() *Parser {
 	p, err := NewParser(ParserGrammar)
 	if err != nil {
@@ -91,36 +116,13 @@ var TestParser *Parser = func() *Parser {
 	return p
 }()
 
-var TestLexer *lx.Lexer = func() *lx.Lexer {
-	l, err := lx.NewLexer(LexerGrammar)
-	if err != nil {
-		panic(err)
-	}
-
-	return l
-}()
-
 func TestParsing(t *testing.T) {
-	const (
-		Source string = "[char(\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\"Caring\")\n}]"
-	)
-
-	err := TestLexer.Lex(new(com.ByteStream).FromString(Source))
-	if err != nil {
-		t.Errorf("Lexer.Lex() returned an error: %s", err.Error())
-	}
-
-	tokenBranches, err := TestLexer.GetTokens()
-	if err != nil {
-		t.Errorf("Lexer.GetTokens() returned an error: %s", err.Error())
-	}
-
 	results := make([]hlp.HResult[*com.TokenStream], 0)
 
-	roots := make([]gr.NonLeafToken, 0)
+	forest := make([]*com.TokenTree, 0)
 
-	for _, branch := range tokenBranches {
-		err = TestParser.Parse(branch)
+	for _, branch := range LexedContents {
+		err := TestParser.Parse(branch)
 		if err != nil {
 			results = append(results, hlp.HResult[*com.TokenStream]{First: branch, Second: err})
 
@@ -134,18 +136,20 @@ func TestParsing(t *testing.T) {
 			continue
 		}
 
-		roots = append(roots, tmp...)
+		forest = append(forest, tmp...)
 	}
 
-	if len(roots) == 0 {
+	if len(forest) == 0 {
 		for _, result := range results {
 			if result.First != nil {
-				t.Errorf("Failed to parse: %s", result.Second.Error())
+				fmt.Printf("Failed to parse: %s\n", result.Second.Error())
 			}
 		}
-	}
 
-	fmt.Println(roots[0].String())
+		t.Errorf("no parse trees were found")
+	} else {
+		fmt.Println(forest[0].DebugString())
+	}
 
 	t.Errorf("TestParsing() is not implemented")
 }

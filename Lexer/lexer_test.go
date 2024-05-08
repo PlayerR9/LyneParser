@@ -74,6 +74,4 @@ func TestLex(t *testing.T) {
 	}
 
 	fmt.Println()
-
-	t.Errorf("TestLex() is not implemented")
 }

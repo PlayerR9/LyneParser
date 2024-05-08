@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
-
-	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
-	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 )
 
 const (
@@ -287,29 +284,4 @@ func NewNonLeafToken(id string, at int, data ...Tokener) *NonLeafToken {
 		Data:      data,
 		Lookahead: nil,
 	}
-}
-
-type tokenTreeInfo struct {
-}
-
-func (tti *tokenTreeInfo) Copy() intf.Copier {
-	return &tokenTreeInfo{}
-}
-
-func MakeTokenTree(root Tokener) (*tr.Tree[Tokener], error) {
-	tree, err := tr.MakeTree(root, &tokenTreeInfo{}, func(elem Tokener, h *tokenTreeInfo) ([]Tokener, error) {
-		switch root := elem.(type) {
-		case *LeafToken:
-			return nil, nil
-		case *NonLeafToken:
-			if len(root.Data) == 0 {
-				return nil, nil
-			}
-
-			return root.Data, nil
-		default:
-			return nil, fmt.Errorf("unknown token type: %T", elem)
-		}
-	})
-	return tree, err
 }

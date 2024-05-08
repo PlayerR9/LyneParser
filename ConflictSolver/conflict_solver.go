@@ -7,10 +7,11 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
-	intf "github.com/PlayerR9/MyGoLib/Units/Common"
+	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 
-	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
+	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Pair"
 )
 
 var GlobalDebugMode bool = true
@@ -241,15 +242,18 @@ func (cs *ConflictSolver) SolveAmbiguousShifts() error {
 	return nil
 }
 
+type CMPerSymbol map[string]*cds.Pair[[]*Helper, int]
+
 // FindConflicts is a method that finds conflicts for a specific symbol.
 //
 // Parameters:
 //   - symbol: The symbol to find conflicts for.
 //
 // Returns:
-//   - []*Helper: The conflicting helpers.
-//   - int: The index of the position of the conflict.
-func (cs *ConflictSolver) FindConflicts() ([]*Helper, int) {
+//   - CMPerSymbol: The conflicts per symbol.
+func (cs *ConflictSolver) FindConflicts() CMPerSymbol {
+	conflictMap := make(CMPerSymbol)
+
 	for symbol, helpers := range cs.table {
 		todo := make([]*Helper, len(helpers))
 		copy(todo, helpers)
@@ -261,126 +265,114 @@ func (cs *ConflictSolver) FindConflicts() ([]*Helper, int) {
 
 		conflicts, indexOfConflict := findConflictsPerSymbol(symbol, todo)
 		if indexOfConflict != -1 {
-			return conflicts, indexOfConflict
+			conflictMap[symbol] = cds.NewPair(conflicts, indexOfConflict)
 		}
 	}
 
-	return nil, -1
+	return conflictMap
 }
 
-type InfoStruct struct {
-	seen map[*Helper]bool
-}
+// MakeExpansionForests creates a forest of expansion trees rooted at the next symbol of the
+// conflicting rules.
+//
+// Parameters:
+//   - index: The index of the conflicting rules.
+//   - nextRhs: The next symbol of the conflicting rules.
+//
+// Returns:
+//   - map[*Helper][]*ExpansionTree: The forest of expansion trees.
+//   - error: An error of type *ErrHelper if the operation failed.
+func (cs *ConflictSolver) MakeExpansionForests(index int, nextRhs map[*Helper]string) (map[*Helper][]string, error) {
+	possibleLookaheads := make(map[*Helper][]string)
 
-func (is *InfoStruct) Copy() intf.Copier {
-	isCopy := &InfoStruct{
-		seen: make(map[*Helper]bool),
-	}
-
-	for k, v := range is.seen {
-		isCopy.seen[k] = v
-	}
-
-	return isCopy
-}
-
-func (cs *ConflictSolver) GenerateTreeRootedAt(h *Helper) (*tr.Tree[*Helper], error) {
-	tree, err := tr.MakeTree(h, &InfoStruct{
-		seen: make(map[*Helper]bool),
-	}, func(elem *Helper, is *InfoStruct) ([]*Helper, error) {
-		rhs, err := elem.GetRhsAt(0)
-		if err != nil {
-			return nil, NewErr0thRhsNotSet()
+	for c, rhs := range nextRhs {
+		rs := cs.GetElemsWithLhs(rhs)
+		if len(rs) == 0 {
+			return possibleLookaheads, nil
 		}
 
-		seenFilter := func(h *Helper) bool {
-			return !is.seen[h]
+		lookaheads := make([]string, 0)
+
+		for _, r := range rs {
+			tree, err := NewExpansionTreeRootedAt(cs, r)
+			if err != nil {
+				return possibleLookaheads, NewErrHelper(c, err)
+			}
+
+			tree.PruneNonTerminalLeaves()
+			lookaheads = append(lookaheads, tree.Collapse()...)
 		}
 
-		return slext.SliceFilter(cs.GetElemsWithLhs(rhs), seenFilter), nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return tree, nil
-}
-
-func (cs *ConflictSolver) CheckIfLookahead0(index int, h *Helper) ([]*Helper, error) {
-	// 1. Take the next symbol of h
-	rhs, err := h.GetRhsAt(index + 1)
-	if err != nil {
-		return nil, NewErrHelper(h, err)
-	}
-
-	// 2. Get all the helpers that have the same LHS as rhs
-	newHelpers := cs.GetElemsWithLhs(rhs)
-	if len(newHelpers) == 0 {
-		return nil, nil
-	}
-
-	// 3. For each rule, check if the 0th rhs is a terminal symbol
-	solutions := make([]*Helper, 0)
-
-	for _, nh := range newHelpers {
-		otherRhs, err := nh.GetRhsAt(0)
-		if err != nil {
-			return solutions, NewErrHelper(nh, err)
-		}
-
-		if gr.IsTerminal(otherRhs) {
-			solutions = append(solutions, nh)
-		} else {
-
+		lookaheads = slext.RemoveDuplicates(lookaheads)
+		if len(lookaheads) != 0 {
+			possibleLookaheads[c] = lookaheads
 		}
 	}
 
-	return solutions, nil
+	return possibleLookaheads, nil
 }
 
 func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, error) {
-	newHelpers := make(map[*Helper][]*Helper)
+	// 1. Take the next symbol of each conflicting rule
+	nextRhs := make(map[*Helper]string)
 
 	for _, c := range conflicts {
-		// 1. Take the next symbol of each conflicting rule
 		rhs, err := c.GetRhsAt(index + 1)
 		if err != nil {
 			continue
 		}
 
-		// 2. Replace the current symbol with every rule
-
-		rs := cs.GetElemsWithLhs(rhs)
-
-		/*
-			// remove the current rule from the list ???
-			index := slices.Index(rs, c)
-			if index != -1 {
-				rs = slices.Delete(rs, index, index+1)
-			}
-		*/
-
-		if len(rs) != 0 {
-			newHelpers[c] = rs
-		}
+		nextRhs[c] = rhs
 	}
 
-	if len(newHelpers) == 0 {
+	// DEBUG: Print the next RHS
+	fmt.Println("Next RHS:")
+
+	for c, rhs := range nextRhs {
+		fmt.Println(c.String(), rhs)
+	}
+	fmt.Println()
+
+	if len(nextRhs) == 0 {
 		return false, nil
 	}
 
-	for c, rs := range newHelpers {
-		cs.DeleteHelper(c)
-
-		for _, r := range rs {
-			newR, err := c.ReplaceRhsAt(index+1, r)
-			if err != nil {
-				return false, NewErrHelper(c, err)
-			}
-
-			cs.AppendHelper(newR)
-		}
+	// 2. Make the expansion forests
+	possibleLookaheads, err := cs.MakeExpansionForests(index, nextRhs)
+	if err != nil {
+		return false, err
+	} else if len(possibleLookaheads) == 0 {
+		return false, nil
 	}
+
+	// DEBUG: Print the forests
+	fmt.Println("Possible lookaheads:")
+
+	for c, forest := range possibleLookaheads {
+		fmt.Println(c.String())
+		for _, tree := range forest {
+			fmt.Println(tree)
+		}
+		fmt.Println()
+	}
+
+	/*
+
+
+		for c, forest := range possibleLookaheads {
+			cs.DeleteHelper(c)
+
+			for _, tree := range forest {
+				newR, err := c.ReplaceRhsAt(index+1, tree)
+				if err != nil {
+					return false, NewErrHelper(c, err)
+				}
+
+				cs.AppendHelper(newR)
+			}
+		}
+
+	*/
 
 	return true, nil
 }
@@ -390,34 +382,53 @@ func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, 
 // SolveConflicts is a method that solves conflicts in a decision table.
 func (cs *ConflictSolver) Solve() error {
 	for {
-		conflicts, limit := cs.FindConflicts()
-		if limit == -1 {
+		conflictMap := cs.FindConflicts()
+		if len(conflictMap) == 0 {
 			// No conflicts found.
 			break
 		}
 
+		// DEBUG: Print the conflicts
 		fmt.Println("Conflicts found:")
-		for _, c := range conflicts {
-			fmt.Println(c.String())
+
+		for _, p := range conflictMap {
+			conflicts := p.First
+			index := p.Second
+
+			for _, c := range conflicts {
+				fmt.Println(c.String())
+			}
+
+			fmt.Println(index)
+			fmt.Println()
 		}
 		fmt.Println()
 
-		ok, err := cs.SolveAmbiguous(limit, conflicts)
-		if err != nil {
-			return err
+		done := false
+
+		for _, p := range conflictMap {
+			ok, err := cs.SolveAmbiguous(p.Second, p.First)
+			if err != nil {
+				return err
+			}
+
+			if ok {
+				done = true
+			}
 		}
 
-		if !ok {
+		if !done {
 			break
 		}
 
-		if GlobalDebugMode {
-			return nil
-		}
+		for _, p := range conflictMap {
+			conflicts := p.First
 
-		err = solveSubgroup(conflicts)
-		if err != nil {
-			return err
+			// Solve conflicts.
+			err := solveSubgroup(conflicts)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -447,3 +458,110 @@ func (cs *ConflictSolver) Init(symbol string) error {
 
 	return nil
 }
+
+func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]Actioner, error) {
+	top, err := stack.Pop()
+	if err != nil {
+		return nil, fmt.Errorf("no top token found")
+	}
+
+	elems, ok := cs.table[top.GetID()]
+	if !ok {
+		return nil, fmt.Errorf("no elems found for symbol %s", top.GetID())
+	}
+
+	if len(elems) == 1 {
+		return []Actioner{elems[0].Action}, nil
+	}
+
+	results := make([]hlp.HResult[Actioner], 0, len(elems))
+
+	for _, elem := range elems {
+		err := elem.Action.Match(top, stack)
+		results = append(results, hlp.NewHResult(elem.Action, err))
+
+		// Refuse the stack
+		stack.Refuse()
+
+		// Pop the top token
+		stack.Pop()
+	}
+
+	success := make([]hlp.HResult[Actioner], 0)
+	fail := make([]hlp.HResult[Actioner], 0)
+
+	for _, r := range results {
+		if r.First == nil {
+			success = append(success, r)
+		} else {
+			fail = append(fail, r)
+		}
+	}
+
+	if len(success) == 0 {
+		// Return the most likely error
+		// As of now, we will return the first error
+		return nil, fail[0].Second
+	} else if len(success) == 1 {
+		return []Actioner{success[0].First}, nil
+	}
+
+	// Get the longest match
+	weights := slext.ApplyWeightFunc(success, HResultWeightFunc)
+
+	finals := slext.FilterByPositiveWeight(weights)
+
+	if len(finals) == 1 {
+		return []Actioner{finals[0].First}, nil
+	} else {
+		firsts := make([]Actioner, 0, len(finals))
+
+		for _, final := range finals {
+			firsts = append(firsts, final.First)
+		}
+
+		return firsts, NewErrAmbiguousGrammar()
+	}
+}
+
+/*
+0. key -> [WORD] (reduce : 1)
+1. key -> key [WORD] (reduce : 2)
+
+2. arrayObj -> [OP_SQUARE] mapObj CL_SQUARE (shift : 3)
+
+3. arrayObj -> OP_SQUARE mapObj [CL_SQUARE] (reduce : 3)
+
+4. mapObj -> fieldCls OP_CURLY mapObj1 [CL_CURLY] (reduce : 4)
+
+5. fieldCls1 -> [ATTR] (reduce : 8)
+6. fieldCls1 -> [ATTR] SEP fieldCls1 (shift : 9)
+
+7. source -> arrayObj [EOF] (reduce : 0)
+
+8. fieldCls -> key [OP_PAREN] fieldCls1 CL_PAREN (shift : 7)
+
+9. fieldCls -> key OP_PAREN fieldCls1 [CL_PAREN] (reduce : 7)
+
+10. fieldCls1 -> ATTR [SEP] fieldCls1 (shift : 9)
+
+11. source -> [arrayObj] EOF (shift : 0)
+
+12. arrayObj -> OP_SQUARE [mapObj] CL_SQUARE (shift : 3)
+
+13. mapObj -> [fieldCls] OP_CURLY mapObj1 CL_CURLY (shift : 4)
+14. mapObj1 -> [fieldCls] (reduce : 5)
+15. mapObj1 -> [fieldCls] mapObj1 (shift : 6)
+
+16. mapObj -> fieldCls [OP_CURLY] mapObj1 CL_CURLY (shift : 4)
+
+17. fieldCls -> key OP_PAREN [fieldCls1] CL_PAREN (shift : 7)
+18. fieldCls1 -> ATTR SEP [fieldCls1] (reduce : 9)
+
+
+19. key -> [key] WORD (shift : 2)
+20. fieldCls -> [key] OP_PAREN fieldCls1 CL_PAREN (shift : 7)
+
+21. mapObj -> fieldCls OP_CURLY [mapObj1] CL_CURLY (shift : 4)
+22. mapObj1 -> fieldCls [mapObj1] (reduce : 6)
+*/

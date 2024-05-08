@@ -122,14 +122,14 @@ func TestParsing(t *testing.T) {
 	for _, branch := range tokenBranches {
 		err = TestParser.Parse(branch)
 		if err != nil {
-			results = append(results, hlp.HResult[*com.TokenStream]{Result: branch, Reason: err})
+			results = append(results, hlp.HResult[*com.TokenStream]{First: branch, Second: err})
 
 			continue
 		}
 
 		tmp, err := TestParser.GetParseTree()
 		if err != nil {
-			results = append(results, hlp.HResult[*com.TokenStream]{Result: branch, Reason: err})
+			results = append(results, hlp.HResult[*com.TokenStream]{First: branch, Second: err})
 
 			continue
 		}
@@ -139,8 +139,8 @@ func TestParsing(t *testing.T) {
 
 	if len(roots) == 0 {
 		for _, result := range results {
-			if result.Reason != nil {
-				t.Errorf("Failed to parse: %s", result.Reason.Error())
+			if result.First != nil {
+				t.Errorf("Failed to parse: %s", result.Second.Error())
 			}
 		}
 	}

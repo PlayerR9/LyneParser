@@ -2,15 +2,12 @@ package Lexer
 
 import (
 	"errors"
-	"fmt"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
-	tr "github.com/PlayerR9/LyneParser/PlayerR9/Tree"
+	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
-
-	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 
 	com "github.com/PlayerR9/LyneParser/Common"
 )
@@ -99,9 +96,6 @@ func (l *Lexer) processLeaves(source *com.ByteStream) tr.LeafProcessor[*helperTo
 	return func(data *helperToken) ([]*helperToken, error) {
 		nextAt := data.GetPos() + len(data.GetData())
 
-		// DEBUG:
-		fmt.Printf("Processing leaf at %d\n", nextAt)
-
 		if source.IsDone(nextAt, 1) {
 			data.SetStatus(TkComplete)
 
@@ -109,9 +103,6 @@ func (l *Lexer) processLeaves(source *com.ByteStream) tr.LeafProcessor[*helperTo
 		}
 
 		matches, err := source.MatchFrom(nextAt, l.productions)
-
-		// DEBUG:
-		fmt.Printf("Matches: %v\n", matches)
 
 		if err != nil {
 			data.SetStatus(TkError)
@@ -135,6 +126,10 @@ func (l *Lexer) processLeaves(source *com.ByteStream) tr.LeafProcessor[*helperTo
 	}
 }
 
+// canContinue returns true if the lexer can continue.
+//
+// Returns:
+//   - bool: True if the lexer can continue, false otherwise.
 func (l *Lexer) canContinue() bool {
 	for _, leaf := range l.root.GetLeaves() {
 		if leaf.Data.Status == TkIncomplete {
@@ -175,9 +170,6 @@ func (l *Lexer) Lex(source *com.ByteStream) error {
 		if err != nil {
 			return err
 		}
-
-		fmt.Println(ffs.FString(l.root))
-		fmt.Println()
 
 		for {
 			target := l.root.SearchNodes(FilterErrorLeaves)

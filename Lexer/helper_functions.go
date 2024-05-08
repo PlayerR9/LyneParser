@@ -3,7 +3,7 @@ package Lexer
 import (
 	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	tr "github.com/PlayerR9/LyneParser/PlayerR9/Tree"
+	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
 
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )

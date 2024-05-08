@@ -23,7 +23,7 @@ func (hd *HighlightedData) String() string {
 		if cell == nil {
 			builder.WriteRune(' ')
 		} else {
-			builder.WriteRune(cell.Content)
+			builder.WriteRune(cell.First)
 		}
 	}
 
@@ -71,7 +71,7 @@ func (hd *HighlightedData) FieldsLine() ([]*HighlightedData, *HighlightedData) {
 	for _, cell := range hd.data {
 		line.data = append(line.data, cell)
 
-		if cell.Content == '\n' {
+		if cell.First == '\n' {
 			result = append(result, line)
 
 			line = NewHighlightedData()

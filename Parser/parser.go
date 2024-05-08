@@ -12,8 +12,6 @@ import (
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
 
-/////////////////////////////////////////////////////////////
-
 // Parser is a parser that uses a stack to parse a stream of tokens.
 type Parser struct {
 	// stack represents the stack that the parser will use.
@@ -62,6 +60,8 @@ func NewParser(grammar *gr.Grammar) (*Parser, error) {
 
 	return p, nil
 }
+
+/////////////////////////////////////////////////////////////
 
 // Parse parses the input stream using the parser's decision function.
 //

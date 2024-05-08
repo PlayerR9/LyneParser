@@ -8,7 +8,7 @@ import (
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
-	intf "github.com/PlayerR9/MyGoLib/Units/Interfaces"
+	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 )
 
 // Actioner represents an action that the parser will take.

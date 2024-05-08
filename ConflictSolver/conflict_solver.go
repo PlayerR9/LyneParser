@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	intf "github.com/PlayerR9/LyneParser/PlayerR9/Common"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
+	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 
-	tr "github.com/PlayerR9/LyneParser/PlayerR9/Tree"
+	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
 )
 
 var GlobalDebugMode bool = true
@@ -30,7 +30,7 @@ type ConflictSolver struct {
 // Returns:
 //   - []string: A formatted string representation of the decision table.
 func (cs *ConflictSolver) FString(indentLevel int) []string {
-	indentation := ffs.NewIndentConfig(ffs.DefaultIndentation, indentLevel, true, false)
+	indentation := ffs.NewIndentConfig(ffs.DefaultIndentation, indentLevel, false)
 	indent := indentation.String()
 
 	result := make([]string, 0)
@@ -268,44 +268,6 @@ func (cs *ConflictSolver) FindConflicts() ([]*Helper, int) {
 	return nil, -1
 }
 
-/*
-
-func (cs *ConflictSolver) ricGenerateTreeRootedAt(h *Helper, seen map[*Helper]bool) (*tr.Node[*Helper], error) {
-	// 1. Get the 0th symbol of h.
-	rhs, err := h.GetRhsAt(0)
-	if err != nil {
-		return nil, NewErr0thRhsNotSet()
-	}
-
-	// 2. Set h as seen.
-	seen[h] = true
-
-	// 3. Get all the helpers that have the same LHS as rhs and have not been seen.
-	seenFilter := func(h *Helper) bool {
-		return !seen[h]
-	}
-
-	newHelpers := slext.SliceFilter(cs.GetElemsWithLhs(rhs), seenFilter)
-	if len(newHelpers) == 0 {
-		return nil, nil
-	}
-
-	root := tr.NewNode(h)
-
-	// 4. For each helper, generate the tree rooted at that helper.
-	for _, nh := range newHelpers {
-		subTree, err := cs.ricGenerateTreeRootedAt(nh, seen)
-		if err != nil {
-			return nil, NewErrHelper(nh, err)
-		}
-
-		root.AddChild(subTree)
-	}
-
-	return nil
-}
-*/
-
 type InfoStruct struct {
 	seen map[*Helper]bool
 }
@@ -342,38 +304,6 @@ func (cs *ConflictSolver) GenerateTreeRootedAt(h *Helper) (*tr.Tree[*Helper], er
 	}
 
 	return tree, nil
-}
-
-func (cs *ConflictSolver) ricCheckIfLookahead0(h *Helper) ([]*Helper, error) {
-	// 1. Take the 0th symbol of h.
-	rhs, err := h.GetRhsAt(0)
-	if err != nil {
-		return nil, NewErr0thRhsNotSet()
-	}
-
-	// 2. Get all the helpers that have the same LHS as rhs.
-	newHelpers := cs.GetElemsWithLhs(rhs)
-	if len(newHelpers) == 0 {
-		return nil, nil
-	}
-
-	// 3. For each helper, check if the 0th rhs is a terminal symbol (recursive).
-	solutions := make([]*Helper, 0)
-
-	for _, nh := range newHelpers {
-		results, err := cs.ricCheckIfLookahead0(nh)
-		if err != nil {
-			return solutions, NewErrHelper(nh, err)
-		}
-
-		if len(results) != 0 {
-			for _, r := range results {
-				solutions = append(solutions, append([]*Helper{nh}, r)...)
-			}
-		}
-	}
-
-	return solutions, nil
 }
 
 func (cs *ConflictSolver) CheckIfLookahead0(index int, h *Helper) ([]*Helper, error) {

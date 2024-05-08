@@ -49,7 +49,7 @@ func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) (cs.Actioner, 
 	fail := make([]hlp.HResult[cs.Actioner], 0)
 
 	for _, r := range results {
-		if r.Reason == nil {
+		if r.First == nil {
 			success = append(success, r)
 		} else {
 			fail = append(fail, r)
@@ -59,9 +59,9 @@ func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) (cs.Actioner, 
 	if len(success) == 0 {
 		// Return the most likely error
 		// As of now, we will return the first error
-		return nil, fail[0].Reason
+		return nil, fail[0].Second
 	} else if len(success) == 1 {
-		return success[0].Result, nil
+		return success[0].First, nil
 	}
 
 	// Get the longest match
@@ -70,7 +70,7 @@ func (dt *DecisionTable) Match(stack *ds.DoubleStack[gr.Tokener]) (cs.Actioner, 
 	finals := slext.FilterByPositiveWeight(weights)
 
 	if len(finals) == 1 {
-		return finals[0].Result, nil
+		return finals[0].First, nil
 	} else {
 		return nil, fmt.Errorf("ambiguous grammar")
 	}

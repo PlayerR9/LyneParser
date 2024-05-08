@@ -8,7 +8,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
-	intf "github.com/PlayerR9/MyGoLib/Units/Interfaces"
+	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 )
 
 // Item represents an item in a decision table.

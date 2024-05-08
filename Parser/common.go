@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
+
+	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 )
 
 /////////////////////////////////////////////////////////////
@@ -131,8 +133,20 @@ func TokenerString(root gr.Tokener) string {
 		indent string
 		root   gr.Tokener
 	}
+	func (h *helper) Copy() intf.Copier {
+
+	}
 
 	var builder strings.Builder
+
+	tree, err := tr.MakeTree(root, helper{
+
+	}, func(elem gr.Tokener, h helper) ([]helper, error) {
+		
+	})
+	if err != nil {
+		return ""
+	}
 
 	t := tr.NewTraverser(
 		func(f helper) error {

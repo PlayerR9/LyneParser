@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
-	intf "github.com/PlayerR9/MyGoLib/Units/Interfaces"
 )
 
 // Helper represents a helper in a decision table.

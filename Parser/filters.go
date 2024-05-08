@@ -16,5 +16,5 @@ import (
 //   - float64: The weight of the result.
 //   - bool: True if the weight is valid, false otherwise.
 func HResultWeightFunc(h hlp.HResult[cs.Actioner]) (float64, bool) {
-	return float64(h.Result.Size()), true
+	return float64(h.First.Size()), true
 }

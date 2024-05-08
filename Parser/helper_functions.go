@@ -69,9 +69,9 @@ func ParseIS(parser *Parser, branches []*com.TokenStream) ([]gr.NonLeafToken, er
 	// Filter out solutions with errors
 	// FIXME: Finish this
 	for i := 0; i < len(solutions); {
-		if solutions[i].Reason != nil {
+		if solutions[i].Second != nil {
 			if len(solutions) == 1 {
-				return nil, solutions[i].Reason
+				return nil, solutions[i].Second
 			}
 
 			solutions = append(solutions[:i], solutions[i+1:]...)
@@ -88,7 +88,7 @@ func ParseIS(parser *Parser, branches []*com.TokenStream) ([]gr.NonLeafToken, er
 	extracted := make([]gr.NonLeafToken, len(solutions))
 
 	for i, sol := range solutions {
-		extracted[i] = sol.Result
+		extracted[i] = sol.First
 	}
 
 	return extracted, nil

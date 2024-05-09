@@ -91,7 +91,7 @@ func (s *ByteStream) FromBytes(b []byte) *ByteStream {
 // Errors:
 //   - *ers.ErrInvalidParameter: The from index is out of bounds.
 //   - *ErrNoMatches: No matches are found.
-func (s *ByteStream) MatchFrom(from int, ps []*gr.RegProduction) (matches []gr.MatchedResult[*gr.LeafToken], reason error) {
+func (s *ByteStream) MatchFrom(from int, ps []*gr.RegProduction) (matches []*gr.MatchedResult[*gr.LeafToken], reason error) {
 	size := s.Size()
 
 	if from < 0 || from >= size {

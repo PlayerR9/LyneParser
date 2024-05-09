@@ -88,8 +88,8 @@ func (g *Grammar) String() string {
 //
 // Returns:
 //   - []MatchedResult: A slice of MatchedResult that match the input token.
-func (g *Grammar) RegexMatch(at int, b []byte) []MatchedResult[*LeafToken] {
-	matches := make([]MatchedResult[*LeafToken], 0)
+func (g *Grammar) RegexMatch(at int, b []byte) []*MatchedResult[*LeafToken] {
+	matches := make([]*MatchedResult[*LeafToken], 0)
 
 	for i, p := range g.Productions {
 		val, ok := p.(*RegProduction)
@@ -114,8 +114,8 @@ func (g *Grammar) RegexMatch(at int, b []byte) []MatchedResult[*LeafToken] {
 //
 // Returns:
 //   - []MatchedResult: A slice of MatchedResult that match the input token.
-func (g *Grammar) ProductionMatch(at int, stack *ds.DoubleStack[Tokener]) []MatchedResult[*NonLeafToken] {
-	matches := make([]MatchedResult[*NonLeafToken], 0)
+func (g *Grammar) ProductionMatch(at int, stack *ds.DoubleStack[Tokener]) []*MatchedResult[*NonLeafToken] {
+	matches := make([]*MatchedResult[*NonLeafToken], 0)
 
 	for i, p := range g.Productions {
 		val, ok := p.(*Production)

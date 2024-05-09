@@ -9,6 +9,14 @@ type MatchedResult[T Tokener] struct {
 	RuleIndex int
 }
 
+// GetMatch returns the matched token.
+//
+// Returns:
+//   - T: The matched token.
+func (mr *MatchedResult[T]) GetMatch() T {
+	return mr.Matched
+}
+
 // NewMatchResult is a constructor of MatchedResult.
 //
 // Parameters:
@@ -16,7 +24,7 @@ type MatchedResult[T Tokener] struct {
 //   - ruleIndex: The index of the production that matched.
 //
 // Returns:
-//   - MatchedResult: A new MatchedResult.
-func NewMatchResult[T Tokener](matched T, ruleIndex int) MatchedResult[T] {
-	return MatchedResult[T]{Matched: matched, RuleIndex: ruleIndex}
+//   - *MatchedResult: A new MatchedResult.
+func NewMatchResult[T Tokener](matched T, ruleIndex int) *MatchedResult[T] {
+	return &MatchedResult[T]{Matched: matched, RuleIndex: ruleIndex}
 }

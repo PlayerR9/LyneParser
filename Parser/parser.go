@@ -12,6 +12,8 @@ import (
 	slext "github.com/PlayerR9/LyneParser/PlayerR9"
 )
 
+/////////////////////////////////////////////////////////////
+
 // Parser is a parser that uses a stack to parse a stream of tokens.
 type Parser struct {
 	// evals is a list of evaluations that the parser will use.

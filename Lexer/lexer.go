@@ -1,27 +1,26 @@
 package Lexer
 
 import (
-	"errors"
-
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
-	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 
 	com "github.com/PlayerR9/LyneParser/Common"
+
+	teval "github.com/PlayerR9/LyneParser/TreeExplorer"
 )
 
 // Lexer is a lexer that uses a grammar to tokenize a string.
 type Lexer struct {
+	// te is the tree evaluator used by the lexer.
+	te *teval.TreeEvaluator[*gr.MatchedResult[*gr.LeafToken], *LexerMatcher, *gr.LeafToken]
+
 	// grammar is the grammar used by the lexer.
 	productions []*gr.RegProduction
 
 	// toSkip is a list of LHSs to skip.
 	toSkip []string
-
-	// root is the root node of the lexer.
-	root *tr.Tree[*helperToken]
 }
 
 // NewLexer creates a new lexer.
@@ -77,67 +76,17 @@ func NewLexer(grammar *gr.Grammar) (*Lexer, error) {
 	lex := &Lexer{
 		productions: grammar.GetRegProductions(),
 		toSkip:      grammar.LhsToSkip,
-		root:        nil,
 	}
 
 	if len(lex.productions) == 0 {
 		return lex, gr.NewErrNoProductionRulesFound()
 	}
 
+	lex.te = teval.NewTreeEvaluator[*gr.MatchedResult[*gr.LeafToken], *LexerMatcher, *gr.LeafToken](
+		lex.removeToSkipTokens(),
+	)
+
 	return lex, nil
-}
-
-// processLeaves processes the leaves in the lexer.
-//
-// Returns:
-//   - bool: True if all leaves are complete, false otherwise.
-//   - error: An error of type *ErrAllMatchesFailed if all matches failed.
-func (l *Lexer) processLeaves(source *com.ByteStream) tr.LeafProcessor[*helperToken] {
-	return func(data *helperToken) ([]*helperToken, error) {
-		nextAt := data.GetPos() + len(data.GetData())
-
-		if source.IsDone(nextAt, 1) {
-			data.SetStatus(TkComplete)
-
-			return nil, nil
-		}
-
-		matches, err := source.MatchFrom(nextAt, l.productions)
-
-		if err != nil {
-			data.SetStatus(TkError)
-
-			return nil, nil
-		}
-
-		// Get the longest match.
-		matches = getLongestMatches(matches)
-
-		children := make([]*helperToken, 0, len(matches))
-
-		for _, match := range matches {
-			ht := newHelperToken(match.Matched)
-			children = append(children, ht)
-		}
-
-		data.SetStatus(TkComplete)
-
-		return children, nil
-	}
-}
-
-// canContinue returns true if the lexer can continue.
-//
-// Returns:
-//   - bool: True if the lexer can continue, false otherwise.
-func (l *Lexer) canContinue() bool {
-	for _, leaf := range l.root.GetLeaves() {
-		if leaf.Data.Status == TkIncomplete {
-			return true
-		}
-	}
-
-	return false
 }
 
 // Lex is the main function of the lexer.
@@ -150,59 +99,14 @@ func (l *Lexer) canContinue() bool {
 //   - *ErrNoMatches: No matches are found in the source.
 //   - *ErrAllMatchesFailed: All matches failed.
 func (l *Lexer) Lex(source *com.ByteStream) error {
-	if source == nil || source.IsEmpty() {
-		return NewErrNoTokensToLex()
-	}
-
-	l.root = tr.NewTree(newHelperToken(gr.NewRootToken()))
-
-	matches, err := source.MatchFrom(0, l.productions)
+	matcher, err := NewLexerMatcher(source)
 	if err != nil {
-		return ers.NewErrAt(0, err)
+		return err
 	}
 
-	addMatchLeaves(l.root, matches)
+	matcher.productions = l.productions
 
-	l.root.Root().Data.SetStatus(TkComplete)
-
-	for {
-		err := l.root.ProcessLeaves(l.processLeaves(source))
-		if err != nil {
-			return err
-		}
-
-		for {
-			target := l.root.SearchNodes(FilterErrorLeaves)
-			if target == nil {
-				break
-			}
-
-			err = l.root.DeleteBranchContaining(target)
-			if err != nil {
-				return err
-			}
-		}
-
-		if l.root.Size() == 0 {
-			return NewErrAllMatchesFailed()
-		}
-
-		if !l.canContinue() {
-			break
-		}
-	}
-
-	for {
-		target := l.root.SearchNodes(FilterIncompleteLeaves)
-		if target == nil {
-			return nil
-		}
-
-		err = l.root.DeleteBranchContaining(target)
-		if err != nil {
-			return err
-		}
-	}
+	return l.te.Evaluate(matcher, gr.NewRootToken())
 }
 
 // GetTokens returns the tokens that have been lexed.
@@ -213,30 +117,19 @@ func (l *Lexer) Lex(source *com.ByteStream) error {
 // Returns:
 //   - result: The tokens that have been lexed.
 //   - reason: An error if the lexer has not been run yet.
-func (l *Lexer) GetTokens() (result []*com.TokenStream, reason error) {
-	if l.root == nil {
-		reason = errors.New("must call Lexer.Lex() first")
-		return
-	}
-
-	tokenBranches := l.root.SnakeTraversal()
-
-	branches, invalidTokIndex := filterInvalidBranches(tokenBranches)
-	if invalidTokIndex != -1 {
-		reason = ers.NewErrAt(invalidTokIndex, NewErrInvalidToken())
-	}
-
-	branches, err := l.removeToSkipTokens(branches)
+func (l *Lexer) GetTokens() ([]*com.TokenStream, error) {
+	branches, err := l.te.GetBranches()
 	if err != nil {
-		reason = err
-		return
+		return nil, err
 	}
+
+	var result []*com.TokenStream
 
 	for _, branch := range branches {
 		result = append(result, convertBranchToTokenStream(branch))
 	}
 
-	return
+	return result, nil
 }
 
 // removeToSkipTokens removes tokens that are marked as to skip in the grammar.
@@ -246,29 +139,34 @@ func (l *Lexer) GetTokens() (result []*com.TokenStream, reason error) {
 //
 // Returns:
 //   - []gr.TokenStream: The branches with the tokens removed.
-func (l *Lexer) removeToSkipTokens(branches [][]*helperToken) (newBranches [][]*helperToken, reason error) {
-	for _, branch := range branches {
-		if len(branch) != 0 {
-			newBranches = append(newBranches, branch[1:])
+func (l *Lexer) removeToSkipTokens() teval.FilterBranchesFunc[*gr.LeafToken] {
+	return func(branches [][]*teval.CurrentEval[*gr.LeafToken]) ([][]*teval.CurrentEval[*gr.LeafToken], error) {
+		var newBranches [][]*teval.CurrentEval[*gr.LeafToken]
+		var reason error
+
+		for _, branch := range branches {
+			if len(branch) != 0 {
+				newBranches = append(newBranches, branch[1:])
+			}
 		}
+
+		for _, toSkip := range l.toSkip {
+			newBranches = slext.SliceFilter(newBranches, FilterEmptyBranch)
+			if len(newBranches) == 0 {
+				reason = teval.NewErrAllMatchesFailed()
+
+				return newBranches, reason
+			}
+
+			filterTokenDifferentID := func(h *teval.CurrentEval[*gr.LeafToken]) bool {
+				return h.GetElem().ID != toSkip
+			}
+
+			for i := 0; i < len(newBranches); i++ {
+				newBranches[i] = slext.SliceFilter(newBranches[i], filterTokenDifferentID)
+			}
+		}
+
+		return newBranches, reason
 	}
-
-	for _, toSkip := range l.toSkip {
-		newBranches = slext.SliceFilter(newBranches, FilterEmptyBranch)
-		if len(newBranches) == 0 {
-			reason = NewErrAllMatchesFailed()
-
-			return
-		}
-
-		filterTokenDifferentID := func(h *helperToken) bool {
-			return h.GetID() != toSkip
-		}
-
-		for i := 0; i < len(newBranches); i++ {
-			newBranches[i] = slext.SliceFilter(newBranches[i], filterTokenDifferentID)
-		}
-	}
-
-	return
 }

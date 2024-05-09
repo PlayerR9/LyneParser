@@ -1,8 +1,6 @@
 package Parser
 
 import (
-	"errors"
-
 	com "github.com/PlayerR9/LyneParser/Common"
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
@@ -56,9 +54,18 @@ func NewCurrentEval() *CurrentEval {
 // Returns:
 //   - []*com.TokenTree: A slice of parse trees.
 //   - error: An error if the parse tree could not be retrieved.
+//
+// Errors:
+//   - *ers.ErrInvalidUsage: If Parse() has not been called.
+//   - *com.ErrCycleDetected: A cycle is detected in the token tree.
+//   - *ers.ErrInvalidParameter: The top of the stack is nil.
+//   - *gr.ErrUnknowToken: The root is not a known token.
 func (ce *CurrentEval) GetParseTree() ([]*com.TokenTree, error) {
 	if ce.stack.IsEmpty() {
-		return nil, errors.New("nothing was parsed. Use Parse() to parse the input stream")
+		return nil, ers.NewErrInvalidUsage(
+			NewErrNothingWasParsed(),
+			"Use Parse() to parse the input stream",
+		)
 	}
 
 	forest := make([]*com.TokenTree, 0)
@@ -121,6 +128,7 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 
 		top, err := ce.stack.Pop()
 		if err != nil {
+			ce.stack.Refuse()
 			return ers.NewErrAfter(lhs, ers.NewErrUnexpected(nil, value))
 		}
 
@@ -129,14 +137,21 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 		}
 
 		if top.GetID() != value {
+			ce.stack.Refuse()
 			return ers.NewErrAfter(lhs, ers.NewErrUnexpected(top, value))
 		}
 	}
 
 	data := ce.stack.GetExtracted()
+	ce.stack.Accept()
+
 	tok := gr.NewNonLeafToken(lhs, 0, data...)
 	tok.Lookahead = lookahead
-	ce.stack.Push(tok)
+
+	err := ce.stack.Push(tok)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -160,19 +175,13 @@ func (ce *CurrentEval) ActOnDecision(decision cs.Actioner, source *com.TokenStre
 	case *cs.ActReduce:
 		err := ce.reduce(decision.GetRule())
 		if err != nil {
-			ce.stack.Refuse()
 			return err
 		}
-
-		ce.stack.Accept()
 	case *cs.ActAccept:
 		err := ce.reduce(decision.GetRule())
 		if err != nil {
-			ce.stack.Refuse()
 			return err
 		}
-
-		ce.stack.Accept()
 
 		ce.isDone = true
 	default:
@@ -192,12 +201,6 @@ func (ce *CurrentEval) ActOnDecision(decision cs.Actioner, source *com.TokenStre
 //   - []*CurrentEval: A slice of current evaluations.
 //   - error: An error if the input stream could not be parsed.
 func (ce *CurrentEval) Parse(source *com.TokenStream, dt *cs.ConflictSolver) ([]*CurrentEval, error) {
-	if ce.stack.IsEmpty() {
-		ce.isDone = true
-
-		return []*CurrentEval{ce}, nil
-	}
-
 	decisions, err := dt.Match(ce.stack)
 	ce.stack.Refuse()
 

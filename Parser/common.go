@@ -8,6 +8,8 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
 
+/////////////////////////////////////////////////////////////
+
 // FullParse parses the input stream using the given grammar and decision
 // function. It is a convenience function intended for simple parsing tasks.
 //

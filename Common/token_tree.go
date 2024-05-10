@@ -150,3 +150,11 @@ func (tt *TokenTree) DebugString() string {
 
 	return builder.String()
 }
+
+// GetAllBranches returns all the branches of the token tree.
+//
+// Returns:
+//   - [][]gr.Tokener: All the branches of the token tree.
+func (tt *TokenTree) GetAllBranches() [][]gr.Tokener {
+	return tt.tree.SnakeTraversal()
+}

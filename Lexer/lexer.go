@@ -8,7 +8,7 @@ import (
 
 	com "github.com/PlayerR9/LyneParser/Common"
 
-	teval "github.com/PlayerR9/LyneParser/TreeExplorer"
+	teval "github.com/PlayerR9/MyGoLib/CustomData/TreeExplorer"
 )
 
 // Lexer is a lexer that uses a grammar to tokenize a string.

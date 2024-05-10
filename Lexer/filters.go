@@ -2,7 +2,7 @@ package Lexer
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	teval "github.com/PlayerR9/LyneParser/TreeExplorer"
+	teval "github.com/PlayerR9/MyGoLib/CustomData/TreeExplorer"
 )
 
 // MatchWeightFunc is a weight function that returns the length of the match.

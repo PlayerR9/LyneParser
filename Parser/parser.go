@@ -9,7 +9,7 @@ import (
 
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
-	slext "github.com/PlayerR9/LyneParser/PlayerR9"
+	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )
 
 /////////////////////////////////////////////////////////////

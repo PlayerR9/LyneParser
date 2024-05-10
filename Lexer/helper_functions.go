@@ -3,7 +3,7 @@ package Lexer
 import (
 	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	teval "github.com/PlayerR9/LyneParser/TreeExplorer"
+	teval "github.com/PlayerR9/MyGoLib/CustomData/TreeExplorer"
 )
 
 // SetEOFToken sets the end-of-file token in the token stream.

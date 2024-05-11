@@ -1,31 +1,70 @@
 package FrontierEvaluation
 
 import (
+	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )
 
 type EvalManyFunc[E, R any] func(E) ([]R, error)
 
-func FrontierEvaluation[T any](todo []T, accept slext.PredicateFilter[T], f EvalManyFunc[T, T]) ([]T, error) {
+func FrontierEvaluation[T any](todo []T, accept slext.PredicateFilter[T], f EvalManyFunc[T, T]) ([]hlp.HResult[T], bool) {
 	if len(todo) == 0 {
-		return nil, nil
-	}
+		// Nothing to do
+		return nil, true
+	} else if accept == nil {
+		// Nothing to accept
+		results := make([]hlp.HResult[T], 0, len(todo))
 
-	if accept == nil {
-		return nil, nil
+		for _, t := range todo {
+			results = append(results, hlp.NewHResult(t, NewErrNoAcceptance()))
+		}
+
+		return results, false
 	}
 
 	if f == nil {
-		solution, ok := slext.SFSeparateEarly(todo, accept)
+		solutions, ok := slext.SFSeparateEarly(todo, accept)
+
+		results := make([]hlp.HResult[T], 0, len(solutions))
+
 		if ok {
-			return solution, nil
+			for _, s := range solutions {
+				results = append(results, hlp.NewHResult(s, nil))
+			}
+		} else {
+			for _, s := range solutions {
+				results = append(results, hlp.NewHResult(s, NewErrNoAcceptance()))
+			}
 		}
 
-		return solution, nil //
+		return results, ok
 	}
 
+	results := make([]hlp.HResult[T], 0)
+
+	success, fail := slext.SFSeparate(todo, accept)
+	if len(success) > 0 {
+		for _, s := range success {
+			results = append(results, hlp.NewHResult(s, nil))
+		}
+	}
+
+	todo = fail
+
 	newTodo := make([]T, 0)
-	lastErrors := make([]error, 0)
+
+	for _, t := range todo {
+		tmp, err := f(t)
+		if err != nil {
+			results = append(results, hlp.NewHResult(t, err))
+		} else {
+			newTodo = append(newTodo, tmp...)
+		}
+	}
+
+	for _, t := range todo {
+		results, err := f(t)
+	}
 
 	for _, t := range todo {
 		ress, err := f(t)

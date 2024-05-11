@@ -26,7 +26,7 @@ func FilterTerminalLeaf(tn *tr.TreeNode[*Helper]) bool {
 // Returns:
 //   - float64: The weight of the result.
 //   - bool: True if the weight is valid, false otherwise.
-func HResultWeightFunc(h hlp.HResult[Actioner]) (float64, bool) {
+func HResultWeightFunc(h hlp.HResult[*Helper]) (float64, bool) {
 	return float64(h.First.Size()), true
 }
 

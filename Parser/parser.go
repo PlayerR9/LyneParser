@@ -12,10 +12,9 @@ import (
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 )
 
-/////////////////////////////////////////////////////////////
-
 // Parser is a parser that uses a stack to parse a stream of tokens.
 type Parser struct {
+
 	// evals is a list of evaluations that the parser will use.
 	evals []*CurrentEval
 
@@ -23,6 +22,8 @@ type Parser struct {
 	// the next action to take.
 	dt *cs.ConflictSolver
 }
+
+/////////////////////////////////////////////////////////////
 
 // NewParser creates a new parser with the given grammar.
 //
@@ -81,7 +82,14 @@ func (p *Parser) Parse(source *com.TokenStream) error {
 	done := slext.DoWhile(
 		todo,
 		func(eval *CurrentEval) bool { return eval.isDone },
-		func(eval *CurrentEval) ([]*CurrentEval, error) { return eval.Parse(source, p.dt) },
+		func(eval *CurrentEval) ([]*CurrentEval, error) {
+			sol, err := eval.Parse(source, p.dt)
+			if err != nil {
+				panic(err)
+			}
+
+			return sol, nil
+		},
 	)
 
 	if len(done) == 0 {

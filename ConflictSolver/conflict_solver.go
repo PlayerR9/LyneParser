@@ -460,7 +460,7 @@ func (cs *ConflictSolver) Init(symbol string) error {
 }
 
 func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]Actioner, error) {
-	top, err := stack.Pop()
+	top, err := stack.Peek()
 	if err != nil {
 		return nil, fmt.Errorf("no top token found")
 	}
@@ -474,54 +474,46 @@ func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]Actioner, 
 		return []Actioner{elems[0].Action}, nil
 	}
 
-	results := make([]hlp.HResult[Actioner], 0, len(elems))
+	// FIXME: Once MyGoLib is updated, we can use the new EvaluateFunc
+	results := make([]hlp.HResult[*Helper], 0, len(elems))
 
 	for _, elem := range elems {
-		err := elem.Action.Match(top, stack)
-		results = append(results, hlp.NewHResult(elem.Action, err))
+		res := hlp.EvaluateFunc(elem, func(h *Helper) (*Helper, error) {
+			// Pop the top token
+			_, err = stack.Pop()
+			if err != nil {
+				return nil, fmt.Errorf("no top token found")
+			}
 
-		// Refuse the stack
-		stack.Refuse()
+			return h, h.Match(top, stack)
+		})
 
-		// Pop the top token
-		stack.Pop()
+		results = append(results, res)
 	}
 
-	success := make([]hlp.HResult[Actioner], 0)
-	fail := make([]hlp.HResult[Actioner], 0)
-
-	for _, r := range results {
-		if r.First == nil {
-			success = append(success, r)
-		} else {
-			fail = append(fail, r)
-		}
-	}
-
-	if len(success) == 0 {
+	successOrFail, ok := hlp.FilterSuccessOrFail(results)
+	if !ok {
 		// Return the most likely error
 		// As of now, we will return the first error
-		return nil, fail[0].Second
-	} else if len(success) == 1 {
-		return []Actioner{success[0].First}, nil
+		return nil, successOrFail[0].Second
 	}
 
 	// Get the longest match
-	weights := slext.ApplyWeightFunc(success, HResultWeightFunc)
+	weights := slext.ApplyWeightFunc(successOrFail, HResultWeightFunc)
 
 	finals := slext.FilterByPositiveWeight(weights)
 
 	if len(finals) == 1 {
-		return []Actioner{finals[0].First}, nil
-	} else {
-		firsts := make([]Actioner, 0, len(finals))
-
-		for _, final := range finals {
-			firsts = append(firsts, final.First)
-		}
-
-		return firsts, NewErrAmbiguousGrammar()
+		return []Actioner{finals[0].First.GetAction()}, nil
 	}
+
+	firsts := make([]Actioner, 0, len(finals))
+
+	for _, final := range finals {
+		firsts = append(firsts, final.First.GetAction())
+	}
+
+	return firsts, nil
 }
 
 /*

@@ -8,8 +8,12 @@ import (
 	com "github.com/PlayerR9/LyneParser/Common"
 )
 
+// LexerMatcher is a struct that represents a lexer matcher.
 type LexerMatcher struct {
-	source      *com.ByteStream
+	// source is the source to match.
+	source *com.ByteStream
+
+	// productions is the list of productions to match.
 	productions []*gr.RegProduction
 }
 

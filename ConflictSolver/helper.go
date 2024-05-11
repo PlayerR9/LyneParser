@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 )
@@ -157,6 +158,42 @@ func (h *Helper) ReplaceRhsAt(index int, otherH *Helper) (*Helper, error) {
 	}
 
 	return newH, nil
+}
+
+// Match matches the top of the stack with the helper.
+//
+// Parameters:
+//   - top: The top of the stack.
+//   - stack: The stack.
+//
+// Returns:
+//   - error: An error if the match failed.
+//
+// Behaviors:
+//   - The stack is refused.
+func (h *Helper) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+	err := h.Action.Match(top, stack)
+
+	// Refuse the stack
+	stack.Refuse()
+
+	return err
+}
+
+// Size returns the size of the helper.
+//
+// Returns:
+//   - int: The size of the helper.
+func (h *Helper) Size() int {
+	return h.Action.Size()
+}
+
+// GetAction returns the action of the helper.
+//
+// Returns:
+//   - Actioner: The action of the helper.
+func (h *Helper) GetAction() Actioner {
+	return h.Action
 }
 
 /////////////////////////////////////////////////////////////

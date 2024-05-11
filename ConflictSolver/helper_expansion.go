@@ -162,6 +162,7 @@ func (et *ExpansionTree) Collapse() []string {
 
 /////////////////////////////////////
 
+/*
 func (cs *ConflictSolver) CheckIfLookahead0(index int, h *Helper) ([]*Helper, error) {
 	// 1. Take the next symbol of h
 	rhs, err := h.GetRhsAt(index + 1)
@@ -193,3 +194,5 @@ func (cs *ConflictSolver) CheckIfLookahead0(index int, h *Helper) ([]*Helper, er
 
 	return solutions, nil
 }
+
+*/

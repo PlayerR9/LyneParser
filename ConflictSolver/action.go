@@ -95,6 +95,47 @@ func (a *ActShift) AppendRhs(rhs string) {
 	a.Rhs = append(a.Rhs, rhs)
 }
 
+// Match matches the shift action with the top of the stack.
+//
+// Parameters:
+//   - top: The top of the stack.
+//   - stack: The stack.
+//
+// Returns:
+//   - error: An error if the action does not match the top of the stack.
+func (a *ActShift) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+	if a.Lookahead != nil {
+		lookahead := top.GetLookahead()
+
+		if lookahead == nil {
+			return ers.NewErrUnexpected(nil, *a.Lookahead)
+		} else if lookahead.ID != *a.Lookahead {
+			return ers.NewErrUnexpected(top.GetLookahead(), *a.Lookahead)
+		}
+	}
+
+	for _, rhs := range a.Rhs {
+		top, err := stack.Pop()
+		if err != nil {
+			return ers.NewErrUnexpected(nil, rhs)
+		}
+
+		if top.GetID() != rhs {
+			return ers.NewErrUnexpected(top, rhs)
+		}
+	}
+
+	return nil
+}
+
+// Size returns the size of the shift action.
+//
+// Returns:
+//   - int: The size of the shift action.
+func (a *ActShift) Size() int {
+	return len(a.Rhs)
+}
+
 // NewActShift creates a new shift action.
 //
 // Returns:
@@ -157,6 +198,37 @@ func (a *ActReduce) AppendRhs(rhs string) {
 	a.Rhs = append(a.Rhs, rhs)
 }
 
+// Match matches the reduce action with the top of the stack.
+//
+// Parameters:
+//   - top: The top of the stack.
+//   - stack: The stack.
+//
+// Returns:
+//   - error: An error if the action does not match the top of the stack.
+func (a *ActReduce) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+	for _, rhs := range a.Rhs {
+		top, err := stack.Pop()
+		if err != nil {
+			return ers.NewErrUnexpected(nil, rhs)
+		}
+
+		if top.GetID() != rhs {
+			return ers.NewErrUnexpected(top, rhs)
+		}
+	}
+
+	return nil
+}
+
+// Size returns the size of the reduce action.
+//
+// Returns:
+//   - int: The size of the reduce action.
+func (a *ActReduce) Size() int {
+	return len(a.Rhs)
+}
+
 // NewActReduce creates a new reduce action.
 //
 // Parameters:
@@ -173,6 +245,14 @@ func NewActReduce(rule *gr.Production) (*ActReduce, error) {
 	return &ActReduce{
 		Rule: rule,
 	}, nil
+}
+
+// GetRule returns the rule to reduce by.
+//
+// Returns:
+//   - *gr.Production: The rule to reduce by.
+func (a *ActReduce) GetRule() *gr.Production {
+	return a.Rule
 }
 
 // ActAccept represents an accept action.
@@ -218,6 +298,37 @@ func (a *ActAccept) AppendRhs(rhs string) {
 	a.Rhs = append(a.Rhs, rhs)
 }
 
+// Match matches the accept action with the top of the stack.
+//
+// Parameters:
+//   - top: The top of the stack.
+//   - stack: The stack.
+//
+// Returns:
+//   - error: An error if the action does not match the top of the stack.
+func (a *ActAccept) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+	for _, rhs := range a.Rhs {
+		top, err := stack.Pop()
+		if err != nil {
+			return ers.NewErrUnexpected(nil, rhs)
+		}
+
+		if top.GetID() != rhs {
+			return ers.NewErrUnexpected(top, rhs)
+		}
+	}
+
+	return nil
+}
+
+// Size returns the size of the accept action.
+//
+// Returns:
+//   - int: The size of the accept action.
+func (a *ActAccept) Size() int {
+	return len(a.Rhs)
+}
+
 // NewAcceptAction creates a new accept action.
 //
 // Parameters:
@@ -235,83 +346,6 @@ func NewAcceptAction(rule *gr.Production) (*ActAccept, error) {
 		Rule: rule,
 		Rhs:  make([]string, 0),
 	}, nil
-}
-
-/////////////////////////////////////////////////////////////
-
-func (a *ActShift) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
-	if a.Lookahead != nil {
-		lookahead := top.GetLookahead()
-
-		if lookahead == nil {
-			return ers.NewErrUnexpected(nil, *a.Lookahead)
-		} else if lookahead.ID != *a.Lookahead {
-			return ers.NewErrUnexpected(top.GetLookahead(), *a.Lookahead)
-		}
-	}
-
-	for _, rhs := range a.Rhs {
-		top, err := stack.Pop()
-		if err != nil {
-			return ers.NewErrUnexpected(nil, rhs)
-		}
-
-		if top.GetID() != rhs {
-			return ers.NewErrUnexpected(top, rhs)
-		}
-	}
-
-	return nil
-}
-
-func (a *ActShift) Size() int {
-	return len(a.Rhs)
-}
-
-func (a *ActReduce) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
-	for _, rhs := range a.Rhs {
-		top, err := stack.Pop()
-		if err != nil {
-			return ers.NewErrUnexpected(nil, rhs)
-		}
-
-		if top.GetID() != rhs {
-			return ers.NewErrUnexpected(top, rhs)
-		}
-	}
-
-	return nil
-}
-
-func (a *ActReduce) Size() int {
-	return len(a.Rhs)
-}
-
-// GetRule returns the rule to reduce by.
-//
-// Returns:
-//   - *gr.Production: The rule to reduce by.
-func (a *ActReduce) GetRule() *gr.Production {
-	return a.Rule
-}
-
-func (a *ActAccept) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
-	for _, rhs := range a.Rhs {
-		top, err := stack.Pop()
-		if err != nil {
-			return ers.NewErrUnexpected(nil, rhs)
-		}
-
-		if top.GetID() != rhs {
-			return ers.NewErrUnexpected(top, rhs)
-		}
-	}
-
-	return nil
-}
-
-func (a *ActAccept) Size() int {
-	return len(a.Rhs)
 }
 
 // GetRule returns the rule to reduce by.

@@ -15,13 +15,36 @@ type GrammarBuilder struct {
 	skipProductions []string
 }
 
+// AddRegProductions is a method of GrammarBuilder that adds a production to
+// the GrammarBuilder.
+//
+// Parameters:
+//   - ps: The productions to add to the GrammarBuilder.
+func (b *GrammarBuilder) AddRegProductions(ps ...*RegProduction) {
+	ps = slext.FilterNilValues(ps)
+	if len(ps) == 0 {
+		return
+	}
+
+	for _, p := range ps {
+		b.productions = append(b.productions, p)
+	}
+}
+
 // AddProductions is a method of GrammarBuilder that adds a production to
 // the GrammarBuilder.
 //
 // Parameters:
 //   - ps: The productions to add to the GrammarBuilder.
-func (b *GrammarBuilder) AddProductions(ps ...Productioner) {
-	b.productions = append(b.productions, slext.SliceFilter(ps, FilterNilProduction)...)
+func (b *GrammarBuilder) AddProductions(ps ...*Production) {
+	ps = slext.FilterNilValues(ps)
+	if len(ps) == 0 {
+		return
+	}
+
+	for _, p := range ps {
+		b.productions = append(b.productions, p)
+	}
 }
 
 // SetToSkip is a method of GrammarBuilder that sets the productions to skip

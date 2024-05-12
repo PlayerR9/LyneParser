@@ -13,24 +13,24 @@ var LexerGrammar *gr.Grammar = func() *gr.Grammar {
 	var builder gr.GrammarBuilder
 
 	// Fragments
-	builder.AddProductions(gr.NewRegProduction("WORD", `[a-zA-Z]+`))
+	builder.AddRegProductions(gr.NewRegProduction("WORD", `[a-zA-Z]+`))
 
 	// Literals
-	builder.AddProductions(gr.NewRegProduction("ATTR", `".*?"`))
+	builder.AddRegProductions(gr.NewRegProduction("ATTR", `".*?"`))
 
 	// Brackets
-	builder.AddProductions(gr.NewRegProduction("OP_PAREN", `\(`))
-	builder.AddProductions(gr.NewRegProduction("CL_PAREN", `\)`))
-	builder.AddProductions(gr.NewRegProduction("OP_SQUARE", `\[`))
-	builder.AddProductions(gr.NewRegProduction("CL_SQUARE", `\]`))
-	builder.AddProductions(gr.NewRegProduction("OP_CURLY", `\{`))
-	builder.AddProductions(gr.NewRegProduction("CL_CURLY", `\}`))
+	builder.AddRegProductions(gr.NewRegProduction("OP_PAREN", `\(`))
+	builder.AddRegProductions(gr.NewRegProduction("CL_PAREN", `\)`))
+	builder.AddRegProductions(gr.NewRegProduction("OP_SQUARE", `\[`))
+	builder.AddRegProductions(gr.NewRegProduction("CL_SQUARE", `\]`))
+	builder.AddRegProductions(gr.NewRegProduction("OP_CURLY", `\{`))
+	builder.AddRegProductions(gr.NewRegProduction("CL_CURLY", `\}`))
 
 	// Operators
-	builder.AddProductions(gr.NewRegProduction("SEP", `[+]`))
+	builder.AddRegProductions(gr.NewRegProduction("SEP", `[+]`))
 
 	// Whitespace
-	builder.AddProductions(gr.NewRegProduction("WS", `[ \t\r\n]+`))
+	builder.AddRegProductions(gr.NewRegProduction("WS", `[ \t\r\n]+`))
 
 	builder.SetToSkip("WS")
 

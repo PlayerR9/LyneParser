@@ -2,17 +2,6 @@ package Grammar
 
 import "slices"
 
-// FilterNilProduction filters out nil productions.
-//
-// Parameters:
-//   - p: The production to filter.
-//
-// Returns:
-//   - bool: True if the production is not nil, false otherwise.
-func FilterNilProduction(p Productioner) bool {
-	return p != nil
-}
-
 // FilterProductionsWithoutLHS filters out productions without the specified
 // left-hand side.
 //

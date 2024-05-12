@@ -2,7 +2,7 @@ module github.com/PlayerR9/LyneParser
 
 go 1.22.2
 
-require github.com/PlayerR9/MyGoLib v0.2.38
+require github.com/PlayerR9/MyGoLib v0.2.39
 
 require (
 	github.com/gdamore/encoding v1.0.1 // indirect

@@ -9,7 +9,7 @@ import (
 
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
-	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+	dw "github.com/PlayerR9/MyGoLib/Evaluations/DoWhile"
 )
 
 // Parser is a parser that uses a stack to parse a stream of tokens.
@@ -79,7 +79,7 @@ func (p *Parser) Parse(source *com.TokenStream) error {
 		return err
 	}
 
-	done := slext.DoWhile(
+	done := dw.DoWhile(
 		todo,
 		func(eval *CurrentEval) bool { return eval.isDone },
 		func(eval *CurrentEval) ([]*CurrentEval, error) {

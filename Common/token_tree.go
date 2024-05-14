@@ -125,7 +125,7 @@ func (tt *TokenTree) DebugString() string {
 	trav := tr.Traverse(
 		tt.tree,
 		tt.Info,
-		func(elem gr.Tokener, inf *TTInfo) error {
+		func(elem gr.Tokener, inf *TTInfo) (bool, error) {
 			builder.WriteString(strings.Repeat("   ", inf.depth[elem]))
 			builder.WriteString(elem.GetID())
 
@@ -139,7 +139,7 @@ func (tt *TokenTree) DebugString() string {
 
 			builder.WriteRune('\n')
 
-			return nil
+			return true, nil
 		},
 	)
 

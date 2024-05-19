@@ -11,7 +11,7 @@ import (
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 
 	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
-	cds "github.com/PlayerR9/MyGoLib/CustomData/Pair"
+	cds "github.com/PlayerR9/MyGoLib/Units/Pair"
 )
 
 var GlobalDebugMode bool = true

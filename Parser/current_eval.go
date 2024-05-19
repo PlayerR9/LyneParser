@@ -7,6 +7,7 @@ import (
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
+	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 
 	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
@@ -41,11 +42,19 @@ func (ce *CurrentEval) Copy() intf.Copier {
 // Returns:
 //   - *CurrentEval: A new current evaluation.
 func NewCurrentEval() *CurrentEval {
-	return &CurrentEval{
-		stack:        ds.NewDoubleLinkedStack[gr.Tokener](),
+	ce := &CurrentEval{
 		currentIndex: 0,
 		isDone:       false,
 	}
+
+	stack, err := ds.NewDoubleStack[gr.Tokener](Stacker.NewLinkedStack[gr.Tokener]())
+	if err != nil {
+		panic(err)
+	}
+
+	ce.stack = stack
+
+	return ce
 }
 
 // GetParseTree returns the parse tree that the parser has generated.

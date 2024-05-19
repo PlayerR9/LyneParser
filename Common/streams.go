@@ -6,7 +6,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
-	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
+	cds "github.com/PlayerR9/MyGoLib/Units/Stream"
 )
 
 // ByteStream is a stream of bytes that can be matched against production rules.

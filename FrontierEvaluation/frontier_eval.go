@@ -2,104 +2,84 @@ package FrontierEvaluation
 
 import (
 	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
-	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	uc "github.com/PlayerR9/MyGoLib/Units/Common"
 )
 
-type EvalManyFunc[E, R any] func(E) ([]R, error)
+// Accepter is an interface that represents an accepter.
+type Accepter interface {
+	// Accept returns true if the accepter accepts the element.
+	//
+	// Returns:
+	//   - bool: True if the accepter accepts the element, false otherwise.
+	Accept() bool
+}
 
-func FrontierEvaluation[T any](todo []T, accept slext.PredicateFilter[T], f EvalManyFunc[T, T]) ([]hlp.HResult[T], bool) {
-	if len(todo) == 0 {
-		// Nothing to do
-		return nil, true
-	} else if accept == nil {
-		// Nothing to accept
-		results := make([]hlp.HResult[T], 0, len(todo))
-
-		for _, t := range todo {
-			results = append(results, hlp.NewHResult(t, NewErrNoAcceptance()))
-		}
-
-		return results, false
+// Evaluate is the main function of the tree evaluator.
+//
+// Parameters:
+//   - source: The source to evaluate.
+//   - root: The root of the tree evaluator.
+//
+// Returns:
+//   - error: An error if lexing fails.
+//
+// Errors:
+//   - *ErrEmptyInput: The source is empty.
+//   - *ers.ErrAt: An error occurred at a specific index.
+//   - *ErrAllMatchesFailed: All matches failed.
+func FrontierEvaluate[T Accepter](elem T, matcher uc.EvalManyFunc[T, T]) ([]T, error) {
+	if matcher == nil {
+		return nil, nil
+	} else if elem.Accept() {
+		return []T{elem}, nil
 	}
 
-	if f == nil {
-		solutions, ok := slext.SFSeparateEarly(todo, accept)
+	solutions := make([]hlp.HResult[T], 0)
 
-		results := make([]hlp.HResult[T], 0, len(solutions))
+	S := Stacker.NewArrayStack(elem)
 
-		if ok {
-			for _, s := range solutions {
-				results = append(results, hlp.NewHResult(s, nil))
-			}
-		} else {
-			for _, s := range solutions {
-				results = append(results, hlp.NewHResult(s, NewErrNoAcceptance()))
-			}
-		}
-
-		return results, ok
-	}
-
-	results := make([]hlp.HResult[T], 0)
-
-	success, fail := slext.SFSeparate(todo, accept)
-	if len(success) > 0 {
-		for _, s := range success {
-			results = append(results, hlp.NewHResult(s, nil))
-		}
-	}
-
-	todo = fail
-
-	newTodo := make([]T, 0)
-
-	for _, t := range todo {
-		tmp, err := f(t)
+	for {
+		elem, err := S.Pop()
 		if err != nil {
-			results = append(results, hlp.NewHResult(t, err))
-		} else {
-			newTodo = append(newTodo, tmp...)
-		}
-	}
-
-	for _, t := range todo {
-		results, err := f(t)
-	}
-
-	for _, t := range todo {
-		ress, err := f(t)
-		if err != nil {
-			lastErrors = append(lastErrors, err)
-		} else {
-			newTodo = append(newTodo, ress...)
-		}
-	}
-
-	done := make([]T, 0)
-
-	for len(todo) > 0 {
-		newElem := make([]T, 0)
-
-		s1, s2 := slext.SFSeparate(todo, accept)
-		if len(s1) > 0 {
-			done = append(done, s1...)
-		}
-
-		if len(s2) == 0 {
 			break
 		}
 
-		for _, elem := range s2 {
-			others, err := f(elem)
-			if err != nil {
-				continue
-			}
+		nexts, err := matcher(elem)
+		if err != nil {
+			solutions = append(solutions, hlp.NewHResult(elem, err))
 
-			newElem = append(newElem, others...)
+			continue
 		}
 
-		todo = newElem
+		for _, next := range nexts {
+			if next.Accept() {
+				solutions = append(solutions, hlp.NewHResult(next, nil))
+
+				continue
+			} else {
+				err := S.Push(next)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
 	}
 
-	return done, nil
+	solutions, ok := hlp.FilterSuccessOrFail(solutions)
+	if !ok {
+		// Determine the most likely error.
+		// As of now, we will just return the first error.
+		return nil, solutions[0].Second
+	}
+
+	// TODO: Fix once the MyGoLib is updated.
+
+	result := make([]T, 0, len(solutions))
+
+	for _, solution := range solutions {
+		result = append(result, solution.First)
+	}
+
+	return result, nil
 }

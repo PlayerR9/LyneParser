@@ -37,6 +37,14 @@ func (ce *CurrentEval) Copy() intf.Copier {
 	}
 }
 
+// Accept returns true if the current evaluation has accepted the input stream.
+//
+// Returns:
+//   - bool: True if the current evaluation has accepted the input stream.
+func (ce *CurrentEval) Accept() bool {
+	return ce.isDone
+}
+
 // NewCurrentEval creates a new current evaluation.
 //
 // Returns:
@@ -47,7 +55,7 @@ func NewCurrentEval() *CurrentEval {
 		isDone:       false,
 	}
 
-	stack, err := ds.NewDoubleStack[gr.Tokener](Stacker.NewLinkedStack[gr.Tokener]())
+	stack, err := ds.NewDoubleStack(Stacker.NewLinkedStack[gr.Tokener]())
 	if err != nil {
 		panic(err)
 	}

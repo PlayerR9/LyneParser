@@ -9,7 +9,7 @@ import (
 
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
-	dw "github.com/PlayerR9/MyGoLib/Evaluations/DoWhile"
+	feval "github.com/PlayerR9/LyneParser/FrontierEvaluation"
 )
 
 // Parser is a parser that uses a stack to parse a stream of tokens.
@@ -72,31 +72,25 @@ func (p *Parser) Parse(source *com.TokenStream) error {
 		return errors.New("no grammar was set")
 	}
 
-	todo := []*CurrentEval{NewCurrentEval()}
+	ceRoot := NewCurrentEval()
 
-	err := todo[0].shift(source)
+	err := ceRoot.shift(source)
 	if err != nil {
 		return err
 	}
 
-	done := dw.DoWhile(
-		todo,
-		func(eval *CurrentEval) bool { return eval.isDone },
-		func(eval *CurrentEval) ([]*CurrentEval, error) {
-			sol, err := eval.Parse(source, p.dt)
-			if err != nil {
-				panic(err)
-			}
+	results, err := feval.FrontierEvaluate(ceRoot, func(ce *CurrentEval) ([]*CurrentEval, error) {
+		return ce.Parse(source, p.dt)
+	})
+	if err != nil {
+		return err
+	}
 
-			return sol, nil
-		},
-	)
-
-	if len(done) == 0 {
+	if len(results) == 0 {
 		return errors.New("no parse trees were found")
 	}
 
-	p.evals = done
+	p.evals = results
 
 	return nil
 }

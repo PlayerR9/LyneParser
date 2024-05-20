@@ -16,8 +16,8 @@ import (
 //   - map[string][]*Helper: The elements in the decision table with conflicts solved.
 //   - error: An error if the operation failed.
 func SolveConflicts(symbols []string, rules []*gr.Production) (*ConflictSolver, error) {
-	if err := ers.NewErrEmpty(rules); err != nil {
-		return nil, ers.NewErrInvalidParameter("rules", err)
+	if len(rules) == 0 {
+		return nil, ers.NewErrInvalidParameter("rules", ers.NewErrEmpty(rules))
 	}
 
 	cs, err := NewConflictSolver(symbols, rules)

@@ -6,7 +6,7 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lx "github.com/PlayerR9/LyneParser/Lexer"
-	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
+	hlp "github.com/PlayerR9/MyGoLib/Utility/Helpers"
 
 	com "github.com/PlayerR9/LyneParser/Common"
 )
@@ -117,21 +117,21 @@ var TestParser *Parser = func() *Parser {
 }()
 
 func TestParsing(t *testing.T) {
-	results := make([]hlp.HResult[*com.TokenStream], 0)
+	results := make([]*hlp.SimpleHelper[*com.TokenStream], 0)
 
 	forest := make([]*com.TokenTree, 0)
 
 	for _, branch := range LexedContents {
 		err := TestParser.Parse(branch)
 		if err != nil {
-			results = append(results, hlp.HResult[*com.TokenStream]{First: branch, Second: err})
+			results = append(results, hlp.NewSimpleHelper(branch, err))
 
 			continue
 		}
 
 		tmp, err := TestParser.GetParseTree()
 		if err != nil {
-			results = append(results, hlp.HResult[*com.TokenStream]{First: branch, Second: err})
+			results = append(results, hlp.NewSimpleHelper(branch, err))
 
 			continue
 		}
@@ -141,8 +141,10 @@ func TestParsing(t *testing.T) {
 
 	if len(forest) == 0 {
 		for _, result := range results {
-			if result.First != nil {
-				fmt.Printf("Failed to parse: %s\n", result.Second.Error())
+			res := result.GetData()
+
+			if res.First != nil {
+				fmt.Printf("Failed to parse: %s\n", res.Second.Error())
 			}
 		}
 

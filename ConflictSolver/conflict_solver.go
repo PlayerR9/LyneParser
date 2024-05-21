@@ -10,8 +10,8 @@ import (
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
 
-	hlp "github.com/PlayerR9/MyGoLib/CustomData/Helpers"
 	cds "github.com/PlayerR9/MyGoLib/Units/Pair"
+	hlp "github.com/PlayerR9/MyGoLib/Utility/Helpers"
 )
 
 var GlobalDebugMode bool = true
@@ -475,23 +475,21 @@ func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]Actioner, 
 	}
 
 	// FIXME: Once MyGoLib is updated, we can use the new EvaluateFunc
-	results := make([]hlp.HResult[*Helper], 0, len(elems))
+	results := make([]*hlp.SimpleHelper[*Helper], 0, len(elems))
 
 	for _, elem := range elems {
-		res := hlp.EvaluateFunc(elem, func(h *Helper) (*Helper, error) {
-			// Pop the top token
-			_, err = stack.Pop()
-			if err != nil {
-				return nil, fmt.Errorf("no top token found")
-			}
+		// Pop the top token
+		_, err = stack.Pop()
+		if err != nil {
+			return nil, fmt.Errorf("no top token found")
+		}
 
-			return h, h.Match(top, stack)
-		})
+		h := hlp.NewSimpleHelper(elem, elem.Match(top, stack))
 
-		results = append(results, res)
+		results = append(results, h)
 	}
 
-	successOrFail, ok := hlp.FilterSuccessOrFail(results)
+	successOrFail, ok := hlp.MaxSuccessOrFail(results)
 	if !ok {
 		// Return the most likely error
 		// As of now, we will return the first error
@@ -499,17 +497,13 @@ func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]Actioner, 
 	}
 
 	// Get the longest match
-	weights := slext.ApplyWeightFunc(successOrFail, HResultWeightFunc)
-
-	finals := slext.FilterByPositiveWeight(weights)
-
-	if len(finals) == 1 {
-		return []Actioner{finals[0].First.GetAction()}, nil
+	if len(successOrFail) == 1 {
+		return []Actioner{successOrFail[0].First.GetAction()}, nil
 	}
 
-	firsts := make([]Actioner, 0, len(finals))
+	firsts := make([]Actioner, 0, len(successOrFail))
 
-	for _, final := range finals {
+	for _, final := range successOrFail {
 		firsts = append(firsts, final.First.GetAction())
 	}
 

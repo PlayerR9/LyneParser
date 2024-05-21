@@ -9,11 +9,13 @@ import (
 
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
-	feval "github.com/PlayerR9/LyneParser/FrontierEvaluation"
+	feval "github.com/PlayerR9/MyGoLib/Evaluations/Slices"
 )
 
 // Parser is a parser that uses a stack to parse a stream of tokens.
 type Parser struct {
+	// evaluator is the evaluator that the parser will use to evaluate the parse trees.
+	evaluator *feval.FrontierEvaluator[*CurrentEval]
 
 	// evals is a list of evaluations that the parser will use.
 	evals []*CurrentEval
@@ -79,9 +81,13 @@ func (p *Parser) Parse(source *com.TokenStream) error {
 		return err
 	}
 
-	results, err := feval.FrontierEvaluate(ceRoot, func(ce *CurrentEval) ([]*CurrentEval, error) {
+	p.evaluator = feval.NewFrontierEvaluator(func(ce *CurrentEval) ([]*CurrentEval, error) {
 		return ce.Parse(source, p.dt)
 	})
+
+	p.evaluator.Evaluate(ceRoot)
+
+	results, err := p.evaluator.GetResults()
 	if err != nil {
 		return err
 	}

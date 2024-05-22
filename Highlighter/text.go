@@ -1,37 +1,52 @@
 package Highlighter
 
 import (
-	cdd "github.com/PlayerR9/MyGoLib/ComplexData/Display/Table"
+	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 	"github.com/gdamore/tcell"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
 
+// Texter is a text.
 type Texter interface {
 }
 
-type ErrorText struct {
+// NormalText is a highlighted text.
+type NormalText struct {
 	// data is the data of the highlighted data.
 	data []rune
+
+	// style is the style to apply.
+	style tcell.Style
 }
 
-// NewErrorText creates a new error text.
+// NewNormalText creates a new highlighted data.
 //
 // Parameters:
-//   - bytes: The bytes to create the error text from.
+//   - data: The data to create the highlighted data from.
+//   - style: The style to apply.
 //
 // Returns:
-//   - *ErrorText: The new error text.
-func NewErrorText(bytes []byte) *ErrorText {
-	runes := make([]rune, 0, len(bytes))
+//   - *NormalText: The new highlighted data.
+func NewNormalText(data []byte, style tcell.Style) *NormalText {
+	runes := make([]rune, 0, len(data))
 
-	for _, b := range bytes {
+	for _, b := range data {
 		runes = append(runes, rune(b))
 	}
 
-	return &ErrorText{
-		data: runes,
+	return &NormalText{
+		data:  runes,
+		style: style,
 	}
+}
+
+// Runes returns the runes of the text.
+//
+// Returns:
+//   - []rune: The runes of the text.
+func (hd *NormalText) Runes() []rune {
+	return hd.data
 }
 
 // ValidText is a highlighted text.
@@ -47,12 +62,21 @@ type ValidText struct {
 //
 // Returns:
 //   - *ValidText: The new highlighted data.
-func NewValidText(tokens []*gr.LeafToken) *ValidText {
+//   - error: An error of type *ers.ErrInvalidParameter if the tokens are empty.
+func NewValidText(tokens []*gr.LeafToken) (*ValidText, error) {
+	if len(tokens) == 0 {
+		return nil, ers.NewErrInvalidParameter(
+			"tokens",
+			ers.NewErrEmpty(tokens),
+		)
+	}
+
 	return &ValidText{
 		data: tokens,
-	}
+	}, nil
 }
 
+/*
 // Draw is a method of cdd.TableDrawer that draws the unit to the table at the given x and y
 // coordinates.
 //
@@ -118,7 +142,7 @@ func (hd *ValidText) Append(str string, style tcell.Style) {
 
 /////////////////////////
 
-/*
+
 func (hd *Text) String() string {
 	if hd == nil || len(hd.data) == 0 {
 		return ""

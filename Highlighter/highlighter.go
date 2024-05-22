@@ -109,7 +109,12 @@ func (h *Highlighter) Apply(source *com.ByteStream) {
 
 		// Find the most ideal token stream to use
 		// As of now, we will use the first token stream
-		h.data.Add(NewValidText(tokens[0].GetItems()))
+		txt, err := NewValidText(tokens[0].GetItems())
+		if err != nil {
+			panic(err)
+		}
+
+		h.data.Add(txt)
 
 		if !hasError {
 			break
@@ -126,13 +131,13 @@ func (h *Highlighter) Apply(source *com.ByteStream) {
 		indexOfWS := h.extractErrorSection(source, firstInvalid)
 		if indexOfWS == -1 {
 			// Anything else is an error
-			h.data.Add(NewErrorText(bytes[firstInvalid:]))
+			h.data.Add(NewNormalText(bytes[firstInvalid:], h.errorStyle))
 
 			return
 		}
 
 		// Extract the error section
-		h.data.Add(NewErrorText(bytes[firstInvalid:indexOfWS]))
+		h.data.Add(NewNormalText(bytes[firstInvalid:indexOfWS], h.errorStyle))
 
 		// Create a new token stream for the rest of the data
 		source = com.NewSourceStream(bytes[indexOfWS:])
@@ -159,7 +164,7 @@ func (h *Highlighter) apply(stream *com.TokenStream, source []byte) error {
 		nextAtToken := token.At
 
 		if atSource < nextAtToken {
-			h.data.Append(string(source[atSource:nextAtToken]), h.defaultStyle)
+			h.data.Add(NewNormalText(source[atSource:nextAtToken], h.defaultStyle))
 			atSource = nextAtToken
 		}
 
@@ -168,18 +173,22 @@ func (h *Highlighter) apply(stream *com.TokenStream, source []byte) error {
 			style = h.defaultStyle
 		}
 
-		h.data.Append(token.Data, style)
+		h.data.Add(NewNormalText([]byte(token.Data), style))
 		atSource += len(token.Data)
 	}
 
 	return nil
 }
 
+/*
+
 // GetHighlight returns the highlighted data.
 //
 // Returns:
 //   - *HighlightedData: The highlighted data.
 func (h *Highlighter) GetHighlight() *ValidText {
+
+
 	if h.data == nil {
 		h.data = NewText()
 	}
@@ -187,7 +196,7 @@ func (h *Highlighter) GetHighlight() *ValidText {
 	return h.data
 }
 
-/*
+
 
 // FormatSyntaxError formats a syntax error in the data.
 // The function returns a string with the faulty line and a caret pointing to the invalid token.

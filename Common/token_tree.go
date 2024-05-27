@@ -1,9 +1,11 @@
 package Common
 
 import (
+	"fmt"
 	"strings"
 
-	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
+	trt "github.com/PlayerR9/MyGoLib/TreeLike/Traversor"
+	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
 
@@ -16,11 +18,21 @@ type TTInfo struct {
 	depth map[gr.Tokener]int
 }
 
+// Equals implements Common.Objecter.
+func (tti *TTInfo) Equals(other intf.Objecter) bool {
+	panic("unimplemented")
+}
+
+// String implements Common.Objecter.
+func (tti *TTInfo) String() string {
+	panic("unimplemented")
+}
+
 // Copy creates a copy of the TTInfo.
 //
 // Returns:
 //   - intf.Copier: A copy of the TTInfo.
-func (tti *TTInfo) Copy() intf.Copier {
+func (tti *TTInfo) Copy() intf.Objecter {
 	ttiCopy := &TTInfo{
 		depth: make(map[gr.Tokener]int),
 	}
@@ -57,6 +69,42 @@ func NewTTInfo(root gr.Tokener) (*TTInfo, error) {
 	return info, nil
 }
 
+// SetDepth sets the depth of the tokener.
+//
+// Parameters:
+//   - tokener: The tokener to set the depth of.
+//   - depth: The depth to set.
+//
+// Returns:
+//   - bool: True if the depth was set. False if the tokener already has a depth.
+func (tti *TTInfo) SetDepth(tokener gr.Tokener, depth int) bool {
+	_, ok := tti.depth[tokener]
+	if ok {
+		return false
+	}
+
+	tti.depth[tokener] = depth
+
+	return true
+}
+
+// GetDepth gets the depth of the tokener.
+//
+// Parameters:
+//   - tokener: The tokener to get the depth of.
+//
+// Returns:
+//   - int: The depth of the tokener.
+//   - bool: True if the depth was found. False if the tokener does not have a depth.
+func (tti *TTInfo) GetDepth(tokener gr.Tokener) (int, bool) {
+	depth, ok := tti.depth[tokener]
+	if !ok {
+		return 0, false
+	}
+
+	return depth, true
+}
+
 // TokenTree is a tree of tokens.
 type TokenTree struct {
 	// tree is the tree of tokens.
@@ -85,18 +133,21 @@ func NewTokenTree(root gr.Tokener) (*TokenTree, error) {
 		return nil, err
 	}
 
-	nextsFunc := func(elem gr.Tokener, h *TTInfo) ([]gr.Tokener, error) {
+	nextsFunc := func(elem gr.Tokener, h intf.Objecter) ([]gr.Tokener, error) {
+		hInfo, ok := h.(*TTInfo)
+		if !ok {
+			return nil, fmt.Errorf("invalid type: %T", h)
+		}
+
 		switch elem := elem.(type) {
 		case *gr.LeafToken:
 			return nil, nil
 		case *gr.NonLeafToken:
 			for _, child := range elem.Data {
-				_, ok := h.depth[child]
-				if ok {
+				ok := hInfo.SetDepth(child, hInfo.depth[elem]+1)
+				if !ok {
 					return nil, NewErrCycleDetected()
 				}
-
-				h.depth[child] = h.depth[elem] + 1
 			}
 
 			return elem.Data, nil
@@ -105,12 +156,20 @@ func NewTokenTree(root gr.Tokener) (*TokenTree, error) {
 		}
 	}
 
-	tree, err := tr.MakeTree(root, treeInfo, nextsFunc)
+	var builder trt.Builder[gr.Tokener]
+
+	builder.SetNextFunc(nextsFunc)
+	builder.SetInfo(treeInfo)
+
+	tree, err := builder.Build(root)
+	if err != nil {
+		return nil, err
+	}
 
 	return &TokenTree{
 		tree: tree,
 		Info: treeInfo,
-	}, err
+	}, nil
 }
 
 // DebugString returns a string representation of the token tree.
@@ -122,11 +181,21 @@ func NewTokenTree(root gr.Tokener) (*TokenTree, error) {
 func (tt *TokenTree) DebugString() string {
 	var builder strings.Builder
 
-	trav := tr.Traverse(
+	err := trt.DFS(
 		tt.tree,
 		tt.Info,
-		func(elem gr.Tokener, inf *TTInfo) (bool, error) {
-			builder.WriteString(strings.Repeat("   ", inf.depth[elem]))
+		func(elem gr.Tokener, inf intf.Objecter) (bool, error) {
+			hInfo, ok := inf.(*TTInfo)
+			if !ok {
+				return false, fmt.Errorf("invalid type: %T", inf)
+			}
+
+			depth, ok := hInfo.GetDepth(elem)
+			if !ok {
+				return false, fmt.Errorf("depth not found for: %v", elem)
+			}
+
+			builder.WriteString(strings.Repeat("   ", depth))
 			builder.WriteString(elem.GetID())
 
 			switch root := elem.(type) {
@@ -142,8 +211,6 @@ func (tt *TokenTree) DebugString() string {
 			return true, nil
 		},
 	)
-
-	err := trav.DFS()
 	if err != nil {
 		panic(err)
 	}

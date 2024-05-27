@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 )
 
 var ParserGrammar *gr.Grammar = func() *gr.Grammar {
@@ -57,8 +58,20 @@ func TestAmbiguousShifts(t *testing.T) {
 	}
 
 	// DEBUG: Display the decision table before solving ambiguous shifts.
-	for _, line := range cs.FString(0) {
-		fmt.Println(line)
+	printer := ffs.NewPrinter(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)))
+
+	err = ffs.Apply(printer, cs)
+	if err != nil {
+		t.Fatalf("ffs.Apply() returned an error: %s", err.Error())
+	}
+
+	pages := ffs.Stringfy(printer.GetPages())
+
+	for _, page := range pages {
+		for _, section := range page {
+			fmt.Println(section)
+		}
+		fmt.Println()
 	}
 	fmt.Println()
 
@@ -68,8 +81,20 @@ func TestAmbiguousShifts(t *testing.T) {
 	}
 
 	// DEBUG: Display the decision table after solving ambiguous shifts.
-	for _, line := range cs.FString(0) {
-		fmt.Println(line)
+	printer = ffs.NewPrinter(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)))
+
+	err = ffs.Apply(printer, cs)
+	if err != nil {
+		t.Fatalf("ffs.Apply() returned an error: %s", err.Error())
+	}
+
+	pages = ffs.Stringfy(printer.GetPages())
+
+	for _, page := range pages {
+		for _, section := range page {
+			fmt.Println(section)
+		}
+		fmt.Println()
 	}
 	fmt.Println()
 }
@@ -88,8 +113,20 @@ func TestConflictSolver(t *testing.T) {
 	}
 
 	// DEBUG: Display the decision table before solving conflicts.
-	for _, line := range cs.FString(0) {
-		fmt.Println(line)
+	printer := ffs.NewPrinter(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)))
+
+	err = ffs.Apply(printer, cs)
+	if err != nil {
+		t.Fatalf("ffs.Apply() returned an error: %s", err.Error())
+	}
+
+	pages := ffs.Stringfy(printer.GetPages())
+
+	for _, page := range pages {
+		for _, section := range page {
+			fmt.Println(section)
+		}
+		fmt.Println()
 	}
 	fmt.Println()
 
@@ -99,8 +136,20 @@ func TestConflictSolver(t *testing.T) {
 	}
 
 	// DEBUG: Display the decision table after solving conflicts.
-	for _, line := range cs.FString(0) {
-		fmt.Println(line)
+	printer = ffs.NewPrinter(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)))
+
+	err = ffs.Apply(printer, cs)
+	if err != nil {
+		t.Fatalf("ffs.Apply() returned an error: %s", err.Error())
+	}
+
+	pages = ffs.Stringfy(printer.GetPages())
+
+	for _, page := range pages {
+		for _, section := range page {
+			fmt.Println(section)
+		}
+		fmt.Println()
 	}
 	fmt.Println()
 

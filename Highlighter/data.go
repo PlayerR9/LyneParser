@@ -3,7 +3,7 @@ package Highlighter
 import (
 	"fmt"
 
-	cdd "github.com/PlayerR9/MyGoLib/ComplexData/Display/Table"
+	cdd "github.com/PlayerR9/MyGoLib/Display/Table"
 	"github.com/gdamore/tcell"
 
 	p9 "github.com/PlayerR9/LyneParser/PlayerR9"

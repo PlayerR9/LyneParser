@@ -6,28 +6,17 @@ import (
 	"slices"
 	"strings"
 
-	itf "github.com/PlayerR9/MyGoLib/ListLike/Iterator"
 	itff "github.com/PlayerR9/MyGoLib/Units/Common"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+	itf "github.com/PlayerR9/MyGoLib/Units/Iterator"
 
-	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+	slext "github.com/PlayerR9/MyGoLib/Units/Slices"
 
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 )
 
 // Productioner is an interface that defines methods for a production in a grammar.
 type Productioner interface {
-	// Equals returns whether the production is equal to another production.
-	// Two productions are equal if their left-hand sides are equal and their
-	// right-hand sides are equal.
-	//
-	// Parameters:
-	//   - other: The other production to compare to.
-	//
-	// Returns:
-	//   - bool: Whether the production is equal to the other production.
-	Equals(other Productioner) bool
-
 	// GetLhs returns the left-hand side of the production.
 	//
 	// Returns:
@@ -43,7 +32,7 @@ type Productioner interface {
 	GetSymbols() []string
 
 	fmt.Stringer
-	itff.Copier
+	itff.Objecter
 }
 
 // Production represents a production in a grammar.
@@ -85,13 +74,17 @@ func (p *Production) String() string {
 //
 // Returns:
 //   - bool: Whether the production is equal to the other production.
-func (p *Production) Equals(other Productioner) bool {
-	if p == nil || other == nil || other.GetLhs() != p.lhs {
+func (p *Production) Equals(other itff.Objecter) bool {
+	if other == nil {
 		return false
 	}
 
 	val, ok := other.(*Production)
-	if !ok || len(val.rhs) != len(p.rhs) {
+	if !ok {
+		return false
+	}
+
+	if val.lhs != p.lhs || len(val.rhs) != len(p.rhs) {
 		return false
 	}
 
@@ -119,7 +112,7 @@ func (p *Production) GetLhs() string {
 // Returns:
 //   - itf.Iterater[string]: An iterator for the production.
 func (p *Production) Iterator() itf.Iterater[string] {
-	return itf.IteratorFromSlice(p.rhs)
+	return itf.NewSimpleIterator(p.rhs)
 }
 
 // ReverseIterator is a method of Production that returns a reverse
@@ -133,7 +126,7 @@ func (p *Production) ReverseIterator() itf.Iterater[string] {
 	copy(slice, p.rhs)
 	slices.Reverse(slice)
 
-	return itf.IteratorFromSlice(slice)
+	return itf.NewSimpleIterator(slice)
 }
 
 // GetSymbols is a method of Production that returns a slice of symbols
@@ -149,7 +142,7 @@ func (p *Production) GetSymbols() []string {
 
 	symbols[len(symbols)-1] = p.lhs
 
-	return slext.RemoveDuplicates(symbols)
+	return slext.Uniquefy(symbols)
 }
 
 // Match is a method of Production that returns a token that matches the
@@ -207,7 +200,7 @@ func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToke
 //
 // Returns:
 //   - itff.Copier: A copy of the production.
-func (p *Production) Copy() itff.Copier {
+func (p *Production) Copy() itff.Objecter {
 	pCopy := &Production{
 		lhs: p.lhs,
 		rhs: make([]string, len(p.rhs)),
@@ -394,13 +387,17 @@ func (r *RegProduction) String() string {
 //
 // Returns:
 //   - bool: Whether the production is equal to the other production.
-func (p *RegProduction) Equals(other Productioner) bool {
-	if p == nil || other == nil || other.GetLhs() != p.lhs {
+func (p *RegProduction) Equals(other itff.Objecter) bool {
+	if other == nil {
 		return false
 	}
 
 	val, ok := other.(*RegProduction)
-	return ok && val.rhs == p.rhs
+	if !ok {
+		return false
+	}
+
+	return val.lhs == p.lhs && val.rhs == p.rhs
 }
 
 // GetLhs is a method of RegProduction that returns the left-hand side of
@@ -447,7 +444,7 @@ func (p *RegProduction) Match(at int, b []byte) *LeafToken {
 //
 // Returns:
 //   - itff.Copier: A copy of the production.
-func (p *RegProduction) Copy() itff.Copier {
+func (p *RegProduction) Copy() itff.Objecter {
 	return &RegProduction{
 		lhs: p.lhs,
 		rhs: p.rhs,

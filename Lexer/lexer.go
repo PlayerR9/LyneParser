@@ -4,11 +4,11 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
-	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+	slext "github.com/PlayerR9/MyGoLib/Units/Slices"
 
 	com "github.com/PlayerR9/LyneParser/Common"
 
-	teval "github.com/PlayerR9/MyGoLib/Evaluations/TreeExplorer"
+	teval "github.com/PlayerR9/MyGoLib/TreeLike/Explorer"
 )
 
 // Lexer is a lexer that uses a grammar to tokenize a string.

@@ -3,13 +3,14 @@ package ConflictSolver
 import (
 	"fmt"
 	"slices"
-	"strings"
+	"strconv"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
-	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+	slext "github.com/PlayerR9/MyGoLib/Units/Slices"
 
+	ue "github.com/PlayerR9/MyGoLib/Units/Errors"
 	cds "github.com/PlayerR9/MyGoLib/Units/Pair"
 	hlp "github.com/PlayerR9/MyGoLib/Utility/Helpers"
 )
@@ -30,35 +31,44 @@ type ConflictSolver struct {
 //
 // Returns:
 //   - []string: A formatted string representation of the decision table.
-func (cs *ConflictSolver) FString(indentLevel int) []string {
-	indentation := ffs.NewIndentConfig(ffs.DefaultIndentation, indentLevel, false)
-	indent := indentation.String()
-
-	result := make([]string, 0)
+func (cs *ConflictSolver) FString(trav *ffs.Traversor) error {
+	if trav == nil {
+		return nil
+	}
 
 	counter := 0
 
-	var builder strings.Builder
-
 	helpers := cs.getHelpers()
 
-	for _, h := range helpers {
-		builder.WriteString(indent)
-		builder.WriteString(fmt.Sprintf("%d", counter))
-		builder.WriteRune('.')
-
-		if h != nil {
-			builder.WriteRune(' ')
-			builder.WriteString(h.String())
+	for i, h := range helpers {
+		err := trav.AppendString(strconv.Itoa(counter))
+		if err != nil {
+			return ue.NewErrAt(i, "helper", err)
 		}
 
-		result = append(result, builder.String())
-		builder.Reset()
+		err = trav.AppendRune('.')
+		if err != nil {
+			return ue.NewErrAt(i, "helper", err)
+		}
+
+		if h != nil {
+			err = trav.AppendRune(' ')
+			if err != nil {
+				return ue.NewErrAt(i, "helper", err)
+			}
+
+			err = trav.AppendString(h.String())
+			if err != nil {
+				return ue.NewErrAt(i, "helper", err)
+			}
+		}
+
+		trav.AcceptLine()
 
 		counter++
 	}
 
-	return result
+	return nil
 }
 
 // NewConflictSolver is a constructor of ConflictSolver.
@@ -303,7 +313,7 @@ func (cs *ConflictSolver) MakeExpansionForests(index int, nextRhs map[*Helper]st
 			lookaheads = append(lookaheads, tree.Collapse()...)
 		}
 
-		lookaheads = slext.RemoveDuplicates(lookaheads)
+		lookaheads = slext.Uniquefy(lookaheads)
 		if len(lookaheads) != 0 {
 			possibleLookaheads[c] = lookaheads
 		}

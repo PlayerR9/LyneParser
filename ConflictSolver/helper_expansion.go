@@ -1,12 +1,15 @@
 package ConflictSolver
 
 import (
+	"fmt"
+
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
-	slext "github.com/PlayerR9/MyGoLib/Utility/SliceExt"
+	slext "github.com/PlayerR9/MyGoLib/Units/Slices"
 
-	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
+	trt "github.com/PlayerR9/MyGoLib/TreeLike/Traversor"
+	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 )
 
 // InfoStruct is the information about the expansion tree.
@@ -15,11 +18,21 @@ type InfoStruct struct {
 	seen map[*Helper]bool
 }
 
+// Equals implements Common.Objecter.
+func (is *InfoStruct) Equals(other intf.Objecter) bool {
+	panic("unimplemented")
+}
+
+// String implements Common.Objecter.
+func (is *InfoStruct) String() string {
+	panic("unimplemented")
+}
+
 // Copy creates a copy of the InfoStruct.
 //
 // Returns:
 //   - intf.Copier: A copy of the InfoStruct.
-func (is *InfoStruct) Copy() intf.Copier {
+func (is *InfoStruct) Copy() intf.Objecter {
 	isCopy := &InfoStruct{
 		seen: make(map[*Helper]bool),
 	}
@@ -56,6 +69,25 @@ func NewInfoStruct(root *Helper) (*InfoStruct, error) {
 	return info, nil
 }
 
+// IsSeen checks if the helper is seen.
+//
+// Parameters:
+//   - h: The helper to check.
+//
+// Returns:
+//   - bool: True if the helper is seen, false otherwise.
+func (is *InfoStruct) IsSeen(h *Helper) bool {
+	return is.seen[h]
+}
+
+// SetSeen sets the helper as seen.
+//
+// Parameters:
+//   - h: The helper to set as seen.
+func (is *InfoStruct) SetSeen(h *Helper) {
+	is.seen[h] = true
+}
+
 // ExpansionTree is a tree of expansion helpers.
 type ExpansionTree struct {
 	// tree is the tree of expansion helpers.
@@ -86,7 +118,12 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 		return nil, err
 	}
 
-	nextsFunc := func(elem *Helper, is *InfoStruct) ([]*Helper, error) {
+	nextsFunc := func(elem *Helper, is intf.Objecter) ([]*Helper, error) {
+		isInf, ok := is.(*InfoStruct)
+		if !ok {
+			return nil, fmt.Errorf("invalid type: %T", is)
+		}
+
 		rhs, err := elem.GetRhsAt(0)
 		if err != nil {
 			return nil, NewErr0thRhsNotSet()
@@ -96,18 +133,19 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 			return nil, nil
 		}
 
-		seenFilter := func(h *Helper) bool {
-			return !is.seen[h]
-		}
+		result := slext.SliceFilter(cs.GetElemsWithLhs(rhs), isInf.IsSeen)
 
-		result := slext.SliceFilter(cs.GetElemsWithLhs(rhs), seenFilter)
-
-		is.seen[elem] = true
+		isInf.SetSeen(elem)
 
 		return result, nil
 	}
 
-	tree, err := tr.MakeTree(h, info, nextsFunc)
+	var builder trt.Builder[*Helper]
+
+	builder.SetInfo(info)
+	builder.SetNextFunc(nextsFunc)
+
+	tree, err := builder.Build(h)
 	if err != nil {
 		return nil, err
 	}

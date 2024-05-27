@@ -2,7 +2,7 @@ package ConflictSolver
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	tr "github.com/PlayerR9/MyGoLib/CustomData/Tree"
+	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 )
 
 // FilterTerminalLeaf filters out terminal leaf nodes.

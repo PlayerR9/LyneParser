@@ -58,20 +58,15 @@ func TestAmbiguousShifts(t *testing.T) {
 	}
 
 	// DEBUG: Display the decision table before solving ambiguous shifts.
-	printer := ffs.NewPrinter(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)))
-
-	err = ffs.Apply(printer, cs)
+	doc, err := ffs.SprintFString(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)), cs)
 	if err != nil {
-		t.Fatalf("ffs.Apply() returned an error: %s", err.Error())
+		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages := ffs.Stringfy(printer.GetPages())
+	pages := ffs.Stringfy(doc)
 
 	for _, page := range pages {
-		for _, section := range page {
-			fmt.Println(section)
-		}
-		fmt.Println()
+		fmt.Println(page)
 	}
 	fmt.Println()
 
@@ -81,20 +76,15 @@ func TestAmbiguousShifts(t *testing.T) {
 	}
 
 	// DEBUG: Display the decision table after solving ambiguous shifts.
-	printer = ffs.NewPrinter(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)))
-
-	err = ffs.Apply(printer, cs)
+	doc, err = ffs.SprintFString(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)), cs)
 	if err != nil {
-		t.Fatalf("ffs.Apply() returned an error: %s", err.Error())
+		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages = ffs.Stringfy(printer.GetPages())
+	pages = ffs.Stringfy(doc)
 
 	for _, page := range pages {
-		for _, section := range page {
-			fmt.Println(section)
-		}
-		fmt.Println()
+		fmt.Println(page)
 	}
 	fmt.Println()
 }
@@ -113,20 +103,15 @@ func TestConflictSolver(t *testing.T) {
 	}
 
 	// DEBUG: Display the decision table before solving conflicts.
-	printer := ffs.NewPrinter(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)))
-
-	err = ffs.Apply(printer, cs)
+	doc, err := ffs.SprintFString(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)), cs)
 	if err != nil {
-		t.Fatalf("ffs.Apply() returned an error: %s", err.Error())
+		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages := ffs.Stringfy(printer.GetPages())
+	pages := ffs.Stringfy(doc)
 
 	for _, page := range pages {
-		for _, section := range page {
-			fmt.Println(section)
-		}
-		fmt.Println()
+		fmt.Println(page)
 	}
 	fmt.Println()
 
@@ -136,20 +121,15 @@ func TestConflictSolver(t *testing.T) {
 	}
 
 	// DEBUG: Display the decision table after solving conflicts.
-	printer = ffs.NewPrinter(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)))
-
-	err = ffs.Apply(printer, cs)
+	doc, err = ffs.SprintFString(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)), cs)
 	if err != nil {
-		t.Fatalf("ffs.Apply() returned an error: %s", err.Error())
+		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages = ffs.Stringfy(printer.GetPages())
+	pages = ffs.Stringfy(doc)
 
 	for _, page := range pages {
-		for _, section := range page {
-			fmt.Println(section)
-		}
-		fmt.Println()
+		fmt.Println(page)
 	}
 	fmt.Println()
 

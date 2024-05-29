@@ -18,21 +18,11 @@ type TTInfo struct {
 	depth map[gr.Tokener]int
 }
 
-// Equals implements Common.Objecter.
-func (tti *TTInfo) Equals(other intf.Objecter) bool {
-	panic("unimplemented")
-}
-
-// String implements Common.Objecter.
-func (tti *TTInfo) String() string {
-	panic("unimplemented")
-}
-
 // Copy creates a copy of the TTInfo.
 //
 // Returns:
 //   - intf.Copier: A copy of the TTInfo.
-func (tti *TTInfo) Copy() intf.Objecter {
+func (tti *TTInfo) Copy() intf.Copier {
 	ttiCopy := &TTInfo{
 		depth: make(map[gr.Tokener]int),
 	}
@@ -133,7 +123,7 @@ func NewTokenTree(root gr.Tokener) (*TokenTree, error) {
 		return nil, err
 	}
 
-	nextsFunc := func(elem gr.Tokener, h intf.Objecter) ([]gr.Tokener, error) {
+	nextsFunc := func(elem gr.Tokener, h intf.Copier) ([]gr.Tokener, error) {
 		hInfo, ok := h.(*TTInfo)
 		if !ok {
 			return nil, fmt.Errorf("invalid type: %T", h)
@@ -184,7 +174,7 @@ func (tt *TokenTree) DebugString() string {
 	err := trt.DFS(
 		tt.tree,
 		tt.Info,
-		func(elem gr.Tokener, inf intf.Objecter) (bool, error) {
+		func(elem gr.Tokener, inf intf.Copier) (bool, error) {
 			hInfo, ok := inf.(*TTInfo)
 			if !ok {
 				return false, fmt.Errorf("invalid type: %T", inf)

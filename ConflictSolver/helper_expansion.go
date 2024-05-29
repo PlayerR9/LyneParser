@@ -18,21 +18,11 @@ type InfoStruct struct {
 	seen map[*Helper]bool
 }
 
-// Equals implements Common.Objecter.
-func (is *InfoStruct) Equals(other intf.Objecter) bool {
-	panic("unimplemented")
-}
-
-// String implements Common.Objecter.
-func (is *InfoStruct) String() string {
-	panic("unimplemented")
-}
-
 // Copy creates a copy of the InfoStruct.
 //
 // Returns:
 //   - intf.Copier: A copy of the InfoStruct.
-func (is *InfoStruct) Copy() intf.Objecter {
+func (is *InfoStruct) Copy() intf.Copier {
 	isCopy := &InfoStruct{
 		seen: make(map[*Helper]bool),
 	}
@@ -118,7 +108,7 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 		return nil, err
 	}
 
-	nextsFunc := func(elem *Helper, is intf.Objecter) ([]*Helper, error) {
+	nextsFunc := func(elem *Helper, is intf.Copier) ([]*Helper, error) {
 		isInf, ok := is.(*InfoStruct)
 		if !ok {
 			return nil, fmt.Errorf("invalid type: %T", is)

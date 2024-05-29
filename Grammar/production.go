@@ -31,7 +31,6 @@ type Productioner interface {
 	//   - []string: A slice of symbols in the production.
 	GetSymbols() []string
 
-	fmt.Stringer
 	itff.Objecter
 }
 
@@ -74,7 +73,7 @@ func (p *Production) String() string {
 //
 // Returns:
 //   - bool: Whether the production is equal to the other production.
-func (p *Production) Equals(other itff.Objecter) bool {
+func (p *Production) Equals(other itff.Equaler) bool {
 	if other == nil {
 		return false
 	}
@@ -200,7 +199,7 @@ func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToke
 //
 // Returns:
 //   - itff.Copier: A copy of the production.
-func (p *Production) Copy() itff.Objecter {
+func (p *Production) Copy() itff.Copier {
 	pCopy := &Production{
 		lhs: p.lhs,
 		rhs: make([]string, len(p.rhs)),
@@ -387,7 +386,7 @@ func (r *RegProduction) String() string {
 //
 // Returns:
 //   - bool: Whether the production is equal to the other production.
-func (p *RegProduction) Equals(other itff.Objecter) bool {
+func (p *RegProduction) Equals(other itff.Equaler) bool {
 	if other == nil {
 		return false
 	}
@@ -444,7 +443,7 @@ func (p *RegProduction) Match(at int, b []byte) *LeafToken {
 //
 // Returns:
 //   - itff.Copier: A copy of the production.
-func (p *RegProduction) Copy() itff.Objecter {
+func (p *RegProduction) Copy() itff.Copier {
 	return &RegProduction{
 		lhs: p.lhs,
 		rhs: p.rhs,

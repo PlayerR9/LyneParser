@@ -7,7 +7,7 @@ import (
 
 	com "github.com/PlayerR9/LyneParser/Common"
 	lx "github.com/PlayerR9/LyneParser/Lexer"
-	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // Highlighter is a highlighter that applies styles to tokens.

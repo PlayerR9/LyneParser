@@ -5,8 +5,8 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	intf "github.com/PlayerR9/MyGoLib/Units/Common"
-	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
-	slext "github.com/PlayerR9/MyGoLib/Units/Slices"
+	slext "github.com/PlayerR9/MyGoLib/Units/Slice"
+	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 
 	trt "github.com/PlayerR9/MyGoLib/TreeLike/Traversor"
 	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"

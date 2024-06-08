@@ -10,7 +10,7 @@ import (
 	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 
 	intf "github.com/PlayerR9/MyGoLib/Units/Common"
-	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // CurrentEval is a struct that represents the current evaluation of the parser.

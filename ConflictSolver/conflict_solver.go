@@ -8,10 +8,10 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
-	slext "github.com/PlayerR9/MyGoLib/Units/Slices"
+	slext "github.com/PlayerR9/MyGoLib/Units/Slice"
 
-	ue "github.com/PlayerR9/MyGoLib/Units/Errors"
 	cds "github.com/PlayerR9/MyGoLib/Units/Pair"
+	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	hlp "github.com/PlayerR9/MyGoLib/Utility/Helpers"
 )
 
@@ -31,7 +31,7 @@ type ConflictSolver struct {
 //
 // Returns:
 //   - []string: A formatted string representation of the decision table.
-func (cs *ConflictSolver) FString(trav *ffs.Traversor) error {
+func (cs *ConflictSolver) FString(trav *ffs.Traversor, opts ...ffs.Option) error {
 	if trav == nil {
 		return nil
 	}
@@ -313,7 +313,7 @@ func (cs *ConflictSolver) MakeExpansionForests(index int, nextRhs map[*Helper]st
 			lookaheads = append(lookaheads, tree.Collapse()...)
 		}
 
-		lookaheads = slext.Uniquefy(lookaheads)
+		lookaheads = slext.Uniquefy(lookaheads, true)
 		if len(lookaheads) != 0 {
 			possibleLookaheads[c] = lookaheads
 		}
@@ -499,22 +499,24 @@ func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]Actioner, 
 		results = append(results, h)
 	}
 
-	successOrFail, ok := hlp.MaxSuccessOrFail(results)
+	successOrFail, ok := hlp.SuccessOrFail(results, true)
 	if !ok {
 		// Return the most likely error
 		// As of now, we will return the first error
-		return nil, successOrFail[0].Second
+		return nil, successOrFail[0].GetData().Second
 	}
+
+	success := hlp.ExtractResults(successOrFail)
 
 	// Get the longest match
 	if len(successOrFail) == 1 {
-		return []Actioner{successOrFail[0].First.GetAction()}, nil
+		return []Actioner{success[0].GetAction()}, nil
 	}
 
-	firsts := make([]Actioner, 0, len(successOrFail))
+	firsts := make([]Actioner, 0, len(success))
 
-	for _, final := range successOrFail {
-		firsts = append(firsts, final.First.GetAction())
+	for _, final := range success {
+		firsts = append(firsts, final.GetAction())
 	}
 
 	return firsts, nil

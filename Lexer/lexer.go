@@ -3,8 +3,8 @@ package Lexer
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 
-	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
-	slext "github.com/PlayerR9/MyGoLib/Units/Slices"
+	slext "github.com/PlayerR9/MyGoLib/Units/Slice"
+	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 
 	com "github.com/PlayerR9/LyneParser/Common"
 

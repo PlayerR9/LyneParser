@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	itff "github.com/PlayerR9/MyGoLib/Units/Common"
-	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
-	itf "github.com/PlayerR9/MyGoLib/Units/Iterator"
+	itf "github.com/PlayerR9/MyGoLib/Units/Iterators"
+	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 
-	slext "github.com/PlayerR9/MyGoLib/Units/Slices"
+	slext "github.com/PlayerR9/MyGoLib/Units/Slice"
 
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 )
@@ -141,7 +141,7 @@ func (p *Production) GetSymbols() []string {
 
 	symbols[len(symbols)-1] = p.lhs
 
-	return slext.Uniquefy(symbols)
+	return slext.Uniquefy(symbols, true)
 }
 
 // Match is a method of Production that returns a token that matches the

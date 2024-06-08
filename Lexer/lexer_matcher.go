@@ -2,10 +2,9 @@ package Lexer
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 
 	com "github.com/PlayerR9/LyneParser/Common"
-	up "github.com/PlayerR9/MyGoLib/Units/Pair"
 	hlp "github.com/PlayerR9/MyGoLib/Utility/Helpers"
 )
 
@@ -53,7 +52,7 @@ func (lm *LexerMatcher) SelectBestMatches(matches []*gr.MatchedResult[*gr.LeafTo
 	weights := hlp.ApplyWeightFunc(matches, MatchWeightFunc)
 	pairs := hlp.FilterByPositiveWeight(weights)
 
-	return up.ExtractFirsts(pairs)
+	return hlp.ExtractResults(pairs)
 }
 
 // GetNext is a function that returns the next position of an element.

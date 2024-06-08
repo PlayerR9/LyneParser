@@ -1,7 +1,7 @@
 package Highlighter
 
 import (
-	ers "github.com/PlayerR9/MyGoLib/Units/Errors"
+	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 	"github.com/gdamore/tcell"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"

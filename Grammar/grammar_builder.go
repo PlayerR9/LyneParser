@@ -1,7 +1,7 @@
 package Grammar
 
 import (
-	slext "github.com/PlayerR9/MyGoLib/Units/Slices"
+	slext "github.com/PlayerR9/MyGoLib/Units/Slice"
 )
 
 // GrammarBuilder represents a builder for a grammar.
@@ -67,8 +67,8 @@ func (b *GrammarBuilder) Build() (*Grammar, error) {
 		return NewGrammar(), nil
 	}
 
-	b.productions = slext.UniquefyEquals(b.productions)
-	b.skipProductions = slext.Uniquefy(b.skipProductions)
+	b.productions = slext.UniquefyEquals(b.productions, true)
+	b.skipProductions = slext.Uniquefy(b.skipProductions, true)
 	b.skipProductions = slext.SliceFilter(b.skipProductions, b.FilterProductionsWithoutLHS)
 
 	grammar := &Grammar{
@@ -83,7 +83,7 @@ func (b *GrammarBuilder) Build() (*Grammar, error) {
 		grammar.Symbols = append(grammar.Symbols, p.GetSymbols()...)
 	}
 
-	grammar.Symbols = slext.Uniquefy(grammar.Symbols)
+	grammar.Symbols = slext.Uniquefy(grammar.Symbols, true)
 
 	err := grammar.compile()
 	if err != nil {

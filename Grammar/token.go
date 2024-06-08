@@ -53,7 +53,7 @@ func NewRootToken() *LeafToken {
 func IsTerminal(identifier string) bool {
 	firstLetter := []rune(identifier)[0]
 
-	return unicode.IsLetter(firstLetter) && unicode.IsUpper(firstLetter)
+	return unicode.IsUpper(firstLetter)
 }
 
 // Tokener is an interface that defines the methods that a token must implement.

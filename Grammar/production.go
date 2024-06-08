@@ -294,21 +294,40 @@ func (p *Production) IndicesOfRhs(rhs string) []int {
 //   - *ErrLhsRhsMismatch: If the left-hand side of the other production does
 //     not match the symbol at the given index in the right-hand side of the
 //     production.
-func (p *Production) ReplaceRhsAt(index int, otherP *Production) (*Production, error) {
-	if index < 0 || index >= len(p.rhs) {
-		return nil, ers.NewErrInvalidParameter(
-			"index",
-			ers.NewErrOutOfBounds(index, 0, len(p.rhs)),
-		)
-	} else if otherP == nil {
-		return nil, ers.NewErrNilParameter("otherP")
-	}
-
-	if p.rhs[index] != otherP.lhs {
-		return nil, NewErrLhsRhsMismatch(otherP.lhs, p.rhs[index])
-	}
-
+func (p *Production) ReplaceRhsAt(index int, rhs string) *Production {
 	newP := p.Copy().(*Production)
+
+	if index >= 0 && index < len(p.rhs) {
+		newP.rhs[index] = rhs
+	}
+
+	return newP
+}
+
+// ReplaceRhsAt is a method of Production that replaces the symbol at the
+// given index in the right-hand side of the production with the right-hand
+// side of another production.
+//
+// Parameters:
+//   - index: The index of the symbol to replace.
+//   - otherP: The other production to replace the symbol with.
+//
+// Returns:
+//   - *Production: A new production with the symbol at the given index
+//     replaced with the right-hand side of the other production.
+//   - error: An error if the index is invalid or the other production is nil.
+//
+// Errors:
+//   - *ers.ErrInvalidParameter: If the index is invalid or the other production is nil.
+//   - *ErrLhsRhsMismatch: If the left-hand side of the other production does
+//     not match the symbol at the given index in the right-hand side of the
+//     production.
+func (p *Production) SubstituteRhsAt(index int, otherP *Production) *Production {
+	newP := p.Copy().(*Production)
+
+	if index < 0 || index >= len(p.rhs) || otherP == nil {
+		return newP
+	}
 
 	if index == 0 {
 		newP.rhs = append(otherP.rhs, newP.rhs[1:]...)
@@ -319,7 +338,7 @@ func (p *Production) ReplaceRhsAt(index int, otherP *Production) (*Production, e
 		newP.rhs = append(newP.rhs, newP.rhs[index+1:]...)
 	}
 
-	return newP, nil
+	return newP
 }
 
 // HasRhs is a method of Production that returns whether the right-hand

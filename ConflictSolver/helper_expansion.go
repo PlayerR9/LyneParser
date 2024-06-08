@@ -2,6 +2,7 @@ package ConflictSolver
 
 import (
 	"fmt"
+	"slices"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	intf "github.com/PlayerR9/MyGoLib/Units/Common"
@@ -59,15 +60,15 @@ func NewInfoStruct(root *Helper) (*InfoStruct, error) {
 	return info, nil
 }
 
-// IsSeen checks if the helper is seen.
+// IsSNoteen checks if the helper is seen.
 //
 // Parameters:
 //   - h: The helper to check.
 //
 // Returns:
 //   - bool: True if the helper is seen, false otherwise.
-func (is *InfoStruct) IsSeen(h *Helper) bool {
-	return is.seen[h]
+func (is *InfoStruct) IsNotSeen(h *Helper) bool {
+	return !is.seen[h]
 }
 
 // SetSeen sets the helper as seen.
@@ -123,7 +124,7 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 			return nil, nil
 		}
 
-		result := slext.SliceFilter(cs.GetElemsWithLhs(rhs), isInf.IsSeen)
+		result := slext.SliceFilter(cs.GetElemsWithLhs(rhs), isInf.IsNotSeen)
 
 		isInf.SetSeen(elem)
 
@@ -148,7 +149,12 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 
 // PruneNonTerminalLeaves prunes the non-terminal leaves of the expansion tree.
 func (et *ExpansionTree) PruneNonTerminalLeaves() {
-	todo := slext.SliceFilter(et.tree.GetLeaves(), FilterTerminalLeaf)
+	leaves := et.tree.GetLeaves()
+
+	todo := slext.SliceFilter(leaves, FilterNonTerminalLeaf)
+	if len(todo) == 0 {
+		return
+	}
 
 	for _, leaf := range todo {
 		err := et.tree.DeleteBranchContaining(leaf)
@@ -174,7 +180,7 @@ func (et *ExpansionTree) Size() int {
 func (et *ExpansionTree) Collapse() []string {
 	leaves := et.tree.GetLeaves()
 
-	result := make([]string, 0, len(leaves))
+	var result []string
 
 	for _, leaf := range leaves {
 		rhs, err := leaf.Data.GetRhsAt(0)
@@ -182,7 +188,10 @@ func (et *ExpansionTree) Collapse() []string {
 			panic(err)
 		}
 
-		result = append(result, rhs)
+		pos, ok := slices.BinarySearch(result, rhs)
+		if !ok {
+			result = slices.Insert(result, pos, rhs)
+		}
 	}
 
 	return result

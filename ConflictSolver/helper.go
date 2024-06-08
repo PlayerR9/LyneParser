@@ -140,24 +140,42 @@ func (h *Helper) AppendRhs(symbol string) error {
 //     otherH.Item is nil, or otherH.Item.Rule is nil.
 //   - *gr.ErrLhsRhsMismatch: The left-hand side of the item does not match the
 //     right-hand side of the other item.
-func (h *Helper) ReplaceRhsAt(index int, otherH *Helper) (*Helper, error) {
-	if otherH == nil {
-		return nil, ers.NewErrNilParameter("otherH")
-	}
+func (h *Helper) ReplaceRhsAt(index int, rhs string) *Helper {
+	itemCopy := h.Item.ReplaceRhsAt(index, rhs)
 
-	newH := &Helper{
-		Item:   h.Item.Copy().(*Item),
+	return &Helper{
+		Item:   itemCopy,
 		Action: h.Action.Copy().(Actioner),
 	}
+}
 
-	var err error
-
-	newH.Item, err = newH.Item.ReplaceRhsAt(index, otherH.Item)
-	if err != nil {
-		return nil, err
+// ReplaceRhsAt replaces the right-hand side of the item
+// at the specified index with the right-hand side of the other item.
+//
+// Parameters:
+//   - index: The index of the right-hand side to replace.
+//   - otherH: The other helper.
+//
+// Returns:
+//   - *Helper: The new helper with the replaced right-hand side.
+//   - error: An error if the operation failed.
+//
+// Errors:
+//   - *ers.ErrInvalidParameter: The index is out of bounds, otherH is nil,
+//     otherH.Item is nil, or otherH.Item.Rule is nil.
+//   - *gr.ErrLhsRhsMismatch: The left-hand side of the item does not match the
+//     right-hand side of the other item.
+func (h *Helper) SubstituteRhsAt(index int, otherH *Helper) *Helper {
+	if otherH == nil {
+		return h.Copy().(*Helper)
 	}
 
-	return newH, nil
+	itemCopy := h.Item.SubstituteRhsAt(index, otherH.Item)
+
+	return &Helper{
+		Item:   itemCopy,
+		Action: h.Action.Copy().(Actioner),
+	}
 }
 
 // Match matches the top of the stack with the helper.

@@ -1,14 +1,16 @@
 package ConflictSolver
 
 import (
-	"fmt"
+	"strings"
 	"testing"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 )
 
-var ParserGrammar *gr.Grammar = func() *gr.Grammar {
+var ParserGrammar *gr.Grammar
+
+func init() {
 	var builder gr.GrammarBuilder
 
 	// EOF arrayObj -> source
@@ -46,15 +48,15 @@ var ParserGrammar *gr.Grammar = func() *gr.Grammar {
 		panic(err)
 	}
 
-	return grammar
-}()
+	ParserGrammar = grammar
+}
 
 func TestAmbiguousShifts(t *testing.T) {
 	rules := ParserGrammar.GetProductions()
 
 	cs, err := NewConflictSolver(ParserGrammar.Symbols, rules)
 	if err != nil {
-		t.Errorf("NewConflictSolver() returned an error: %s", err.Error())
+		t.Fatalf("NewConflictSolver() returned an error: %s", err.Error())
 	}
 
 	// DEBUG: Display the decision table before solving ambiguous shifts.
@@ -63,16 +65,13 @@ func TestAmbiguousShifts(t *testing.T) {
 		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages := ffs.Stringfy(doc)
+	pages := strings.Join(ffs.Stringfy(doc), "\f")
 
-	for _, page := range pages {
-		fmt.Println(page)
-	}
-	fmt.Println()
+	t.Log(pages)
 
 	err = cs.SolveAmbiguousShifts()
 	if err != nil {
-		t.Errorf("ConflictSolver.SolveAmbiguousShifts() returned an error: %s", err.Error())
+		t.Fatalf("ConflictSolver.SolveAmbiguousShifts() returned an error: %s", err.Error())
 	}
 
 	// DEBUG: Display the decision table after solving ambiguous shifts.
@@ -81,12 +80,9 @@ func TestAmbiguousShifts(t *testing.T) {
 		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages = ffs.Stringfy(doc)
+	pages = strings.Join(ffs.Stringfy(doc), "\f")
 
-	for _, page := range pages {
-		fmt.Println(page)
-	}
-	fmt.Println()
+	t.Log(pages)
 }
 
 func TestConflictSolver(t *testing.T) {
@@ -94,12 +90,12 @@ func TestConflictSolver(t *testing.T) {
 
 	cs, err := NewConflictSolver(ParserGrammar.Symbols, rules)
 	if err != nil {
-		t.Errorf("NewConflictSolver() returned an error: %s", err.Error())
+		t.Fatalf("NewConflictSolver() returned an error: %s", err.Error())
 	}
 
 	err = cs.SolveAmbiguousShifts()
 	if err != nil {
-		t.Errorf("ConflictSolver.SolveAmbiguousShifts() returned an error: %s", err.Error())
+		t.Fatalf("ConflictSolver.SolveAmbiguousShifts() returned an error: %s", err.Error())
 	}
 
 	// DEBUG: Display the decision table before solving conflicts.
@@ -108,16 +104,13 @@ func TestConflictSolver(t *testing.T) {
 		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages := ffs.Stringfy(doc)
+	pages := strings.Join(ffs.Stringfy(doc), "\f")
 
-	for _, page := range pages {
-		fmt.Println(page)
-	}
-	fmt.Println()
+	t.Log(pages)
 
 	err = cs.Solve()
 	if err != nil {
-		t.Errorf("ConflictSolver.Solve() returned an error: %s", err.Error())
+		t.Fatalf("ConflictSolver.Solve() returned an error: %s", err.Error())
 	}
 
 	// DEBUG: Display the decision table after solving conflicts.
@@ -126,12 +119,7 @@ func TestConflictSolver(t *testing.T) {
 		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages = ffs.Stringfy(doc)
+	pages = strings.Join(ffs.Stringfy(doc), "\n")
 
-	for _, page := range pages {
-		fmt.Println(page)
-	}
-	fmt.Println()
-
-	t.Errorf("TestConflictSolver() is not implemented")
+	t.Log(pages)
 }

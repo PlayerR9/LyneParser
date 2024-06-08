@@ -129,7 +129,7 @@ func NewConflictSolver(symbols []string, rules []*gr.Production) (*ConflictSolve
 // Returns:
 //   - []*Helper: All helpers in the decision table.
 func (cs *ConflictSolver) getHelpers() []*Helper {
-	result := make([]*Helper, 0)
+	var result []*Helper
 
 	for _, helpers := range cs.table {
 		result = append(result, helpers...)
@@ -301,7 +301,7 @@ func (cs *ConflictSolver) MakeExpansionForests(index int, nextRhs map[*Helper]st
 			return possibleLookaheads, nil
 		}
 
-		lookaheads := make([]string, 0)
+		var lookaheads []string
 
 		for _, r := range rs {
 			tree, err := NewExpansionTreeRootedAt(cs, r)
@@ -310,10 +310,21 @@ func (cs *ConflictSolver) MakeExpansionForests(index int, nextRhs map[*Helper]st
 			}
 
 			tree.PruneNonTerminalLeaves()
-			lookaheads = append(lookaheads, tree.Collapse()...)
+
+			collapsed := tree.Collapse()
+
+			if len(collapsed) == 0 {
+				continue
+			}
+
+			for _, c := range collapsed {
+				pos, ok := slices.BinarySearch(lookaheads, c)
+				if !ok {
+					lookaheads = slices.Insert(lookaheads, pos, c)
+				}
+			}
 		}
 
-		lookaheads = slext.Uniquefy(lookaheads, true)
 		if len(lookaheads) != 0 {
 			possibleLookaheads[c] = lookaheads
 		}
@@ -361,28 +372,20 @@ func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, 
 	for c, forest := range possibleLookaheads {
 		fmt.Println(c.String())
 		for _, tree := range forest {
-			fmt.Println(tree)
+			fmt.Println("\t- ", tree)
 		}
 		fmt.Println()
 	}
 
-	/*
+	for c, forest := range possibleLookaheads {
+		cs.DeleteHelper(c)
 
+		for _, lookahead := range forest {
+			newR := c.ReplaceRhsAt(index+1, lookahead)
 
-		for c, forest := range possibleLookaheads {
-			cs.DeleteHelper(c)
-
-			for _, tree := range forest {
-				newR, err := c.ReplaceRhsAt(index+1, tree)
-				if err != nil {
-					return false, NewErrHelper(c, err)
-				}
-
-				cs.AppendHelper(newR)
-			}
+			cs.AppendHelper(newR)
 		}
-
-	*/
+	}
 
 	return true, nil
 }

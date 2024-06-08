@@ -1,50 +1,16 @@
 package Parser
 
 import (
-	"fmt"
 	"testing"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	lx "github.com/PlayerR9/LyneParser/Lexer"
-	hlp "github.com/PlayerR9/MyGoLib/Utility/Helpers"
 
 	com "github.com/PlayerR9/LyneParser/Common"
 )
 
-var LexerGrammar *gr.Grammar = func() *gr.Grammar {
-	var builder gr.GrammarBuilder
+var ParserGrammar *gr.Grammar
 
-	// Fragments
-	builder.AddRegProductions(gr.NewRegProduction("WORD", `[a-zA-Z]+`))
-
-	// Literals
-	builder.AddRegProductions(gr.NewRegProduction("ATTR", `".*?"`))
-
-	// Brackets
-	builder.AddRegProductions(gr.NewRegProduction("OP_PAREN", `\(`))
-	builder.AddRegProductions(gr.NewRegProduction("CL_PAREN", `\)`))
-	builder.AddRegProductions(gr.NewRegProduction("OP_SQUARE", `\[`))
-	builder.AddRegProductions(gr.NewRegProduction("CL_SQUARE", `\]`))
-	builder.AddRegProductions(gr.NewRegProduction("OP_CURLY", `\{`))
-	builder.AddRegProductions(gr.NewRegProduction("CL_CURLY", `\}`))
-
-	// Operators
-	builder.AddRegProductions(gr.NewRegProduction("SEP", `[+]`))
-
-	// Whitespace
-	builder.AddRegProductions(gr.NewRegProduction("WS", `[ \t\r\n]+`))
-
-	builder.SetToSkip("WS")
-
-	grammar, err := builder.Build()
-	if err != nil {
-		panic(err)
-	}
-
-	return grammar
-}()
-
-var ParserGrammar *gr.Grammar = func() *gr.Grammar {
+func init() {
 	var builder gr.GrammarBuilder
 
 	// EOF arrayObj -> source
@@ -79,79 +45,129 @@ var ParserGrammar *gr.Grammar = func() *gr.Grammar {
 		panic(err)
 	}
 
-	return grammar
-}()
+	ParserGrammar = grammar
+}
 
-var LexedContents []*com.TokenStream = func() []*com.TokenStream {
-	l, err := lx.NewLexer(LexerGrammar)
-	if err != nil {
-		panic(err)
-	}
+var LexedContent *com.TokenStream
 
-	const (
-		Source string = "[char(\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\"Caring\")\n}]"
+func init() {
+	LexedContent = com.NewTokenStream(
+		[]*gr.LeafToken{
+			{
+				ID:   "OP_SQUARE",
+				Data: "[",
+				At:   0,
+			},
+			{
+				ID:   "WORD",
+				Data: "char",
+				At:   1,
+			},
+			{
+				ID:   "OP_PAREN",
+				Data: "(",
+				At:   5,
+			},
+			{
+				ID:   "ATTR",
+				Data: "\"Mark\"",
+				At:   6,
+			},
+			{
+				ID:   "CL_PAREN",
+				Data: ")",
+				At:   12,
+			},
+			{
+				ID:   "OP_CURLY",
+				Data: "{",
+				At:   13,
+			},
+			{
+				ID:   "WORD",
+				Data: "Species",
+				At:   16,
+			},
+			{
+				ID:   "OP_PAREN",
+				Data: "(",
+				At:   23,
+			},
+			{
+				ID:   "ATTR",
+				Data: "\"Human\"",
+				At:   24,
+			},
+			{
+				ID:   "CL_PAREN",
+				Data: ")",
+				At:   31,
+			},
+			{
+				ID:   "WORD",
+				Data: "Personality",
+				At:   34,
+			},
+			{
+				ID:   "OP_PAREN",
+				Data: "(",
+				At:   45,
+			},
+			{
+				ID:   "ATTR",
+				Data: "\"Kind\"",
+				At:   46,
+			},
+			{
+				ID:   "SEP",
+				Data: "+",
+				At:   52,
+			},
+			{
+				ID:   "ATTR",
+				Data: "\"Caring\"",
+				At:   53,
+			},
+			{
+				ID:   "CL_PAREN",
+				Data: ")",
+				At:   61,
+			},
+			{
+				ID:   "CL_CURLY",
+				Data: "}",
+				At:   63,
+			},
+			{
+				ID:   "EOF",
+				Data: "",
+				At:   -1,
+			},
+		},
 	)
-
-	err = l.Lex(new(com.ByteStream).FromString(Source))
-	if err != nil {
-		panic(err)
-	}
-
-	tokenBranches, err := l.GetTokens()
-	if err != nil {
-		panic(err)
-	} else if len(tokenBranches) == 0 {
-		panic("no token branches found")
-	}
-
-	return tokenBranches
-}()
-
-var TestParser *Parser = func() *Parser {
-	p, err := NewParser(ParserGrammar)
-	if err != nil {
-		panic(err)
-	}
-
-	return p
-}()
+}
 
 func TestParsing(t *testing.T) {
-	results := make([]*hlp.SimpleHelper[*com.TokenStream], 0)
+	p, err := NewParser(ParserGrammar)
+	if err != nil {
+		t.Fatalf("NewParser() returned an error: %s", err.Error())
+	}
 
-	forest := make([]*com.TokenTree, 0)
+	err = p.Parse(LexedContent)
+	if err != nil {
+		t.Fatalf("Parser.Parse() returned an error: %s", err.Error())
+	}
 
-	for _, branch := range LexedContents {
-		err := TestParser.Parse(branch)
-		if err != nil {
-			results = append(results, hlp.NewSimpleHelper(branch, err))
-
-			continue
-		}
-
-		tmp, err := TestParser.GetParseTree()
-		if err != nil {
-			results = append(results, hlp.NewSimpleHelper(branch, err))
-
-			continue
-		}
-
-		forest = append(forest, tmp...)
+	forest, err := p.GetParseTree()
+	if err != nil {
+		t.Fatalf("Parser.GetParseTree() returned an error: %s", err.Error())
 	}
 
 	if len(forest) == 0 {
-		for _, result := range results {
-			res := result.GetData()
-
-			if res.First != nil {
-				fmt.Printf("Failed to parse: %s\n", res.Second.Error())
-			}
-		}
-
-		t.Errorf("no parse trees were found")
-	} else {
-		fmt.Println(forest[0].DebugString())
+		t.Fatalf("no parse trees were found")
 	}
 
-	t.Errorf("TestParsing() is not implemented")
+	t.Log(forest[0].DebugString())
+
+	t.Error("TestParsing() is not implemented")
 }

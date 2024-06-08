@@ -187,21 +187,44 @@ func (item *Item) IsReduce() bool {
 //     or the index is out of bounds.
 //   - *gr.ErrLhsRhsMismatch: If the left-hand side of the production rule does
 //     not match the right-hand side.
-func (item *Item) ReplaceRhsAt(index int, otherI *Item) (*Item, error) {
+func (item *Item) ReplaceRhsAt(index int, rhs string) *Item {
+	ruleCopy := item.Rule.ReplaceRhsAt(index, rhs)
+
+	return &Item{
+		Rule:      ruleCopy,
+		Pos:       item.Pos,
+		ruleIndex: item.ruleIndex,
+	}
+}
+
+// ReplaceRhsAt replaces the right-hand side of the production rule at the given
+// index with the right-hand side of the other item.
+//
+// Parameters:
+//   - index: The index of the right-hand side to replace.
+//   - otherI: The other item to replace the right-hand side with.
+//
+// Returns:
+//   - *Item: The new item with the replaced right-hand side.
+//   - error: An error if it is unable to replace the right-hand side.
+//
+// Errors:
+//   - *ers.ErrInvalidParameter: If the other item is nil, otherI.Rule is nil,
+//     or the index is out of bounds.
+//   - *gr.ErrLhsRhsMismatch: If the left-hand side of the production rule does
+//     not match the right-hand side.
+func (item *Item) SubstituteRhsAt(index int, otherI *Item) *Item {
 	if otherI == nil {
-		return nil, ers.NewErrNilParameter("otherI")
+		return item.Copy().(*Item)
 	}
 
-	newItem := item.Copy().(*Item)
+	ruleCopy := item.Rule.SubstituteRhsAt(index, otherI.Rule)
 
-	var err error
-
-	newItem.Rule, err = newItem.Rule.ReplaceRhsAt(index, otherI.Rule)
-	if err != nil {
-		return nil, err
+	return &Item{
+		Rule:      ruleCopy,
+		Pos:       item.Pos,
+		ruleIndex: item.ruleIndex,
 	}
-
-	return newItem, nil
 }
 
 // GetRule returns the production rule that the item represents.

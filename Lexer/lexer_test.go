@@ -1,7 +1,8 @@
 package Lexer
 
 import (
-	"fmt"
+	"strconv"
+	"strings"
 	"testing"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
@@ -49,29 +50,44 @@ func TestLex(t *testing.T) {
 
 	lexer, err := NewLexer(LexerGrammar)
 	if err != nil {
-		t.Errorf("NewLexer() returned an error: %s", err.Error())
+		t.Fatalf("NewLexer() returned an error: %s", err.Error())
 	}
 
 	err = lexer.Lex(new(com.ByteStream).FromString(Source))
 	if err != nil {
-		t.Errorf("Lexer.Lex() returned an error: %s", err.Error())
+		t.Fatalf("Lexer.Lex() returned an error: %s", err.Error())
 	}
 
 	tokenBranches, err := lexer.GetTokens()
 	if err != nil {
-		t.Errorf("Lexer.GetTokens() returned an error: %s", err.Error())
+		t.Fatalf("Lexer.GetTokens() returned an error: %s", err.Error())
 	}
 
 	// DEBUG: Print token branches
 	for i, branch := range tokenBranches {
-		fmt.Println("Branch", i)
+		t.Logf("Branch %d", i)
+
+		var values []string
+		var builder strings.Builder
 
 		for _, token := range branch.GetItems() {
-			fmt.Println(token.String())
+			builder.WriteString("&gr.Token{\n")
+			builder.WriteString("\t\tID: ")
+			builder.WriteString(strconv.Quote(token.ID))
+			builder.WriteString(",\n")
+			builder.WriteString("\t\tData: ")
+			builder.WriteString(strconv.Quote(token.Data))
+			builder.WriteString(",\n")
+			builder.WriteString("\t\tAt: ")
+			builder.WriteString(strconv.Itoa(token.At))
+			builder.WriteString(",\n}")
+
+			values = append(values, builder.String())
+			builder.Reset()
 		}
 
-		fmt.Println()
+		t.Logf("[]*gr.Token{\n\t%s\n}", strings.Join(values, ",\n\t"))
 	}
 
-	fmt.Println()
+	t.Fatalf("Test failed")
 }

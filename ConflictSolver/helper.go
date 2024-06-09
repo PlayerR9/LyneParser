@@ -5,7 +5,7 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
-	intf "github.com/PlayerR9/MyGoLib/Units/Common"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
@@ -18,10 +18,7 @@ type Helper struct {
 	Action Actioner
 }
 
-// String returns a string representation of the helper.
-//
-// Returns:
-//   - string: The string representation of the helper.
+// String implements the fmt.Stringer interface.
 func (h *Helper) String() string {
 	var builder strings.Builder
 
@@ -79,7 +76,12 @@ func (h *Helper) EvaluateLookahead() {
 	pos := h.Item.GetPos()
 
 	lookahead, err := h.Item.GetRhsAt(pos + 1)
-	if err != nil || !gr.IsTerminal(lookahead) {
+	if err != nil {
+		return
+	}
+
+	ok := gr.IsTerminal(lookahead)
+	if !ok {
 		return
 	}
 
@@ -190,12 +192,16 @@ func (h *Helper) SubstituteRhsAt(index int, otherH *Helper) *Helper {
 // Behaviors:
 //   - The stack is refused.
 func (h *Helper) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
-	err := h.Action.Match(top, stack)
+	err := MatchAction(h.Action, top, stack)
 
 	// Refuse the stack
 	stack.Refuse()
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Size returns the size of the helper.
@@ -216,7 +222,7 @@ func (h *Helper) GetAction() Actioner {
 
 /////////////////////////////////////////////////////////////
 
-func (h *Helper) Copy() intf.Copier {
+func (h *Helper) Copy() uc.Copier {
 	return &Helper{
 		Item:   h.Item.Copy().(*Item),
 		Action: h.Action.Copy().(Actioner),
@@ -230,24 +236,20 @@ func (h *Helper) Copy() intf.Copier {
 //
 // Returns:
 //   - error: An error of type *ers.ErrInvalidParameter if the rule is nil.
-func (h *Helper) Init(symbol string) error {
+func (h *Helper) Init(symbol string) {
 	if !h.Item.IsReduce() {
 		h.Action = NewActShift()
 
-		return nil
+		return
 	}
 
 	r := h.Item.GetRule()
 
-	var err error
-
 	if symbol == gr.EOFTokenID {
-		h.Action, err = NewAcceptAction(r)
+		h.Action = NewAcceptAction(r)
 	} else {
-		h.Action, err = NewActReduce(r)
+		h.Action = NewActReduce(r)
 	}
-
-	return err
 }
 
 // IsShift returns true if the action is a shift action.

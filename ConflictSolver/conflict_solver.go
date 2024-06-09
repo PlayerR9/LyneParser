@@ -8,11 +8,9 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
-	slext "github.com/PlayerR9/MyGoLib/Units/Slice"
-
-	cds "github.com/PlayerR9/MyGoLib/Units/Pair"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
-	hlp "github.com/PlayerR9/MyGoLib/Utility/Helpers"
+	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
 var GlobalDebugMode bool = true
@@ -104,10 +102,7 @@ func NewConflictSolver(symbols []string, rules []*gr.Production) (*ConflictSolve
 			var act Actioner
 
 			if i == lastIndex {
-				act, err = NewActReduce(pair.Rule)
-				if err != nil {
-					return cs, err
-				}
+				act = NewActReduce(pair.Rule)
 			} else {
 				act = NewActShift()
 			}
@@ -150,7 +145,11 @@ func (cs *ConflictSolver) GetElemsWithLhs(rhs string) []*Helper {
 		return h.IsLhsRhs(rhs)
 	}
 
-	return slext.SliceFilter(cs.getHelpers(), filter)
+	helpers := cs.getHelpers()
+
+	helpers = us.SliceFilter(helpers, filter)
+
+	return helpers
 }
 
 // DeleteHelper is a method that removes an helper from the decision table.
@@ -252,7 +251,8 @@ func (cs *ConflictSolver) SolveAmbiguousShifts() error {
 	return nil
 }
 
-type CMPerSymbol map[string]*cds.Pair[[]*Helper, int]
+// CMPerSymbol is a type that represents conflicts per symbol.
+type CMPerSymbol map[string]*uc.Pair[[]*Helper, int]
 
 // FindConflicts is a method that finds conflicts for a specific symbol.
 //
@@ -269,13 +269,15 @@ func (cs *ConflictSolver) FindConflicts() CMPerSymbol {
 		copy(todo, helpers)
 
 		// 1. Remove every shift action that has a look-ahead.
-		todo = slext.SliceFilter(todo, func(h *Helper) bool {
-			return h.GetLookahead() == nil
+		todo = us.SliceFilter(todo, func(h *Helper) bool {
+			lookahead := h.GetLookahead()
+
+			return lookahead == nil
 		})
 
 		conflicts, indexOfConflict := findConflictsPerSymbol(symbol, todo)
 		if indexOfConflict != -1 {
-			conflictMap[symbol] = cds.NewPair(conflicts, indexOfConflict)
+			conflictMap[symbol] = uc.NewPair(conflicts, indexOfConflict)
 		}
 	}
 
@@ -372,7 +374,7 @@ func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, 
 	for c, forest := range possibleLookaheads {
 		fmt.Println(c.String())
 		for _, tree := range forest {
-			fmt.Println("\t- ", tree)
+			fmt.Println("\t-", tree)
 		}
 		fmt.Println()
 	}
@@ -472,54 +474,69 @@ func (cs *ConflictSolver) Init(symbol string) error {
 	return nil
 }
 
+// Match is a method that matches the top of the stack with the elements in the decision table.
+//
+// Parameters:
+//   - stack: The stack to match the elements with.
+//
+// Returns:
+//   - []Actioner: The actions to take.
+//   - error: An error if the operation failed.
 func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]Actioner, error) {
 	top, err := stack.Peek()
 	if err != nil {
 		return nil, fmt.Errorf("no top token found")
 	}
 
-	elems, ok := cs.table[top.GetID()]
+	id := top.GetID()
+
+	elems, ok := cs.table[id]
 	if !ok {
-		return nil, fmt.Errorf("no elems found for symbol %s", top.GetID())
+		return nil, fmt.Errorf("no elems found for symbol %s", id)
 	}
 
 	if len(elems) == 1 {
-		return []Actioner{elems[0].Action}, nil
+		elem := elems[0].Action
+
+		return []Actioner{elem}, nil
 	}
 
-	// FIXME: Once MyGoLib is updated, we can use the new EvaluateFunc
-	results := make([]*hlp.SimpleHelper[*Helper], 0, len(elems))
-
-	for _, elem := range elems {
-		// Pop the top token
-		_, err = stack.Pop()
+	f := func(h *Helper) (*Helper, error) {
+		_, err := stack.Pop()
 		if err != nil {
 			return nil, fmt.Errorf("no top token found")
 		}
 
-		h := hlp.NewSimpleHelper(elem, elem.Match(top, stack))
+		err = h.Match(top, stack)
+		if err != nil {
+			return nil, err
+		}
 
-		results = append(results, h)
+		return h, nil
 	}
 
-	successOrFail, ok := hlp.SuccessOrFail(results, true)
+	successOrFail, ok := us.EvaluateSimpleHelpers(elems, f)
 	if !ok {
 		// Return the most likely error
 		// As of now, we will return the first error
-		return nil, successOrFail[0].GetData().Second
+		err := successOrFail[0].GetData().Second
+
+		return nil, err
 	}
 
-	success := hlp.ExtractResults(successOrFail)
+	success := us.ExtractResults(successOrFail)
 
 	// Get the longest match
-	if len(successOrFail) == 1 {
-		return []Actioner{success[0].GetAction()}, nil
-	}
-
+	// TO DO: Implement a better way to get the longest match.
+	// As of now, every match is considered the longest match.
 	firsts := make([]Actioner, 0, len(success))
 
 	for _, final := range success {
 		firsts = append(firsts, final.GetAction())
+	}
+
+	if len(success) == 1 {
+		return firsts, nil
 	}
 
 	return firsts, nil

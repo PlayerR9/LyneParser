@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+
+	uts "github.com/PlayerR9/MyGoLib/Utility/Sorting"
 )
 
 // Pairing represents a pairing of a symbol and a production rule.
@@ -34,8 +36,10 @@ func (p *pairing) getIndices() []int {
 func groupProdsByRhss(symbols []string, rules []*gr.Production) (pairs []pairing) {
 	for _, s := range symbols {
 		for _, r := range rules {
-			if r.HasRhs(s) {
-				pairs = append(pairs, pairing{Symbol: s, Rule: r})
+			ok := r.HasRhs(s)
+			if ok {
+				p := pairing{Symbol: s, Rule: r}
+				pairs = append(pairs, p)
 			}
 		}
 	}
@@ -53,10 +57,17 @@ func groupProdsByRhss(symbols []string, rules []*gr.Production) (pairs []pairing
 // Returns:
 //   - map[string][]*Helper: The grouped helpers.
 //   - error: An error of type *ErrHelpersConflictingSize if the helpers have conflicting sizes.
-func getRhssAt(helpers []*Helper, index int) (map[string][]*Helper, error) {
+func getRhssAt(bucket *uts.Bucket[*Helper], index int) (map[string][]*Helper, error) {
 	groups := make(map[string][]*Helper)
 
-	for _, h := range helpers {
+	iter := bucket.Iterator()
+
+	for {
+		h, err := iter.Consume()
+		if err != nil {
+			break
+		}
+
 		rhs, err := h.GetRhsAt(index)
 		if err != nil {
 			return nil, NewErrHelpersConflictingSize()
@@ -100,15 +111,22 @@ func getRhssAt(helpers []*Helper, index int) (map[string][]*Helper, error) {
 // Errors:
 //   - *ErrHelpersConflictingSize: If the helpers have conflicting sizes.
 //   - *ErrHelper: If there is an error appending the right-hand side to the helper.
-func minimumUnique(helpers []*Helper, limit int) error {
+func minimumUnique(bucket *uts.Bucket[*Helper], limit int) error {
 	todo := make(map[*Helper]bool)
 
-	for _, h := range helpers {
+	iter := bucket.Iterator()
+
+	for {
+		h, err := iter.Consume()
+		if err != nil {
+			break
+		}
+
 		todo[h] = true
 	}
 
 	for i := limit; i >= 0; i-- {
-		rhsPerLevel, err := getRhssAt(helpers, i)
+		rhsPerLevel, err := getRhssAt(bucket, i)
 		if err != nil {
 			return NewErrHelpersConflictingSize()
 		}
@@ -146,11 +164,19 @@ func minimumUnique(helpers []*Helper, limit int) error {
 //   - *ErrHelper: If there is an error appending the right-hand side to the helper.
 func solveSubgroup(helpers []*Helper) error {
 	// 1. Bucket sort the items by their position.
-	buckets := make(map[int][]*Helper)
+
+	// TODO: Modify this once MyGoLib is updated.
+	buckets := make(map[int]*uts.Bucket[*Helper])
 
 	for _, h := range helpers {
 		pos := h.GetPos()
-		buckets[pos] = append(buckets[pos], h)
+
+		_, ok := buckets[pos]
+		if !ok {
+			buckets[pos] = uts.NewBucket([]*Helper{h})
+		} else {
+			buckets[pos].Add(h)
+		}
 	}
 
 	// 2. Solve conflicts for each bucket.

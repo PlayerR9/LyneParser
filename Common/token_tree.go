@@ -6,7 +6,7 @@ import (
 
 	trt "github.com/PlayerR9/MyGoLib/TreeLike/Traversor"
 	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
-	intf "github.com/PlayerR9/MyGoLib/Units/Common"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
@@ -21,8 +21,8 @@ type TTInfo struct {
 // Copy creates a copy of the TTInfo.
 //
 // Returns:
-//   - intf.Copier: A copy of the TTInfo.
-func (tti *TTInfo) Copy() intf.Copier {
+//   - uc.Copier: A copy of the TTInfo.
+func (tti *TTInfo) Copy() uc.Copier {
 	ttiCopy := &TTInfo{
 		depth: make(map[gr.Tokener]int),
 	}
@@ -123,7 +123,7 @@ func NewTokenTree(root gr.Tokener) (*TokenTree, error) {
 		return nil, err
 	}
 
-	nextsFunc := func(elem gr.Tokener, h intf.Copier) ([]gr.Tokener, error) {
+	nextsFunc := func(elem gr.Tokener, h uc.Copier) ([]gr.Tokener, error) {
 		hInfo, ok := h.(*TTInfo)
 		if !ok {
 			return nil, fmt.Errorf("invalid type: %T", h)
@@ -174,7 +174,7 @@ func (tt *TokenTree) DebugString() string {
 	err := trt.DFS(
 		tt.tree,
 		tt.Info,
-		func(elem gr.Tokener, inf intf.Copier) (bool, error) {
+		func(elem gr.Tokener, inf uc.Copier) (bool, error) {
 			hInfo, ok := inf.(*TTInfo)
 			if !ok {
 				return false, fmt.Errorf("invalid type: %T", inf)

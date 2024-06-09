@@ -1,14 +1,11 @@
 package Lexer
 
 import (
-	gr "github.com/PlayerR9/LyneParser/Grammar"
-
-	slext "github.com/PlayerR9/MyGoLib/Units/Slice"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
-
 	com "github.com/PlayerR9/LyneParser/Common"
-
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 	teval "github.com/PlayerR9/MyGoLib/TreeLike/Explorer"
+	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
 // Lexer is a lexer that uses a grammar to tokenize a string.
@@ -151,7 +148,7 @@ func (l *Lexer) removeToSkipTokens() teval.FilterBranchesFunc[*gr.LeafToken] {
 		}
 
 		for _, toSkip := range l.toSkip {
-			newBranches = slext.SliceFilter(newBranches, FilterEmptyBranch)
+			newBranches = us.SliceFilter(newBranches, FilterEmptyBranch)
 			if len(newBranches) == 0 {
 				reason = teval.NewErrAllMatchesFailed()
 
@@ -163,7 +160,7 @@ func (l *Lexer) removeToSkipTokens() teval.FilterBranchesFunc[*gr.LeafToken] {
 			}
 
 			for i := 0; i < len(newBranches); i++ {
-				newBranches[i] = slext.SliceFilter(newBranches[i], filterTokenDifferentID)
+				newBranches[i] = us.SliceFilter(newBranches[i], filterTokenDifferentID)
 			}
 		}
 

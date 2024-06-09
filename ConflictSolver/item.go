@@ -6,9 +6,8 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
-
-	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 )
 
 // Item represents an item in a decision table.
@@ -23,10 +22,7 @@ type Item struct {
 	ruleIndex int
 }
 
-// String returns a string representation of the item.
-//
-// Returns:
-//   - string: The string representation of the item.
+// String implements the fmt.Stringer interface.
 func (i *Item) String() string {
 	var builder strings.Builder
 
@@ -63,11 +59,8 @@ func (i *Item) String() string {
 	return builder.String()
 }
 
-// Copy creates a copy of the item.
-//
-// Returns:
-//   - intf.Copier: The copy of the item.
-func (i *Item) Copy() intf.Copier {
+// Copy implements the Copier interface.
+func (i *Item) Copy() uc.Copier {
 	return &Item{
 		Rule:      i.Rule.Copy().(*gr.Production),
 		Pos:       i.Pos,

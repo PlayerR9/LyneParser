@@ -5,12 +5,10 @@ import (
 	"slices"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	intf "github.com/PlayerR9/MyGoLib/Units/Common"
-	slext "github.com/PlayerR9/MyGoLib/Units/Slice"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
-
 	trt "github.com/PlayerR9/MyGoLib/TreeLike/Traversor"
 	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
+	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
 // InfoStruct is the information about the expansion tree.
@@ -19,11 +17,8 @@ type InfoStruct struct {
 	seen map[*Helper]bool
 }
 
-// Copy creates a copy of the InfoStruct.
-//
-// Returns:
-//   - intf.Copier: A copy of the InfoStruct.
-func (is *InfoStruct) Copy() intf.Copier {
+// Copy implements the Copier interface.
+func (is *InfoStruct) Copy() uc.Copier {
 	isCopy := &InfoStruct{
 		seen: make(map[*Helper]bool),
 	}
@@ -42,13 +37,13 @@ func (is *InfoStruct) Copy() intf.Copier {
 //
 // Returns:
 //   - *InfoStruct: The new InfoStruct.
-//   - error: An error of type *ers.ErrInvalidParameter if the root is nil.
 //
 // Behaviors:
 //   - The root is set to seen.
-func NewInfoStruct(root *Helper) (*InfoStruct, error) {
+//   - If the root is nil, then nil is returned.
+func NewInfoStruct(root *Helper) *InfoStruct {
 	if root == nil {
-		return nil, ers.NewErrNilParameter("root")
+		return nil
 	}
 
 	info := &InfoStruct{
@@ -57,7 +52,7 @@ func NewInfoStruct(root *Helper) (*InfoStruct, error) {
 
 	info.seen[root] = true
 
-	return info, nil
+	return info
 }
 
 // IsSNoteen checks if the helper is seen.
@@ -104,12 +99,9 @@ type ExpansionTree struct {
 //   - *ers.Err0thRhsNotSet: The 0th RHS of the root is not set.
 //   - *ers.ErrInvalidParameter: The root is nil.
 func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, error) {
-	info, err := NewInfoStruct(h)
-	if err != nil {
-		return nil, err
-	}
+	info := NewInfoStruct(h)
 
-	nextsFunc := func(elem *Helper, is intf.Copier) ([]*Helper, error) {
+	nextsFunc := func(elem *Helper, is uc.Copier) ([]*Helper, error) {
 		isInf, ok := is.(*InfoStruct)
 		if !ok {
 			return nil, fmt.Errorf("invalid type: %T", is)
@@ -120,11 +112,14 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 			return nil, NewErr0thRhsNotSet()
 		}
 
-		if gr.IsTerminal(rhs) {
+		ok = gr.IsTerminal(rhs)
+		if ok {
 			return nil, nil
 		}
 
-		result := slext.SliceFilter(cs.GetElemsWithLhs(rhs), isInf.IsNotSeen)
+		result := cs.GetElemsWithLhs(rhs)
+
+		result = us.SliceFilter(result, isInf.IsNotSeen)
 
 		isInf.SetSeen(elem)
 
@@ -151,7 +146,7 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 func (et *ExpansionTree) PruneNonTerminalLeaves() {
 	leaves := et.tree.GetLeaves()
 
-	todo := slext.SliceFilter(leaves, FilterNonTerminalLeaf)
+	todo := us.SliceFilter(leaves, FilterNonTerminalLeaf)
 	if len(todo) == 0 {
 		return
 	}

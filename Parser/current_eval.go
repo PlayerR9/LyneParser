@@ -8,8 +8,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
-
-	intf "github.com/PlayerR9/MyGoLib/Units/Common"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
@@ -28,8 +27,8 @@ type CurrentEval struct {
 // Copy creates a copy of the current evaluation.
 //
 // Returns:
-//   - intf.Copier: A copy of the current evaluation.
-func (ce *CurrentEval) Copy() intf.Copier {
+//   - uc.Copier: A copy of the current evaluation.
+func (ce *CurrentEval) Copy() uc.Copier {
 	return &CurrentEval{
 		stack:        ce.stack.Copy().(*ds.DoubleStack[gr.Tokener]),
 		currentIndex: ce.currentIndex,
@@ -87,7 +86,7 @@ func (ce *CurrentEval) GetParseTree() ([]*com.TokenTree, error) {
 		)
 	}
 
-	forest := make([]*com.TokenTree, 0)
+	var forest []*com.TokenTree
 
 	for {
 		top, err := ce.stack.Pop()
@@ -191,26 +190,24 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 //   - bool: True if the parser has accepted the input stream.
 //   - error: An error if the parser could not act on the decision.
 func (ce *CurrentEval) ActOnDecision(decision cs.Actioner, source *com.TokenStream) error {
+	var err error
+
 	switch decision := decision.(type) {
 	case *cs.ActShift:
-		err := ce.shift(source)
-		if err != nil {
-			return err
-		}
+		err = ce.shift(source)
 	case *cs.ActReduce:
-		err := ce.reduce(decision.GetRule())
-		if err != nil {
-			return err
-		}
+		err = ce.reduce(decision.GetRule())
 	case *cs.ActAccept:
-		err := ce.reduce(decision.GetRule())
-		if err != nil {
-			return err
+		err = ce.reduce(decision.GetRule())
+		if err == nil {
+			ce.isDone = true
 		}
-
-		ce.isDone = true
 	default:
-		return NewErrUnknownAction(decision)
+		err = NewErrUnknownAction(decision)
+	}
+
+	if err != nil {
+		return err
 	}
 
 	return nil

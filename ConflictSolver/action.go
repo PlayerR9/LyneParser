@@ -6,9 +6,9 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
+	ui "github.com/PlayerR9/MyGoLib/Units/Iterators"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
-
-	intf "github.com/PlayerR9/MyGoLib/Units/Common"
 )
 
 // Actioner represents an action that the parser will take.
@@ -19,16 +19,6 @@ type Actioner interface {
 	//   - rhs: The right-hand side token to append.
 	AppendRhs(rhs string)
 
-	// Match matches the action with the top of the stack.
-	//
-	// Parameters:
-	//   - top: The top of the stack.
-	//   - stack: The stack.
-	//
-	// Returns:
-	//   - error: An error if the action does not match the top of the stack.
-	Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error
-
 	// Size returns the size of the action.
 	//
 	// Returns:
@@ -37,7 +27,9 @@ type Actioner interface {
 
 	fmt.Stringer
 
-	intf.Copier
+	uc.Copier
+
+	ui.Iterable[string]
 }
 
 // ActShift represents a shift action.
@@ -49,10 +41,7 @@ type ActShift struct {
 	Rhs []string
 }
 
-// String returns a string representation of the shift action.
-//
-// Returns:
-//   - string: The string representation of the shift action.
+// String implements the Actioner interface.
 func (a *ActShift) String() string {
 	var builder strings.Builder
 
@@ -61,9 +50,7 @@ func (a *ActShift) String() string {
 
 	if a.Lookahead != nil {
 		builder.WriteString(*a.Lookahead)
-		builder.WriteRune(' ')
-		builder.WriteRune('|')
-		builder.WriteRune(' ')
+		builder.WriteString(" -> ")
 	}
 
 	builder.WriteString(strings.Join(a.Rhs, " "))
@@ -72,11 +59,8 @@ func (a *ActShift) String() string {
 	return builder.String()
 }
 
-// Copy creates a copy of the shift action.
-//
-// Returns:
-//   - intf.Copier: The copy of the shift action.
-func (a *ActShift) Copy() intf.Copier {
+// Copy implements the Actioner interface.
+func (a *ActShift) Copy() uc.Copier {
 	rhsCopy := make([]string, len(a.Rhs))
 	copy(rhsCopy, a.Rhs)
 
@@ -86,52 +70,17 @@ func (a *ActShift) Copy() intf.Copier {
 	}
 }
 
-// AppendRhs appends a right-hand side token to the shift action.
-// It never returns an error.
-//
-// Parameters:
-//   - rhs: The right-hand side token to append.
+// AppendRhs implements the Actioner interface.
 func (a *ActShift) AppendRhs(rhs string) {
 	a.Rhs = append(a.Rhs, rhs)
 }
 
-// Match matches the shift action with the top of the stack.
-//
-// Parameters:
-//   - top: The top of the stack.
-//   - stack: The stack.
-//
-// Returns:
-//   - error: An error if the action does not match the top of the stack.
-func (a *ActShift) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
-	if a.Lookahead != nil {
-		lookahead := top.GetLookahead()
-
-		if lookahead == nil {
-			return ers.NewErrUnexpected(nil, *a.Lookahead)
-		} else if lookahead.ID != *a.Lookahead {
-			return ers.NewErrUnexpected(top.GetLookahead(), *a.Lookahead)
-		}
-	}
-
-	for _, rhs := range a.Rhs {
-		top, err := stack.Pop()
-		if err != nil {
-			return ers.NewErrUnexpected(nil, rhs)
-		}
-
-		if top.GetID() != rhs {
-			return ers.NewErrUnexpected(top, rhs)
-		}
-	}
-
-	return nil
+// Iterator implements the Actioner interface.
+func (a *ActShift) Iterator() ui.Iterater[string] {
+	return ui.NewSimpleIterator(a.Rhs)
 }
 
-// Size returns the size of the shift action.
-//
-// Returns:
-//   - int: The size of the shift action.
+// Size implements the Actioner interface.
 func (a *ActShift) Size() int {
 	return len(a.Rhs)
 }
@@ -164,22 +113,19 @@ type ActReduce struct {
 	Rhs []string
 }
 
-// String returns a string representation of the reduce action.
-//
-// Returns:
-//   - string: The string representation of the reduce action.
+// String implements the Actioner interface.
 func (a *ActReduce) String() string {
-	return fmt.Sprintf(
-		"reduce{%s}",
-		strings.Join(a.Rhs, " "),
-	)
+	var builder strings.Builder
+
+	builder.WriteString("reduce{")
+	builder.WriteString(strings.Join(a.Rhs, " "))
+	builder.WriteRune('}')
+
+	return builder.String()
 }
 
-// Copy creates a copy of the reduce action.
-//
-// Returns:
-//   - intf.Copier: The copy of the reduce action.
-func (a *ActReduce) Copy() intf.Copier {
+// Copy implements the Actioner interface.
+func (a *ActReduce) Copy() uc.Copier {
 	rhsCopy := make([]string, len(a.Rhs))
 	copy(rhsCopy, a.Rhs)
 
@@ -189,42 +135,17 @@ func (a *ActReduce) Copy() intf.Copier {
 	}
 }
 
-// AppendRhs appends a right-hand side token to the reduce action.
-// It never returns an error.
-//
-// Parameters:
-//   - rhs: The right-hand side token to append.
+// AppendRhs implements the Actioner interface.
 func (a *ActReduce) AppendRhs(rhs string) {
 	a.Rhs = append(a.Rhs, rhs)
 }
 
-// Match matches the reduce action with the top of the stack.
-//
-// Parameters:
-//   - top: The top of the stack.
-//   - stack: The stack.
-//
-// Returns:
-//   - error: An error if the action does not match the top of the stack.
-func (a *ActReduce) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
-	for _, rhs := range a.Rhs {
-		top, err := stack.Pop()
-		if err != nil {
-			return ers.NewErrUnexpected(nil, rhs)
-		}
-
-		if top.GetID() != rhs {
-			return ers.NewErrUnexpected(top, rhs)
-		}
-	}
-
-	return nil
+// Iterator implements the Actioner interface.
+func (a *ActReduce) Iterator() ui.Iterater[string] {
+	return ui.NewSimpleIterator(a.Rhs)
 }
 
-// Size returns the size of the reduce action.
-//
-// Returns:
-//   - int: The size of the reduce action.
+// Size implements the Actioner interface.
 func (a *ActReduce) Size() int {
 	return len(a.Rhs)
 }
@@ -236,15 +157,17 @@ func (a *ActReduce) Size() int {
 //
 // Returns:
 //   - *ActReduce: A pointer to the new reduce action.
-//   - error: An error of type *ers.ErrInvalidParameter if the rule is nil.
-func NewActReduce(rule *gr.Production) (*ActReduce, error) {
+//
+// Behaviors:
+//   - If the rule is nil, nil is returned.
+func NewActReduce(rule *gr.Production) *ActReduce {
 	if rule == nil {
-		return nil, ers.NewErrNilParameter("rule")
+		return nil
 	}
 
 	return &ActReduce{
 		Rule: rule,
-	}, nil
+	}
 }
 
 // GetRule returns the rule to reduce by.
@@ -264,22 +187,19 @@ type ActAccept struct {
 	Rhs []string
 }
 
-// String returns a string representation of the accept action.
-//
-// Returns:
-//   - string: The string representation of the accept action.
+// String implements the Actioner interface.
 func (a *ActAccept) String() string {
-	return fmt.Sprintf(
-		"accept{%s}",
-		strings.Join(a.Rhs, " "),
-	)
+	var builder strings.Builder
+
+	builder.WriteString("accept{")
+	builder.WriteString(strings.Join(a.Rhs, " "))
+	builder.WriteRune('}')
+
+	return builder.String()
 }
 
-// Copy creates a copy of the accept action.
-//
-// Returns:
-//   - intf.Copier: The copy of the accept action.
-func (a *ActAccept) Copy() intf.Copier {
+// Copy implements the Actioner interface.
+func (a *ActAccept) Copy() uc.Copier {
 	rhsCopy := make([]string, len(a.Rhs))
 	copy(rhsCopy, a.Rhs)
 
@@ -289,42 +209,17 @@ func (a *ActAccept) Copy() intf.Copier {
 	}
 }
 
-// AppendRhs appends a right-hand side token to the accept action.
-// It never returns an error.
-//
-// Parameters:
-//   - rhs: The right-hand side token to append.
+// AppendRhs implements the Actioner interface.
 func (a *ActAccept) AppendRhs(rhs string) {
 	a.Rhs = append(a.Rhs, rhs)
 }
 
-// Match matches the accept action with the top of the stack.
-//
-// Parameters:
-//   - top: The top of the stack.
-//   - stack: The stack.
-//
-// Returns:
-//   - error: An error if the action does not match the top of the stack.
-func (a *ActAccept) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
-	for _, rhs := range a.Rhs {
-		top, err := stack.Pop()
-		if err != nil {
-			return ers.NewErrUnexpected(nil, rhs)
-		}
-
-		if top.GetID() != rhs {
-			return ers.NewErrUnexpected(top, rhs)
-		}
-	}
-
-	return nil
+// Iterator implements the Actioner interface.
+func (a *ActAccept) Iterator() ui.Iterater[string] {
+	return ui.NewSimpleIterator(a.Rhs)
 }
 
-// Size returns the size of the accept action.
-//
-// Returns:
-//   - int: The size of the accept action.
+// Size implements the Actioner interface.
 func (a *ActAccept) Size() int {
 	return len(a.Rhs)
 }
@@ -336,16 +231,18 @@ func (a *ActAccept) Size() int {
 //
 // Returns:
 //   - *ActAccept: A pointer to the new accept action.
-//   - error: An error of type *ers.ErrInvalidParameter if the rule is nil.
-func NewAcceptAction(rule *gr.Production) (*ActAccept, error) {
+//
+// Behaviors:
+//   - If the rule is nil, nil is returned.
+func NewAcceptAction(rule *gr.Production) *ActAccept {
 	if rule == nil {
-		return nil, ers.NewErrNilParameter("rule")
+		return nil
 	}
 
 	return &ActAccept{
 		Rule: rule,
 		Rhs:  make([]string, 0),
-	}, nil
+	}
 }
 
 // GetRule returns the rule to reduce by.
@@ -354,4 +251,47 @@ func NewAcceptAction(rule *gr.Production) (*ActAccept, error) {
 //   - *gr.Production: The rule to reduce by.
 func (a *ActAccept) GetRule() *gr.Production {
 	return a.Rule
+}
+
+// Match matches the action with the top of the stack.
+//
+// Parameters:
+//   - a: The action to match.
+//   - top: The top of the stack.
+//   - stack: The stack.
+//
+// Returns:
+//   - error: An error if the action does not match the top of the stack.
+func MatchAction(a Actioner, top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+	aShift, ok := a.(*ActShift)
+	if ok && aShift != nil {
+		lookahead := top.GetLookahead()
+
+		if lookahead == nil {
+			return ers.NewErrUnexpected(nil, *aShift.Lookahead)
+		} else if lookahead.ID != *aShift.Lookahead {
+			return ers.NewErrUnexpected(lookahead, *aShift.Lookahead)
+		}
+	}
+
+	iter := a.Iterator()
+
+	for {
+		rhs, err := iter.Consume()
+		if err != nil {
+			break
+		}
+
+		top, err := stack.Pop()
+		if err != nil {
+			return ers.NewErrUnexpected(nil, rhs)
+		}
+
+		id := top.GetID()
+		if id != rhs {
+			return ers.NewErrUnexpected(top, rhs)
+		}
+	}
+
+	return nil
 }

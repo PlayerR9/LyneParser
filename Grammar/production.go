@@ -6,13 +6,11 @@ import (
 	"slices"
 	"strings"
 
-	itff "github.com/PlayerR9/MyGoLib/Units/Common"
-	itf "github.com/PlayerR9/MyGoLib/Units/Iterators"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
-
-	slext "github.com/PlayerR9/MyGoLib/Units/Slice"
-
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
+	itf "github.com/PlayerR9/MyGoLib/Units/Iterators"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
+	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
 // Productioner is an interface that defines methods for a production in a grammar.
@@ -31,7 +29,7 @@ type Productioner interface {
 	//   - []string: A slice of symbols in the production.
 	GetSymbols() []string
 
-	itff.Objecter
+	uc.Objecter
 }
 
 // Production represents a production in a grammar.
@@ -73,7 +71,7 @@ func (p *Production) String() string {
 //
 // Returns:
 //   - bool: Whether the production is equal to the other production.
-func (p *Production) Equals(other itff.Equaler) bool {
+func (p *Production) Equals(other uc.Equaler) bool {
 	if other == nil {
 		return false
 	}
@@ -141,7 +139,7 @@ func (p *Production) GetSymbols() []string {
 
 	symbols[len(symbols)-1] = p.lhs
 
-	return slext.Uniquefy(symbols, true)
+	return us.Uniquefy(symbols, true)
 }
 
 // Match is a method of Production that returns a token that matches the
@@ -198,8 +196,8 @@ func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToke
 // Copy is a method of Production that returns a copy of the production.
 //
 // Returns:
-//   - itff.Copier: A copy of the production.
-func (p *Production) Copy() itff.Copier {
+//   - uc.Copier: A copy of the production.
+func (p *Production) Copy() uc.Copier {
 	pCopy := &Production{
 		lhs: p.lhs,
 		rhs: make([]string, len(p.rhs)),
@@ -405,7 +403,7 @@ func (r *RegProduction) String() string {
 //
 // Returns:
 //   - bool: Whether the production is equal to the other production.
-func (p *RegProduction) Equals(other itff.Equaler) bool {
+func (p *RegProduction) Equals(other uc.Equaler) bool {
 	if other == nil {
 		return false
 	}
@@ -461,8 +459,8 @@ func (p *RegProduction) Match(at int, b []byte) *LeafToken {
 // Copy is a method of RegProduction that returns a copy of the production.
 //
 // Returns:
-//   - itff.Copier: A copy of the production.
-func (p *RegProduction) Copy() itff.Copier {
+//   - uc.Copier: A copy of the production.
+func (p *RegProduction) Copy() uc.Copier {
 	return &RegProduction{
 		lhs: p.lhs,
 		rhs: p.rhs,

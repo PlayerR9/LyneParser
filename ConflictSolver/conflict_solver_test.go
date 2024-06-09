@@ -54,10 +54,7 @@ func init() {
 func TestAmbiguousShifts(t *testing.T) {
 	rules := ParserGrammar.GetProductions()
 
-	cs, err := NewConflictSolver(ParserGrammar.Symbols, rules)
-	if err != nil {
-		t.Fatalf("NewConflictSolver() returned an error: %s", err.Error())
-	}
+	cs := NewConflictSolver(ParserGrammar.Symbols, rules)
 
 	// DEBUG: Display the decision table before solving ambiguous shifts.
 	doc, err := ffs.SprintFString(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)), cs)
@@ -88,12 +85,9 @@ func TestAmbiguousShifts(t *testing.T) {
 func TestConflictSolver(t *testing.T) {
 	rules := ParserGrammar.GetProductions()
 
-	cs, err := NewConflictSolver(ParserGrammar.Symbols, rules)
-	if err != nil {
-		t.Fatalf("NewConflictSolver() returned an error: %s", err.Error())
-	}
+	cs := NewConflictSolver(ParserGrammar.Symbols, rules)
 
-	err = cs.SolveAmbiguousShifts()
+	err := cs.SolveAmbiguousShifts()
 	if err != nil {
 		t.Fatalf("ConflictSolver.SolveAmbiguousShifts() returned an error: %s", err.Error())
 	}
@@ -122,4 +116,6 @@ func TestConflictSolver(t *testing.T) {
 	pages = strings.Join(ffs.Stringfy(doc), "\n")
 
 	t.Log(pages)
+
+	t.Fatalf("TestConflictSolver() is not implemented")
 }

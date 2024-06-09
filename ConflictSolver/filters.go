@@ -38,21 +38,3 @@ func FilterNonTerminalLeaf(tn *tr.TreeNode[*Helper]) bool {
 	ok := gr.IsTerminal(rhs)
 	return !ok
 }
-
-/////////////////////////////////////////////////////////////
-
-// FilterNonShiftHelper filters out non-shift helpers.
-//
-// Parameters:
-//   - h: The helper to filter.
-//
-// Returns:
-//   - bool: True if the helper is a shift helper, false otherwise.
-func FilterNonShiftHelper(h *Helper) bool {
-	if h == nil {
-		return false
-	}
-
-	ok := h.IsShift()
-	return ok
-}

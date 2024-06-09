@@ -160,7 +160,9 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 			lookahead = top.GetLookahead()
 		}
 
-		if top.GetID() != value {
+		id := top.GetID()
+
+		if id != value {
 			ce.stack.Refuse()
 			return ers.NewErrAfter(lhs, ers.NewErrUnexpected(top, value))
 		}
@@ -189,17 +191,22 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 // Returns:
 //   - bool: True if the parser has accepted the input stream.
 //   - error: An error if the parser could not act on the decision.
-func (ce *CurrentEval) ActOnDecision(decision cs.Actioner, source *com.TokenStream) error {
+func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *com.TokenStream) error {
+	// DEBUG: Print the stack
+	fmt.Println("Stack:")
+	fmt.Println("-", ce.stack.GoString())
+	fmt.Println()
+
 	var err error
 
 	switch decision := decision.(type) {
 	case *cs.ActShift:
 		err = ce.shift(source)
 	case *cs.ActReduce:
-		err = ce.reduce(decision.GetRule())
-	case *cs.ActAccept:
-		err = ce.reduce(decision.GetRule())
-		if err == nil {
+		rule := decision.GetOriginal()
+
+		err = ce.reduce(rule)
+		if err == nil && decision.ShouldAccept() {
 			ce.isDone = true
 		}
 	default:

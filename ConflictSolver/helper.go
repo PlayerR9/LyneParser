@@ -1,13 +1,25 @@
 package ConflictSolver
 
 import (
+	"fmt"
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
+
+type HelperElem interface {
+	// SetLookahead sets the lookahead of the action.
+	//
+	// Parameters:
+	//   - lookahead: The lookahead to set.
+	SetLookahead(lookahead *string)
+
+	fmt.Stringer
+	uc.Copier
+}
 
 // Helper represents a helper in a decision table.
 type Helper struct {
@@ -15,7 +27,8 @@ type Helper struct {
 	*Item
 
 	// Action is the action of the helper.
-	Action Actioner
+	// This can never be nil.
+	Action HelperElem
 }
 
 // String implements the fmt.Stringer interface.
@@ -28,14 +41,19 @@ func (h *Helper) String() string {
 		builder.WriteString("no item")
 	}
 
-	builder.WriteRune(' ')
-	builder.WriteRune('(')
-	if h.Action != nil {
-		builder.WriteString(h.Action.String())
-	}
+	builder.WriteString(" (")
+	builder.WriteString(h.Action.String())
 	builder.WriteRune(')')
 
 	return builder.String()
+}
+
+// Copy implements the common.Copier interface.
+func (h *Helper) Copy() uc.Copier {
+	return &Helper{
+		Item:   h.Item.Copy().(*Item),
+		Action: h.Action.Copy().(HelperElem),
+	}
 }
 
 // NewHelper is a constructor of Helper.
@@ -46,67 +64,92 @@ func (h *Helper) String() string {
 //
 // Returns:
 //   - *Helper: The pointer to the new Helper.
-//   - error: An error of type *ers.ErrInvalidParameter if the item is nil.
-func NewHelper(item *Item, action Actioner) (*Helper, error) {
-	if item == nil {
-		return nil, ers.NewErrNilParameter("item")
+//
+// Behaviors:
+//   - If the item or action are nil, then nil is returned.
+func NewHelper(item *Item, action HelperElem) *Helper {
+	if item == nil || action == nil {
+		return nil
 	}
 
 	return &Helper{
 		Item:   item,
 		Action: action,
-	}, nil
+	}
+}
+
+// Init initializes the helper with the specified symbol.
+//
+// Parameters:
+//   - symbol: The symbol to initialize the helper with.
+func (h *Helper) Init(symbol string) {
+	if !h.Item.IsReduce() {
+		h.Action = NewActShift()
+
+		return
+	}
+
+	r := h.Item.GetRule()
+
+	if symbol == gr.EOFTokenID {
+		h.Action = NewActReduce(r, true)
+	} else {
+		h.Action = NewActReduce(r, false)
+	}
 }
 
 // SetAction sets the action of the helper.
 //
 // Parameters:
 //   - action: The action to set.
-func (h *Helper) SetAction(action Actioner) {
-	h.Action = action
-}
-
-// EvaluateLookahead evaluates the lookahead of the shift action. If the action is not a
-// shift action, this method does nothing.
-func (h *Helper) EvaluateLookahead() {
-	if h.Action == nil {
+//
+// Behaviors:
+//   - If the action is nil, then the action is not set.
+func (h *Helper) SetAction(action HelperElem) {
+	if action == nil {
 		return
 	}
 
+	h.Action = action
+}
+
+// EvaluateLookahead evaluates the lookahead of the action.
+//
+// Returns:
+//   - error: An error if the evaluation failed.
+func (h *Helper) EvaluateLookahead() error {
 	pos := h.Item.GetPos()
 
 	lookahead, err := h.Item.GetRhsAt(pos + 1)
 	if err != nil {
-		return
+		return fmt.Errorf("failed to evaluate lookahead: %w", err)
 	}
 
 	ok := gr.IsTerminal(lookahead)
 	if !ok {
-		return
+		return nil
 	}
 
-	act, ok := h.Action.(*ActShift)
-	if ok {
-		act.SetLookahead(&lookahead)
-	}
+	h.Action.SetLookahead(&lookahead)
+
+	return nil
 }
 
-// GetLookahead returns the lookahead of the shift action. If the action is not a shift action,
-// this method returns nil.
+// GetLookahead returns the lookahead of the action.
 //
 // Returns:
 //   - *string: The lookahead token ID.
 func (h *Helper) GetLookahead() *string {
-	if h.Action == nil {
-		return nil
+	var lookahead *string
+
+	switch act := h.Action.(type) {
+	case *ActReduce:
+		lookahead = act.GetLookahead()
+	case *ActShift:
+		lookahead = act.GetLookahead()
 	}
 
-	act, ok := h.Action.(*ActShift)
-	if !ok {
-		return nil
-	}
-
-	return act.Lookahead
+	return lookahead
 }
 
 // AppendRhs appends a symbol to the right-hand side of the action.
@@ -117,11 +160,14 @@ func (h *Helper) GetLookahead() *string {
 // Returns:
 //   - error: An error of type *ErrNoActionProvided if the action is nil.
 func (h *Helper) AppendRhs(symbol string) error {
-	if h.Action == nil {
-		return NewErrNoActionProvided()
+	switch act := h.Action.(type) {
+	case *ActReduce:
+		act.AppendRhs(symbol)
+	case *ActShift:
+		act.AppendRhs(symbol)
+	default:
+		return ue.NewErrUnexpectedType("action", act)
 	}
-
-	h.Action.AppendRhs(symbol)
 
 	return nil
 }
@@ -147,7 +193,7 @@ func (h *Helper) ReplaceRhsAt(index int, rhs string) *Helper {
 
 	return &Helper{
 		Item:   itemCopy,
-		Action: h.Action.Copy().(Actioner),
+		Action: h.Action.Copy().(HelperElem),
 	}
 }
 
@@ -176,7 +222,7 @@ func (h *Helper) SubstituteRhsAt(index int, otherH *Helper) *Helper {
 
 	return &Helper{
 		Item:   itemCopy,
-		Action: h.Action.Copy().(Actioner),
+		Action: h.Action.Copy().(HelperElem),
 	}
 }
 
@@ -192,7 +238,16 @@ func (h *Helper) SubstituteRhsAt(index int, otherH *Helper) *Helper {
 // Behaviors:
 //   - The stack is refused.
 func (h *Helper) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
-	err := MatchAction(h.Action, top, stack)
+	var err error
+
+	switch act := h.Action.(type) {
+	case *ActReduce:
+		err = MatchAction(act.Action, top, stack)
+	case *ActShift:
+		err = MatchAction(act.Action, top, stack)
+	default:
+		return ue.NewErrUnexpectedType("action", act)
+	}
 
 	// Refuse the stack
 	stack.Refuse()
@@ -208,60 +263,34 @@ func (h *Helper) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error 
 //
 // Returns:
 //   - int: The size of the helper.
+//
+// Behaviors:
+//   - If the action is invalid, -1 is returned.
 func (h *Helper) Size() int {
-	return h.Action.Size()
+	switch act := h.Action.(type) {
+	case *ActReduce:
+		return act.Size()
+	case *ActShift:
+		return act.Size()
+	default:
+		return -1
+	}
 }
 
 // GetAction returns the action of the helper.
 //
 // Returns:
 //   - Actioner: The action of the helper.
-func (h *Helper) GetAction() Actioner {
+func (h *Helper) GetAction() HelperElem {
 	return h.Action
 }
 
-/////////////////////////////////////////////////////////////
-
-func (h *Helper) Copy() uc.Copier {
-	return &Helper{
-		Item:   h.Item.Copy().(*Item),
-		Action: h.Action.Copy().(Actioner),
-	}
-}
-
-// Init initializes the helper with the specified symbol.
+// ForceLookahead forces the lookahead of the action.
 //
 // Parameters:
-//   - symbol: The symbol to initialize the helper with.
-//
-// Returns:
-//   - error: An error of type *ers.ErrInvalidParameter if the rule is nil.
-func (h *Helper) Init(symbol string) {
-	if !h.Item.IsReduce() {
-		h.Action = NewActShift()
-
-		return
-	}
-
-	r := h.Item.GetRule()
-
-	if symbol == gr.EOFTokenID {
-		h.Action = NewAcceptAction(r)
-	} else {
-		h.Action = NewActReduce(r)
-	}
+//   - lookahead: The lookahead to force.
+func (h *Helper) ForceLookahead(lookahead string) {
+	h.Action.SetLookahead(&lookahead)
 }
 
-// IsShift returns true if the action is a shift action.
-//
-// Returns:
-//   - bool: True if the action is a shift action. Otherwise, false.
-func (h *Helper) IsShift() bool {
-	if h.Action == nil {
-		return false
-	}
-
-	_, ok := h.Action.(*ActShift)
-
-	return ok
-}
+/////////////////////////////////////////////////////////////

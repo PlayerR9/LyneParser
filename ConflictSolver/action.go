@@ -1,7 +1,6 @@
 package ConflictSolver
 
 import (
-	"fmt"
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
@@ -13,76 +12,108 @@ import (
 
 // Actioner represents an action that the parser will take.
 type Actioner interface {
-	// AppendRhs appends a right-hand side token to the action.
-	//
-	// Parameters:
-	//   - rhs: The right-hand side token to append.
-	AppendRhs(rhs string)
-
-	// Size returns the size of the action.
+	// GetLookahead returns the lookahead token ID for the action.
 	//
 	// Returns:
-	//   - int: The size of the action.
-	Size() int
+	//   - *string: The lookahead token ID.
+	GetLookahead() *string
 
-	fmt.Stringer
+	// Iterator returns an iterator of the right-hand side tokens.
+	//
+	// Returns:
+	//   - ui.Iterater[string]: An iterator of the right-hand side tokens.
+	Iterator() ui.Iterater[string]
+}
 
-	uc.Copier
+// Action represents an action in a decision table.
+type Action struct {
+	// lookahead is the lookahead token ID for the shift action.
+	lookahead *string
 
-	ui.Iterable[string]
+	// Rhs is the right-hand side tokens of the rule.
+	rhs []string
+}
+
+// String implements the fmt.Stringer interface.
+func (a *Action) String() string {
+	if a.lookahead == nil {
+		return strings.Join(a.rhs, " ")
+	}
+
+	var builder strings.Builder
+
+	builder.WriteString(*a.lookahead)
+	builder.WriteString(" <- ")
+	builder.WriteString(strings.Join(a.rhs, " "))
+
+	return builder.String()
+}
+
+// Iterator implements the Iterators.Iterater interface.
+func (a *Action) Iterator() ui.Iterater[string] {
+	return ui.NewSimpleIterator(a.rhs)
+}
+
+// AppendRhs appends a right-hand side token to the action.
+//
+// Parameters:
+//   - rhs: The right-hand side token to append.
+func (a *Action) AppendRhs(rhs string) {
+	a.rhs = append(a.rhs, rhs)
+}
+
+// Size returns the size of the right-hand side tokens.
+//
+// Returns:
+//   - int: The size of the right-hand side tokens.
+func (a *Action) Size() int {
+	return len(a.rhs)
+}
+
+// SetLookahead sets the lookahead token ID for the action.
+//
+// Parameters:
+//   - lookahead: The lookahead token ID to set.
+func (a *Action) SetLookahead(lookahead *string) {
+	a.lookahead = lookahead
+}
+
+// GetLookahead returns the lookahead token ID for the action.
+//
+// Returns:
+//   - *string: The lookahead token ID.
+func (a *Action) GetLookahead() *string {
+	return a.lookahead
 }
 
 // ActShift represents a shift action.
 type ActShift struct {
-	// Lookahead is the lookahead token ID for the shift action.
-	Lookahead *string
-
-	// Rhs is the right-hand side tokens of the rule.
-	Rhs []string
+	*Action
 }
 
-// String implements the Actioner interface.
+// String implements the fmt.Stringer interface.
 func (a *ActShift) String() string {
 	var builder strings.Builder
 
 	builder.WriteString("shift")
 	builder.WriteRune('{')
-
-	if a.Lookahead != nil {
-		builder.WriteString(*a.Lookahead)
-		builder.WriteString(" -> ")
-	}
-
-	builder.WriteString(strings.Join(a.Rhs, " "))
+	builder.WriteString(a.Action.String())
 	builder.WriteRune('}')
 
 	return builder.String()
 }
 
-// Copy implements the Actioner interface.
+// Copy implements the common.Copier interface.
 func (a *ActShift) Copy() uc.Copier {
-	rhsCopy := make([]string, len(a.Rhs))
-	copy(rhsCopy, a.Rhs)
+	rhsCopy := make([]string, len(a.Action.rhs))
+	copy(rhsCopy, a.Action.rhs)
 
 	return &ActShift{
-		Lookahead: a.Lookahead,
-		Rhs:       rhsCopy,
+		Action: &Action{
+			lookahead: a.Action.lookahead,
+			rhs:       rhsCopy,
+		},
 	}
-}
-
-// AppendRhs implements the Actioner interface.
-func (a *ActShift) AppendRhs(rhs string) {
-	a.Rhs = append(a.Rhs, rhs)
-}
-
-// Iterator implements the Actioner interface.
-func (a *ActShift) Iterator() ui.Iterater[string] {
-	return ui.NewSimpleIterator(a.Rhs)
-}
-
-// Size implements the Actioner interface.
-func (a *ActShift) Size() int {
-	return len(a.Rhs)
 }
 
 // NewActShift creates a new shift action.
@@ -91,82 +122,84 @@ func (a *ActShift) Size() int {
 //   - *ActShift: A pointer to the new shift action.
 func NewActShift() *ActShift {
 	return &ActShift{
-		Lookahead: nil,
-		Rhs:       make([]string, 0),
+		Action: &Action{
+			lookahead: nil,
+			rhs:       make([]string, 0),
+		},
 	}
-}
-
-// SetLookahead sets the lookahead token ID for the shift action.
-//
-// Parameters:
-//   - lookahead: The lookahead token ID.
-func (a *ActShift) SetLookahead(lookahead *string) {
-	a.Lookahead = lookahead
 }
 
 // ActReduce represents a reduce action.
 type ActReduce struct {
-	// Rule is the rule to reduce by.
-	Rule *gr.Production
+	*Action
 
-	// Rhs is the right-hand side tokens of the rule.
-	Rhs []string
+	// rule is the rule to reduce by.
+	rule *gr.Production
+
+	// original is the original rule to reduce by.
+	// this should never be modified.
+	original *gr.Production
+
+	// shouldAccept is true if the reduce action should accept.
+	shouldAccept bool
 }
 
-// String implements the Actioner interface.
+// String implements the fmt.Stringer interface.
 func (a *ActReduce) String() string {
 	var builder strings.Builder
 
-	builder.WriteString("reduce{")
-	builder.WriteString(strings.Join(a.Rhs, " "))
+	if a.shouldAccept {
+		builder.WriteString("accept{")
+	} else {
+		builder.WriteString("reduce{")
+	}
+
+	builder.WriteString(a.Action.String())
 	builder.WriteRune('}')
 
 	return builder.String()
 }
 
-// Copy implements the Actioner interface.
+// Copy implements the common.Copier interface.
 func (a *ActReduce) Copy() uc.Copier {
-	rhsCopy := make([]string, len(a.Rhs))
-	copy(rhsCopy, a.Rhs)
+	rhsCopy := make([]string, len(a.Action.rhs))
+	copy(rhsCopy, a.Action.rhs)
 
 	return &ActReduce{
-		Rule: a.Rule.Copy().(*gr.Production),
-		Rhs:  rhsCopy,
+		Action: &Action{
+			lookahead: a.Action.lookahead,
+			rhs:       rhsCopy,
+		},
+		rule:         a.rule.Copy().(*gr.Production),
+		original:     a.original,
+		shouldAccept: a.shouldAccept,
 	}
-}
-
-// AppendRhs implements the Actioner interface.
-func (a *ActReduce) AppendRhs(rhs string) {
-	a.Rhs = append(a.Rhs, rhs)
-}
-
-// Iterator implements the Actioner interface.
-func (a *ActReduce) Iterator() ui.Iterater[string] {
-	return ui.NewSimpleIterator(a.Rhs)
-}
-
-// Size implements the Actioner interface.
-func (a *ActReduce) Size() int {
-	return len(a.Rhs)
 }
 
 // NewActReduce creates a new reduce action.
 //
 // Parameters:
 //   - rule: The rule to reduce by.
+//   - shouldAccept: True if the reduce action should accept.
 //
 // Returns:
 //   - *ActReduce: A pointer to the new reduce action.
 //
 // Behaviors:
 //   - If the rule is nil, nil is returned.
-func NewActReduce(rule *gr.Production) *ActReduce {
+func NewActReduce(rule *gr.Production, shouldAccept bool) *ActReduce {
 	if rule == nil {
 		return nil
 	}
 
 	return &ActReduce{
-		Rule: rule,
+		Action: &Action{
+			lookahead: nil,
+			rhs:       make([]string, 0),
+		},
+		rule:         rule.Copy().(*gr.Production),
+		original:     rule,
+		shouldAccept: shouldAccept,
 	}
 }
 
@@ -175,82 +208,23 @@ func NewActReduce(rule *gr.Production) *ActReduce {
 // Returns:
 //   - *gr.Production: The rule to reduce by.
 func (a *ActReduce) GetRule() *gr.Production {
-	return a.Rule
+	return a.rule
 }
 
-// ActAccept represents an accept action.
-type ActAccept struct {
-	// Rule is the rule to reduce by.
-	Rule *gr.Production
-
-	// Rhs is the right-hand side tokens of the rule.
-	Rhs []string
-}
-
-// String implements the Actioner interface.
-func (a *ActAccept) String() string {
-	var builder strings.Builder
-
-	builder.WriteString("accept{")
-	builder.WriteString(strings.Join(a.Rhs, " "))
-	builder.WriteRune('}')
-
-	return builder.String()
-}
-
-// Copy implements the Actioner interface.
-func (a *ActAccept) Copy() uc.Copier {
-	rhsCopy := make([]string, len(a.Rhs))
-	copy(rhsCopy, a.Rhs)
-
-	return &ActAccept{
-		Rule: a.Rule.Copy().(*gr.Production),
-		Rhs:  rhsCopy,
-	}
-}
-
-// AppendRhs implements the Actioner interface.
-func (a *ActAccept) AppendRhs(rhs string) {
-	a.Rhs = append(a.Rhs, rhs)
-}
-
-// Iterator implements the Actioner interface.
-func (a *ActAccept) Iterator() ui.Iterater[string] {
-	return ui.NewSimpleIterator(a.Rhs)
-}
-
-// Size implements the Actioner interface.
-func (a *ActAccept) Size() int {
-	return len(a.Rhs)
-}
-
-// NewAcceptAction creates a new accept action.
-//
-// Parameters:
-//   - rule: The rule to reduce by.
+// GetOriginal returns the original rule to reduce by.
 //
 // Returns:
-//   - *ActAccept: A pointer to the new accept action.
-//
-// Behaviors:
-//   - If the rule is nil, nil is returned.
-func NewAcceptAction(rule *gr.Production) *ActAccept {
-	if rule == nil {
-		return nil
-	}
-
-	return &ActAccept{
-		Rule: rule,
-		Rhs:  make([]string, 0),
-	}
+//   - *gr.Production: The original rule to reduce by.
+func (a *ActReduce) GetOriginal() *gr.Production {
+	return a.original
 }
 
-// GetRule returns the rule to reduce by.
+// ShouldAccept returns true if the reduce action should accept.
 //
 // Returns:
-//   - *gr.Production: The rule to reduce by.
-func (a *ActAccept) GetRule() *gr.Production {
-	return a.Rule
+//   - bool: True if the reduce action should accept.
+func (a *ActReduce) ShouldAccept() bool {
+	return a.shouldAccept
 }
 
 // Match matches the action with the top of the stack.
@@ -263,14 +237,14 @@ func (a *ActAccept) GetRule() *gr.Production {
 // Returns:
 //   - error: An error if the action does not match the top of the stack.
 func MatchAction(a Actioner, top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
-	aShift, ok := a.(*ActShift)
-	if ok && aShift != nil {
-		lookahead := top.GetLookahead()
+	ela := a.GetLookahead()
+	tla := top.GetLookahead()
 
-		if lookahead == nil {
-			return ers.NewErrUnexpected(nil, *aShift.Lookahead)
-		} else if lookahead.ID != *aShift.Lookahead {
-			return ers.NewErrUnexpected(lookahead, *aShift.Lookahead)
+	if ela != nil {
+		if tla == nil {
+			return ers.NewErrUnexpected(nil, *ela)
+		} else if *ela != tla.GetID() {
+			return ers.NewErrUnexpected(top, *ela)
 		}
 	}
 

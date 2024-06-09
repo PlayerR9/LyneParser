@@ -73,12 +73,13 @@ func (i *Item) Copy() uc.Copier {
 // Parameters:
 //   - rule: The production rule that the item represents.
 //   - pos: The position of the item in the production rule.
+//   - ruleIndex: The index of the rule in the decision table.
 //
 // Returns:
 //   - *Item: The pointer to the new Item.
 //   - error: An error of type *ers.ErrInvalidParameter if the rule is nil or
 //     the pos is out of bounds.
-func NewItem(rule *gr.Production, pos int) (*Item, error) {
+func NewItem(rule *gr.Production, pos int, ruleIndex int) (*Item, error) {
 	if rule == nil {
 		return nil, ers.NewErrNilParameter("rule")
 	}
@@ -93,8 +94,9 @@ func NewItem(rule *gr.Production, pos int) (*Item, error) {
 	}
 
 	return &Item{
-		Rule: rule,
-		Pos:  pos,
+		Rule:      rule,
+		Pos:       pos,
+		ruleIndex: ruleIndex,
 	}, nil
 }
 
@@ -251,5 +253,3 @@ func (item *Item) IsLhsRhs(rhs string) bool {
 func (item *Item) IndicesOfRhs(rhs string) []int {
 	return item.Rule.IndicesOfRhs(rhs)
 }
-
-/////////////////////////////////////////////////////////////

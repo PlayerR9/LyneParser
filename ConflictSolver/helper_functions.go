@@ -3,49 +3,8 @@ package ConflictSolver
 import (
 	"fmt"
 
-	gr "github.com/PlayerR9/LyneParser/Grammar"
-
 	uts "github.com/PlayerR9/MyGoLib/Utility/Sorting"
 )
-
-// Pairing represents a pairing of a symbol and a production rule.
-type pairing struct {
-	// Symbol is the symbol of the pairing.
-	Symbol string
-
-	// Rule is the production rule of the pairing.
-	Rule *gr.Production
-}
-
-// getIndices is a method that gets the indices of the right-hand side symbols of the pairing.
-//
-// Returns:
-//   - []int: The indices of the right-hand side symbols.
-func (p *pairing) getIndices() []int {
-	return p.Rule.IndicesOfRhs(p.Symbol)
-}
-
-// groupProdsByRhss is a helper function that groups production rules by their right-hand side symbols.
-//
-// Parameters:
-//   - symbols: The symbols to group by.
-//   - rules: The production rules to group.
-//
-// Returns:
-//   - pairs: The grouped production rules.
-func groupProdsByRhss(symbols []string, rules []*gr.Production) (pairs []pairing) {
-	for _, s := range symbols {
-		for _, r := range rules {
-			ok := r.HasRhs(s)
-			if ok {
-				p := pairing{Symbol: s, Rule: r}
-				pairs = append(pairs, p)
-			}
-		}
-	}
-
-	return
-}
 
 // getRhssAt is a helper function that groups helpers by their right-hand side
 // symbols at a specific index.
@@ -162,13 +121,20 @@ func minimumUnique(bucket *uts.Bucket[*Helper], limit int) error {
 // Errors:
 //   - *ErrHelpersConflictingSize: If the helpers have conflicting sizes.
 //   - *ErrHelper: If there is an error appending the right-hand side to the helper.
-func solveSubgroup(helpers []*Helper) error {
+func solveSubgroup(bucket *uts.Bucket[*Helper]) error {
 	// 1. Bucket sort the items by their position.
 
 	// TODO: Modify this once MyGoLib is updated.
 	buckets := make(map[int]*uts.Bucket[*Helper])
 
-	for _, h := range helpers {
+	iter := bucket.Iterator()
+
+	for {
+		h, err := iter.Consume()
+		if err != nil {
+			break
+		}
+
 		pos := h.GetPos()
 
 		_, ok := buckets[pos]
@@ -198,18 +164,25 @@ func solveSubgroup(helpers []*Helper) error {
 //
 // Returns:
 //   - []*Helper: The conflicting helpers.
-func findConflict(limit int, helpers []*Helper) []*Helper {
-	if len(helpers) <= 1 {
+func findConflict(limit int, bucket *uts.Bucket[*Helper]) *uts.Bucket[*Helper] {
+	if bucket.GetSize() < 2 {
 		return nil
 	}
 
 	// 1. Fill the matrix of symbols.
 	matrixOfSymbols := make([][]*string, limit+1)
 	for i := range matrixOfSymbols {
-		matrixOfSymbols[i] = make([]*string, len(helpers))
+		matrixOfSymbols[i] = make([]*string, bucket.GetSize())
 	}
 
-	for i, h := range helpers {
+	iter := bucket.Iterator()
+
+	for i := 0; ; i++ {
+		h, err := iter.Consume()
+		if err != nil {
+			break
+		}
+
 		for l := 0; l <= limit; l++ {
 			rhs, err := h.GetRhsAt(l)
 			if err != nil {
@@ -234,20 +207,23 @@ func findConflict(limit int, helpers []*Helper) []*Helper {
 	fmt.Println()
 
 	// 2. Create a conflict matrix.
-	conflictMatrix := make([][]int, len(helpers))
+	conflictMatrix := make([][]int, 0, bucket.GetSize())
 
-	for i := 0; i < len(helpers); i++ {
-		conflictMatrix[i] = make([]int, len(helpers))
+	iter = bucket.Iterator()
+
+	for {
+		_, err := iter.Consume()
+		if err != nil {
+			break
+		}
+
+		conflictMatrix = append(conflictMatrix, make([]int, bucket.GetSize()))
 	}
 
 	// 3. Evaluate the matrix of conflicts.
 	for _, row := range matrixOfSymbols {
-		for i := 0; i < len(helpers); i++ {
-			for j := 0; j < len(helpers); j++ {
-				if row[i] == nil || row[j] == nil {
-					continue
-				}
-
+		for i := 0; i < bucket.GetSize(); i++ {
+			for j := 0; j < bucket.GetSize(); j++ {
 				if *row[i] == *row[j] {
 					conflictMatrix[i][j]++
 				}
@@ -256,16 +232,28 @@ func findConflict(limit int, helpers []*Helper) []*Helper {
 	}
 
 	// 4. Find conflicts.
-	countMap := make(map[int][]*Helper)
+	countMap := make(map[int]*uts.Bucket[*Helper])
 
-	for j := 0; j < len(helpers); j++ {
+	columnIter := bucket.Iterator()
+
+	for j := 0; ; j++ {
+		h1, err := columnIter.Consume()
+		if err != nil {
+			break
+		}
+
 		count := 0
 
-		for i := 0; i < len(helpers); i++ {
+		for i := 0; i < bucket.GetSize(); i++ {
 			count += conflictMatrix[i][j]
 		}
 
-		countMap[count] = append(countMap[count], helpers[j])
+		prev, ok := countMap[count]
+		if !ok {
+			countMap[count] = uts.NewBucket([]*Helper{h1})
+		} else {
+			prev.Add(h1)
+		}
 	}
 
 	for count, helpers := range countMap {
@@ -286,18 +274,30 @@ func findConflict(limit int, helpers []*Helper) []*Helper {
 // Returns:
 //   - []*Helper: The conflicting helpers.
 //   - int: The position of the conflict.
-func findConflictsPerSymbol(symbol string, helpers []*Helper) ([]*Helper, int) {
-	if len(helpers) <= 1 {
+func findConflictsPerSymbol(symbol string, bucket *uts.Bucket[*Helper]) (*uts.Bucket[*Helper], int) {
+	if bucket.GetSize() < 2 {
 		return nil, -1
 	}
 
-	buckets := make(map[int][]*Helper)
+	buckets := make(map[int]*uts.Bucket[*Helper])
 
-	for _, h := range helpers {
+	iter := bucket.Iterator()
+
+	for {
+		h, err := iter.Consume()
+		if err != nil {
+			break
+		}
+
 		indices := h.IndicesOfRhs(symbol)
 
 		for _, index := range indices {
-			buckets[index] = append(buckets[index], h)
+			prev, ok := buckets[index]
+			if !ok {
+				buckets[index] = uts.NewBucket([]*Helper{h})
+			} else {
+				prev.Add(h)
+			}
 		}
 	}
 

@@ -20,12 +20,9 @@ func SolveConflicts(symbols []string, rules []*gr.Production) (*ConflictSolver, 
 		return nil, ers.NewErrInvalidParameter("rules", ers.NewErrEmpty(rules))
 	}
 
-	cs, err := NewConflictSolver(symbols, rules)
-	if err != nil {
-		return nil, err
-	}
+	cs := NewConflictSolver(symbols, rules)
 
-	err = cs.SolveAmbiguousShifts()
+	err := cs.SolveAmbiguousShifts()
 	if err != nil {
 		return cs, err
 	}

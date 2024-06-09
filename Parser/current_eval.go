@@ -1,8 +1,6 @@
 package Parser
 
 import (
-	"fmt"
-
 	com "github.com/PlayerR9/LyneParser/Common"
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
@@ -115,9 +113,6 @@ func (ce *CurrentEval) shift(source *com.TokenStream) error {
 		return NewErrNoAccept()
 	}
 
-	// DEBUG: Print the token
-	fmt.Println("Shifted token:", toks[0].String())
-
 	err = ce.stack.Push(toks[0])
 	if err != nil {
 		return err
@@ -140,9 +135,6 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 	rhss := rule.ReverseIterator()
 
 	var lookahead *gr.LeafToken = nil
-
-	// DEBUG: Print the rule
-	fmt.Println("Reduced by rule:", rule.String())
 
 	for {
 		value, err := rhss.Consume()
@@ -192,11 +184,6 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 //   - bool: True if the parser has accepted the input stream.
 //   - error: An error if the parser could not act on the decision.
 func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *com.TokenStream) error {
-	// DEBUG: Print the stack
-	fmt.Println("Stack:")
-	fmt.Println("-", ce.stack.GoString())
-	fmt.Println()
-
 	var err error
 
 	switch decision := decision.(type) {

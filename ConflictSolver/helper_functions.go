@@ -1,8 +1,6 @@
 package ConflictSolver
 
 import (
-	"fmt"
-
 	uts "github.com/PlayerR9/MyGoLib/Utility/Sorting"
 )
 
@@ -192,19 +190,6 @@ func findConflict(limit int, bucket *uts.Bucket[*Helper]) *uts.Bucket[*Helper] {
 			}
 		}
 	}
-
-	// DEBUG: Print the matrix of symbols.
-	for _, row := range matrixOfSymbols {
-		for _, s := range row {
-			if s == nil {
-				fmt.Print("nil ")
-			} else {
-				fmt.Print(*s + " ")
-			}
-		}
-		fmt.Println()
-	}
-	fmt.Println()
 
 	// 2. Create a conflict matrix.
 	conflictMatrix := make([][]int, 0, bucket.GetSize())

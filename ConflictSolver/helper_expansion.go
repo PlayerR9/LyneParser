@@ -1,13 +1,13 @@
 package ConflictSolver
 
 import (
-	"fmt"
 	"slices"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	trt "github.com/PlayerR9/MyGoLib/TreeLike/Traversor"
 	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
+	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
@@ -104,7 +104,7 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 	nextsFunc := func(elem *Helper, is uc.Copier) ([]*Helper, error) {
 		isInf, ok := is.(*InfoStruct)
 		if !ok {
-			return nil, fmt.Errorf("invalid type: %T", is)
+			return nil, ue.NewErrUnexpectedType("is", is)
 		}
 
 		rhs, err := elem.GetRhsAt(0)

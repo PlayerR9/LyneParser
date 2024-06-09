@@ -78,26 +78,6 @@ func NewHelper(item *Item, action HelperElem) *Helper {
 	}
 }
 
-// Init initializes the helper with the specified symbol.
-//
-// Parameters:
-//   - symbol: The symbol to initialize the helper with.
-func (h *Helper) Init(symbol string) {
-	if !h.Item.IsReduce() {
-		h.Action = NewActShift()
-
-		return
-	}
-
-	r := h.Item.GetRule()
-
-	if symbol == gr.EOFTokenID {
-		h.Action = NewActReduce(r, true)
-	} else {
-		h.Action = NewActReduce(r, false)
-	}
-}
-
 // SetAction sets the action of the helper.
 //
 // Parameters:

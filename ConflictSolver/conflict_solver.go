@@ -1,6 +1,7 @@
 package ConflictSolver
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -320,14 +321,6 @@ func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts *uts.Bucket[*Helpe
 		nextRhs[c] = rhs
 	}
 
-	// DEBUG: Print the next RHS
-	fmt.Println("Next RHS:")
-
-	for c, rhs := range nextRhs {
-		fmt.Println(c.String(), rhs)
-	}
-	fmt.Println()
-
 	if len(nextRhs) == 0 {
 		return false, nil
 	}
@@ -338,17 +331,6 @@ func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts *uts.Bucket[*Helpe
 		return false, err
 	} else if len(possibleLookaheads) == 0 {
 		return false, nil
-	}
-
-	// DEBUG: Print the forests
-	fmt.Println("Possible lookaheads:")
-
-	for c, forest := range possibleLookaheads {
-		fmt.Println(c.String())
-		for _, tree := range forest {
-			fmt.Println("\t-", tree)
-		}
-		fmt.Println()
 	}
 
 	// If there are more than one possible lookaheads,
@@ -397,29 +379,6 @@ func (cs *ConflictSolver) Solve() error {
 			break
 		}
 
-		// DEBUG: Print the conflicts
-		fmt.Println("Conflicts found:")
-
-		for _, p := range conflictMap {
-			conflicts := p.First
-			index := p.Second
-
-			iter := conflicts.Iterator()
-
-			for {
-				h, err := iter.Consume()
-				if err != nil {
-					break
-				}
-
-				fmt.Println(h.String())
-			}
-
-			fmt.Println(index)
-			fmt.Println()
-		}
-		fmt.Println()
-
 		done := false
 
 		for _, p := range conflictMap {
@@ -451,37 +410,6 @@ func (cs *ConflictSolver) Solve() error {
 	return nil
 }
 
-// Init is a method that initializes the elements for a specific symbol.
-// This can be used in the ExecuteSymbols method.
-//
-// Parameters:
-//   - symbol: The symbol to initialize the elements for.
-//
-// Returns:
-//   - error: An error if the operation failed.
-//
-// Errors:
-//   - *ErrNoElementsFound: If no elements are found for the symbol.
-func (cs *ConflictSolver) Init(symbol string) error {
-	bucket, ok := cs.table[symbol]
-	if !ok {
-		return NewErrNoElementsFound(symbol)
-	}
-
-	iter := bucket.Iterator()
-
-	for {
-		h, err := iter.Consume()
-		if err != nil {
-			break
-		}
-
-		h.Init(symbol)
-	}
-
-	return nil
-}
-
 // Match is a method that matches the top of the stack with the elements in the decision table.
 //
 // Parameters:
@@ -493,7 +421,7 @@ func (cs *ConflictSolver) Init(symbol string) error {
 func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]HelperElem, error) {
 	top, err := stack.Peek()
 	if err != nil {
-		return nil, fmt.Errorf("no top token found")
+		return nil, errors.New("no top token found")
 	}
 
 	id := top.GetID()
@@ -506,7 +434,7 @@ func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]HelperElem
 	f := func(h *Helper) (*Helper, error) {
 		top, err := stack.Pop()
 		if err != nil {
-			return nil, fmt.Errorf("no top token found")
+			return nil, errors.New("no top token found")
 		}
 
 		err = h.Match(top, stack)

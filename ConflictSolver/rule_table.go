@@ -65,7 +65,7 @@ func (rt *RuleTable) getItemBuckets() map[string]*uts.Bucket[*Helper] {
 		var act HelperElem
 
 		if item.Pos == lastIndex {
-			act = NewActReduce(item.Rule, false)
+			act = NewActReduce(item.Rule, symbol == gr.EOFTokenID)
 		} else {
 			act = NewActShift()
 		}

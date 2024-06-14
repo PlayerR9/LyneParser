@@ -3,6 +3,7 @@ package Lexer
 import (
 	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	teval "github.com/PlayerR9/MyGoLib/TreeLike/Explorer"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
@@ -65,21 +66,21 @@ type Lexer struct {
 //	}
 //
 // // Continue with parsing.
-func NewLexer(grammar *gr.Grammar) (*Lexer, error) {
+func NewLexer(grammar *gr.LexerGrammar) (*Lexer, error) {
 	if grammar == nil {
 		return nil, ers.NewErrNilParameter("grammar")
 	}
 
 	lex := &Lexer{
 		productions: grammar.GetRegProductions(),
-		toSkip:      grammar.LhsToSkip,
+		toSkip:      grammar.GetToSkip(),
 	}
 
 	if len(lex.productions) == 0 {
 		return lex, gr.NewErrNoProductionRulesFound()
 	}
 
-	lex.te = teval.NewTreeEvaluator[*gr.MatchedResult[*gr.LeafToken], *LexerMatcher, *gr.LeafToken](
+	lex.te = teval.NewTreeEvaluator[*gr.MatchedResult[*gr.LeafToken], *LexerMatcher](
 		lex.removeToSkipTokens(),
 	)
 
@@ -88,6 +89,9 @@ func NewLexer(grammar *gr.Grammar) (*Lexer, error) {
 
 // Lex is the main function of the lexer.
 //
+// Parameters:
+//   - source: The source to lex.
+//
 // Returns:
 //   - error: An error if lexing fails.
 //
@@ -95,15 +99,19 @@ func NewLexer(grammar *gr.Grammar) (*Lexer, error) {
 //   - *ErrNoTokensToLex: There are no tokens to lex.
 //   - *ErrNoMatches: No matches are found in the source.
 //   - *ErrAllMatchesFailed: All matches failed.
-func (l *Lexer) Lex(source *com.ByteStream) error {
-	matcher, err := NewLexerMatcher(source)
-	if err != nil {
-		return err
+func (l *Lexer) Lex(source []byte) error {
+	matcher := &LexerMatcher{
+		source: cds.NewStream(source),
 	}
 
 	matcher.productions = l.productions
 
-	return l.te.Evaluate(matcher, gr.NewRootToken())
+	err := l.te.Evaluate(matcher, gr.NewRootToken())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetTokens returns the tokens that have been lexed.

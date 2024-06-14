@@ -1,5 +1,7 @@
 github.com/PlayerR9/MyGoLib v0.3.22 h1:Xn1Lu8ZMWjohp2rSlHNGtu5iQULMKk4C4qGej2OBDzU=
 github.com/PlayerR9/MyGoLib v0.3.22/go.mod h1:VeG8T347NjXINSlaemF4S1Euf3U/dBhqEeqxlhliDcQ=
+github.com/PlayerR9/MyGoLib v0.3.25 h1:4T3qccgQrgpyx4bd2vcU3IbpUK0IdB50S0kTGuC8g7o=
+github.com/PlayerR9/MyGoLib v0.3.25/go.mod h1:HqfQ72pe9JX+VjAOdOMyyyxPLHMyTOemIxYPl5c2Wx8=
 github.com/gdamore/encoding v1.0.0/go.mod h1:alR0ol34c49FCSBLjhosxzcPHQbf2trDkoo5dl+VrEg=
 github.com/gdamore/encoding v1.0.1 h1:YzKZckdBL6jVt2Gc+5p82qhrGiqMdG/eNs6Wy0u3Uhw=
 github.com/gdamore/encoding v1.0.1/go.mod h1:0Z0cMFinngz9kS1QfMjCP8TY7em3bZYeeklsSDPivEo=

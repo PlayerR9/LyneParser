@@ -1,4 +1,4 @@
-package Lexer
+package Lexer1
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
@@ -10,9 +10,6 @@ import (
 type LexerMatcher struct {
 	// source is the source to match.
 	source *cds.Stream[byte]
-
-	// productions is the list of productions to match.
-	productions []*gr.RegProduction
 }
 
 // IsDone is a function that checks if the matcher is done.
@@ -35,7 +32,7 @@ func (lm *LexerMatcher) IsDone(from int) bool {
 //   - []Matcher: The list of matchers.
 //   - error: An error if the matchers cannot be created.
 func (lm *LexerMatcher) Match(from int) ([]*gr.MatchedResult[*gr.LeafToken], error) {
-	matched, err := MatchFrom(lm.source, from, lm.productions)
+	matched, err := MatchFrom(lm.source, from, Productions)
 	if err != nil {
 		return nil, err
 	}

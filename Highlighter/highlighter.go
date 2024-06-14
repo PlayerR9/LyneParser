@@ -7,6 +7,7 @@ import (
 
 	com "github.com/PlayerR9/LyneParser/Common"
 	lx "github.com/PlayerR9/LyneParser/Lexer"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
@@ -70,7 +71,7 @@ func (h *Highlighter) ChangeErrorStyle(style tcell.Style) {
 	h.errorStyle = style
 }
 
-func (h *Highlighter) extractErrorSection(source *com.ByteStream, firstInvalid int) int {
+func (h *Highlighter) extractErrorSection(source *cds.Stream[byte], firstInvalid int) int {
 	// go until the first whitespace character
 	bytes := source.GetItems()
 
@@ -93,12 +94,12 @@ func (h *Highlighter) makeData() *Data {
 	}
 }
 
-func (h *Highlighter) Apply(source *com.ByteStream) {
+func (h *Highlighter) Apply(source *cds.Stream[byte]) {
 	h.source = source.GetItems()
 	h.data = h.makeData()
 
 	for {
-		hasError := h.lexer.Lex(source) != nil
+		hasError := h.lexer.Lex(source.GetItems()) != nil
 
 		tokens, err := h.lexer.GetTokens()
 		if err != nil {
@@ -140,7 +141,7 @@ func (h *Highlighter) Apply(source *com.ByteStream) {
 		h.data.Add(NewNormalText(bytes[firstInvalid:indexOfWS], h.errorStyle))
 
 		// Create a new token stream for the rest of the data
-		source = com.NewSourceStream(bytes[indexOfWS:])
+		source = cds.NewStream(bytes[indexOfWS:])
 	}
 }
 

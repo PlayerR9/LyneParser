@@ -1,8 +1,6 @@
 package Grammar
 
 import (
-	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -12,25 +10,6 @@ import (
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
-
-// Productioner is an interface that defines methods for a production in a grammar.
-type Productioner interface {
-	// GetLhs returns the left-hand side of the production.
-	//
-	// Returns:
-	//   - string: The left-hand side of the production.
-	GetLhs() string
-
-	// GetSymbols returns a slice of symbols in the production. The slice
-	// contains the left-hand side of the production and the right-hand side
-	// of the production, with no duplicates.
-	//
-	// Returns:
-	//   - []string: A slice of symbols in the production.
-	GetSymbols() []string
-
-	uc.Objecter
-}
 
 // Production represents a production in a grammar.
 type Production struct {
@@ -47,19 +26,22 @@ type Production struct {
 // Returns:
 //   - string: A string representation of a Production.
 func (p *Production) String() string {
-	if p == nil {
-		return ""
-	}
+	var builder strings.Builder
 
-	var rhs string
+	builder.WriteString(p.lhs)
+	builder.WriteRune(' ')
+	builder.WriteString(LeftToRight)
+	builder.WriteRune(' ')
 
 	if len(p.rhs) == 0 {
-		rhs = EpsilonSymbolID
+		builder.WriteString(EpsilonSymbolID)
 	} else {
-		rhs = strings.Join(p.rhs, " ")
+		str := strings.Join(p.rhs, " ")
+
+		builder.WriteString(str)
 	}
 
-	return fmt.Sprintf("%s %s %s", p.lhs, LeftToRight, rhs)
+	return builder.String()
 }
 
 // Equals is a method of Production that returns whether the production
@@ -356,154 +338,4 @@ func (p *Production) HasRhs(rhs string) bool {
 	}
 
 	return false
-}
-
-// RegProduction represents a production in a grammar that matches a
-// regular expression.
-type RegProduction struct {
-	// Left-hand side of the production.
-	lhs string
-
-	// Right-hand side of the production.
-	rhs string
-
-	// Regular expression to match the right-hand side of the production.
-	rxp *regexp.Regexp
-}
-
-// String is a method of fmt.Stringer that returns a string representation
-// of a RegProduction.
-//
-// It should only be used for debugging and logging purposes.
-//
-// Returns:
-//   - string: A string representation of a RegProduction.
-func (r *RegProduction) String() string {
-	if r == nil {
-		return "RegProduction[nil]"
-	}
-
-	var rxp string
-
-	if r.rxp == nil {
-		rxp = "N/A"
-	} else {
-		rxp = r.rxp.String()
-	}
-
-	return fmt.Sprintf("RegProduction[lhs=%s, rhs=%s, rxp=%s]", r.lhs, r.rhs, rxp)
-}
-
-// Equals is a method of RegProduction that returns whether the production
-// is equal to another production. Two productions are equal if their
-// left-hand sides are equal and their right-hand sides are equal.
-//
-// Parameters:
-//   - other: The other production to compare to.
-//
-// Returns:
-//   - bool: Whether the production is equal to the other production.
-func (p *RegProduction) Equals(other uc.Equaler) bool {
-	if other == nil {
-		return false
-	}
-
-	val, ok := other.(*RegProduction)
-	if !ok {
-		return false
-	}
-
-	return val.lhs == p.lhs && val.rhs == p.rhs
-}
-
-// GetLhs is a method of RegProduction that returns the left-hand side of
-// the production.
-//
-// Returns:
-//   - string: The left-hand side of the production.
-func (p *RegProduction) GetLhs() string {
-	return p.lhs
-}
-
-// GetSymbols is a method of RegProduction that returns a slice of symbols
-// in the production. The slice contains the left-hand side of the
-// production.
-//
-// Returns:
-//   - []string: A slice of symbols in the production.
-func (p *RegProduction) GetSymbols() []string {
-	return []string{p.lhs}
-}
-
-// Match is a method of RegProduction that returns a token that matches the
-// production in the given stack. The token is a non-leaf token if the
-// production is a non-terminal production, and a leaf token if the
-// production is a terminal production.
-//
-// Parameters:
-//   - at: The current index in the input stack.
-//   - b: The slice of bytes to match the production against.
-//
-// Returns:
-//   - Tokener: A token that matches the production in the stack. nil if
-//     there is no match.
-func (p *RegProduction) Match(at int, b []byte) *LeafToken {
-	data := p.rxp.Find(b)
-	if data == nil {
-		return nil
-	}
-
-	return NewLeafToken(p.lhs, string(data), at)
-}
-
-// Copy is a method of RegProduction that returns a copy of the production.
-//
-// Returns:
-//   - uc.Copier: A copy of the production.
-func (p *RegProduction) Copy() uc.Copier {
-	return &RegProduction{
-		lhs: p.lhs,
-		rhs: p.rhs,
-		rxp: p.rxp,
-	}
-}
-
-// NewRegProduction is a function that returns a new RegProduction with the
-// given left-hand side and regular expression.
-//
-// It adds the '^' character to the beginning of the regular expression to
-// match the beginning of the input string.
-//
-// Parameters:
-//   - lhs: The left-hand side of the production.
-//   - regex: The regular expression to match the right-hand side of the
-//     production.
-//
-// Returns:
-//   - *RegProduction: A new RegProduction with the given left-hand side
-//     and regular expression.
-//
-// Information:
-//   - Must call Compile() on the returned RegProduction to compile the
-//     regular expression.
-func NewRegProduction(lhs string, regex string) *RegProduction {
-	return &RegProduction{
-		lhs: lhs,
-		rhs: "^" + regex,
-	}
-}
-
-// Compile is a method of RegProduction that compiles the regular
-// expression of the production.
-//
-// Returns:
-//   - error: An error if the regular expression cannot be compiled.
-func (r *RegProduction) Compile() error {
-	rxp, err := regexp.Compile(r.rhs)
-	if err != nil {
-		return err
-	}
-
-	r.rxp = rxp
-	return nil
 }

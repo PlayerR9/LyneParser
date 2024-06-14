@@ -6,42 +6,32 @@ import (
 	"testing"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-
-	com "github.com/PlayerR9/LyneParser/Common"
 )
 
-var LexerGrammar *gr.Grammar = func() *gr.Grammar {
-	var builder gr.GrammarBuilder
+var (
+	LexerGrammar *gr.LexerGrammar
+)
 
-	// Fragments
-	builder.AddRegProductions(gr.NewRegProduction("WORD", `[a-zA-Z]+`))
-
-	// Literals
-	builder.AddRegProductions(gr.NewRegProduction("ATTR", `".*?"`))
-
-	// Brackets
-	builder.AddRegProductions(gr.NewRegProduction("OP_PAREN", `\(`))
-	builder.AddRegProductions(gr.NewRegProduction("CL_PAREN", `\)`))
-	builder.AddRegProductions(gr.NewRegProduction("OP_SQUARE", `\[`))
-	builder.AddRegProductions(gr.NewRegProduction("CL_SQUARE", `\]`))
-	builder.AddRegProductions(gr.NewRegProduction("OP_CURLY", `\{`))
-	builder.AddRegProductions(gr.NewRegProduction("CL_CURLY", `\}`))
-
-	// Operators
-	builder.AddRegProductions(gr.NewRegProduction("SEP", `[+]`))
-
-	// Whitespace
-	builder.AddRegProductions(gr.NewRegProduction("WS", `[ \t\r\n]+`))
-
-	builder.SetToSkip("WS")
-
-	grammar, err := builder.Build()
+func init() {
+	grammar, err := gr.NewLexerGrammar(
+		`WORD -> [a-zA-Z]+
+		ATTR -> ".*?"
+		OP_PAREN -> \(
+		CL_PAREN -> \)
+		OP_SQUARE -> \[
+		CL_SQUARE -> \]
+		OP_CURLY -> \{
+		CL_CURLY -> \}
+		SEP -> [\+]
+		WS -> [ \t\r\n]+`,
+		"WS",
+	)
 	if err != nil {
 		panic(err)
 	}
 
-	return grammar
-}()
+	LexerGrammar = grammar
+}
 
 func TestLex(t *testing.T) {
 	const (
@@ -53,7 +43,7 @@ func TestLex(t *testing.T) {
 		t.Fatalf("NewLexer() returned an error: %s", err.Error())
 	}
 
-	err = lexer.Lex(new(com.ByteStream).FromString(Source))
+	err = lexer.Lex([]byte(Source))
 	if err != nil {
 		t.Fatalf("Lexer.Lex() returned an error: %s", err.Error())
 	}
@@ -71,7 +61,7 @@ func TestLex(t *testing.T) {
 		var builder strings.Builder
 
 		for _, token := range branch.GetItems() {
-			builder.WriteString("&gr.Token{\n")
+			builder.WriteString("&Token{\n")
 			builder.WriteString("\t\tID: ")
 			builder.WriteString(strconv.Quote(token.ID))
 			builder.WriteString(",\n")
@@ -86,7 +76,7 @@ func TestLex(t *testing.T) {
 			builder.Reset()
 		}
 
-		t.Logf("[]*gr.Token{\n\t%s\n}", strings.Join(values, ",\n\t"))
+		t.Logf("[]*Token{\n\t%s\n}", strings.Join(values, ",\n\t"))
 	}
 
 	t.Fatalf("Test failed")

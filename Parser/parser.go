@@ -39,7 +39,7 @@ type Parser struct {
 // Errors:
 //   - *ers.ErrInvalidParameter: The grammar is nil.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
-func NewParser(grammar *gr.Grammar) (*Parser, error) {
+func NewParser(grammar *gr.ParserGrammar) (*Parser, error) {
 	if grammar == nil {
 		return nil, ers.NewErrNilParameter("grammar")
 	}
@@ -49,7 +49,7 @@ func NewParser(grammar *gr.Grammar) (*Parser, error) {
 		return nil, gr.NewErrNoProductionRulesFound()
 	}
 
-	table, err := cs.SolveConflicts(grammar.Symbols, productions)
+	table, err := cs.SolveConflicts(grammar.GetSymbols(), productions)
 	if err != nil {
 		return nil, err
 	}

@@ -1,7 +1,6 @@
 package Lexer1
 
 import (
-	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	teval "github.com/PlayerR9/MyGoLib/TreeLike/Explorer"
@@ -128,7 +127,7 @@ func MatchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) (matches [
 //   - source: The source to lex.
 //
 // Returns:
-//   - []*gr.TokenStream: The tokens that have been lexed.
+//   - []*cds.Stream[*LeafToken]: The tokens that have been lexed.
 //   - error: An error if lexing fails.
 //
 // Errors:
@@ -161,7 +160,7 @@ func MatchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) (matches [
 //	}
 //
 // // Continue with parsing.
-func Lex(source []byte) ([]*com.TokenStream, error) {
+func Lex(source []byte) ([]*cds.Stream[*gr.LeafToken], error) {
 	lexer := teval.NewTreeEvaluator[*gr.MatchedResult[*gr.LeafToken], *LexerMatcher](
 		RemoveToSkipTokens,
 	)
@@ -174,7 +173,7 @@ func Lex(source []byte) ([]*com.TokenStream, error) {
 
 	branches, err2 := lexer.GetBranches()
 
-	var result []*com.TokenStream
+	var result []*cds.Stream[*gr.LeafToken]
 	for _, branch := range branches {
 		conv := convertBranchToTokenStream(branch)
 

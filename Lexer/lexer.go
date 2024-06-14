@@ -1,7 +1,6 @@
 package Lexer
 
 import (
-	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	teval "github.com/PlayerR9/MyGoLib/TreeLike/Explorer"
@@ -122,13 +121,13 @@ func (l *Lexer) Lex(source []byte) error {
 // Returns:
 //   - result: The tokens that have been lexed.
 //   - reason: An error if the lexer has not been run yet.
-func (l *Lexer) GetTokens() ([]*com.TokenStream, error) {
+func (l *Lexer) GetTokens() ([]*cds.Stream[*gr.LeafToken], error) {
 	branches, err := l.te.GetBranches()
 	if err != nil {
 		return nil, err
 	}
 
-	var result []*com.TokenStream
+	var result []*cds.Stream[*gr.LeafToken]
 
 	for _, branch := range branches {
 		result = append(result, convertBranchToTokenStream(branch))

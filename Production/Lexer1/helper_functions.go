@@ -1,8 +1,8 @@
 package Lexer1
 
 import (
-	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	teval "github.com/PlayerR9/MyGoLib/TreeLike/Explorer"
 )
 
@@ -31,8 +31,8 @@ func setLookahead(tokens []*gr.LeafToken) {
 //   - branch: The branch to convert.
 //
 // Returns:
-//   - *gr.TokenStream: The token stream.
-func convertBranchToTokenStream(branch []*teval.CurrentEval[*gr.LeafToken]) *com.TokenStream {
+//   - *cds.Stream[*LeafToken]: The token stream.
+func convertBranchToTokenStream(branch []*teval.CurrentEval[*gr.LeafToken]) *cds.Stream[*gr.LeafToken] {
 	ts := make([]*gr.LeafToken, 0, len(branch))
 
 	for _, leaf := range branch {
@@ -43,5 +43,5 @@ func convertBranchToTokenStream(branch []*teval.CurrentEval[*gr.LeafToken]) *com
 
 	setLookahead(ts)
 
-	return com.NewTokenStream(ts)
+	return cds.NewStream(ts)
 }

@@ -1,9 +1,9 @@
 package Parser
 
 import (
-	com "github.com/PlayerR9/LyneParser/Common"
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
@@ -68,15 +68,15 @@ func NewCurrentEval() *CurrentEval {
 // be returned.
 //
 // Returns:
-//   - []*com.TokenTree: A slice of parse trees.
+//   - []*gr.TokenTree: A slice of parse trees.
 //   - error: An error if the parse tree could not be retrieved.
 //
 // Errors:
 //   - *ers.ErrInvalidUsage: If Parse() has not been called.
-//   - *com.ErrCycleDetected: A cycle is detected in the token tree.
+//   - *gr.ErrCycleDetected: A cycle is detected in the token tree.
 //   - *ers.ErrInvalidParameter: The top of the stack is nil.
 //   - *gr.ErrUnknowToken: The root is not a known token.
-func (ce *CurrentEval) GetParseTree() ([]*com.TokenTree, error) {
+func (ce *CurrentEval) GetParseTree() ([]*gr.TokenTree, error) {
 	if ce.stack.IsEmpty() {
 		return nil, ers.NewErrInvalidUsage(
 			NewErrNothingWasParsed(),
@@ -84,7 +84,7 @@ func (ce *CurrentEval) GetParseTree() ([]*com.TokenTree, error) {
 		)
 	}
 
-	var forest []*com.TokenTree
+	var forest []*gr.TokenTree
 
 	for {
 		top, err := ce.stack.Pop()
@@ -92,7 +92,7 @@ func (ce *CurrentEval) GetParseTree() ([]*com.TokenTree, error) {
 			break
 		}
 
-		tree, err := com.NewTokenTree(top)
+		tree, err := gr.NewTokenTree(top)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +107,7 @@ func (ce *CurrentEval) GetParseTree() ([]*com.TokenTree, error) {
 //
 // Returns:
 //   - error: An error of type *ErrNoAccept if the input stream is done.
-func (ce *CurrentEval) shift(source *com.TokenStream) error {
+func (ce *CurrentEval) shift(source *cds.Stream[*gr.LeafToken]) error {
 	toks, err := source.Get(ce.currentIndex, 1)
 	if err != nil || len(toks) == 0 {
 		return NewErrNoAccept()
@@ -156,7 +156,7 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 
 		if id != value {
 			ce.stack.Refuse()
-			return ers.NewErrAfter(lhs, ers.NewErrUnexpected(top, value))
+			return ers.NewErrAfter(lhs, gr.NewErrUnexpected(top.GoString(), value))
 		}
 	}
 
@@ -183,7 +183,7 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 // Returns:
 //   - bool: True if the parser has accepted the input stream.
 //   - error: An error if the parser could not act on the decision.
-func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *com.TokenStream) error {
+func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *cds.Stream[*gr.LeafToken]) error {
 	var err error
 
 	switch decision := decision.(type) {
@@ -216,7 +216,7 @@ func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *com.TokenSt
 // Returns:
 //   - []*CurrentEval: A slice of current evaluations.
 //   - error: An error if the input stream could not be parsed.
-func (ce *CurrentEval) Parse(source *com.TokenStream, dt *cs.ConflictSolver) ([]*CurrentEval, error) {
+func (ce *CurrentEval) Parse(source *cds.Stream[*gr.LeafToken], dt *cs.ConflictSolver) ([]*CurrentEval, error) {
 	decisions, err := dt.Match(ce.stack)
 	ce.stack.Refuse()
 

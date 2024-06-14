@@ -3,8 +3,8 @@ package Parser
 import (
 	"testing"
 
-	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 var ParserGrammar *gr.ParserGrammar
@@ -29,7 +29,7 @@ func init() {
 	ParserGrammar = grammar
 }
 
-var LexedContent *com.TokenStream
+var LexedContent *cds.Stream[*gr.LeafToken]
 
 func init() {
 	tokens := []*gr.LeafToken{
@@ -134,7 +134,7 @@ func init() {
 		tokens[i].SetLookahead(tokens[i+1])
 	}
 
-	LexedContent = com.NewTokenStream(tokens)
+	LexedContent = cds.NewStream(tokens)
 }
 
 func TestParsing(t *testing.T) {

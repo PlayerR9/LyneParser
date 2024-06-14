@@ -3,13 +3,11 @@ package Parser
 import (
 	"errors"
 
-	com "github.com/PlayerR9/LyneParser/Common"
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
-
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	feval "github.com/PlayerR9/MyGoLib/Evaluations/Slices"
+	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // Parser is a parser that uses a stack to parse a stream of tokens.
@@ -65,7 +63,7 @@ func NewParser(grammar *gr.ParserGrammar) (*Parser, error) {
 //
 // Returns:
 //   - error: An error if the input stream could not be parsed.
-func (p *Parser) Parse(source *com.TokenStream) error {
+func (p *Parser) Parse(source *cds.Stream[*gr.LeafToken]) error {
 	if source == nil || source.IsEmpty() {
 		return errors.New("source is empty")
 	}
@@ -107,14 +105,14 @@ func (p *Parser) Parse(source *com.TokenStream) error {
 // be returned.
 //
 // Returns:
-//   - []*com.TokenTree: A slice of parse trees.
+//   - []*gr.TokenTree: A slice of parse trees.
 //   - error: An error if the parse tree could not be retrieved.
-func (p *Parser) GetParseTree() ([]*com.TokenTree, error) {
+func (p *Parser) GetParseTree() ([]*gr.TokenTree, error) {
 	if len(p.evals) == 0 {
 		return nil, errors.New("nothing was parsed. Use Parse() to parse the input stream")
 	}
 
-	forest := make([]*com.TokenTree, 0)
+	forest := make([]*gr.TokenTree, 0)
 
 	for _, eval := range p.evals {
 		tmp, err := eval.GetParseTree()

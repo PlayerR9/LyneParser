@@ -3,9 +3,9 @@ package Parser
 import (
 	"fmt"
 
-	com "github.com/PlayerR9/LyneParser/Common"
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 /////////////////////////////////////////////////////////////
@@ -23,7 +23,7 @@ import (
 //
 //   - []gr.NonLeafToken: The parse tree.
 //   - error: An error if the input stream could not be parsed.
-func FullParse(grammar *gr.ParserGrammar, source *com.TokenStream, dt *cs.ConflictSolver) ([]*com.TokenTree, error) {
+func FullParse(grammar *gr.ParserGrammar, source *cds.Stream[*gr.LeafToken], dt *cs.ConflictSolver) ([]*gr.TokenTree, error) {
 	parser, err := NewParser(grammar)
 	if err != nil {
 		return nil, fmt.Errorf("could not create parser: %s", err.Error())

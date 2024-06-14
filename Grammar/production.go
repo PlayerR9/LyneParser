@@ -157,7 +157,7 @@ func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToke
 		}
 
 		if top.GetID() != rhs {
-			reason = ers.NewErrUnexpected(top, rhs)
+			reason = NewErrUnexpected(top.GoString(), rhs)
 			break
 		}
 

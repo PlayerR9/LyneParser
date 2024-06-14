@@ -3,9 +3,9 @@ package Parser
 import (
 	"errors"
 
+	gr "github.com/PlayerR9/LyneParser/Grammar"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
-
-	com "github.com/PlayerR9/LyneParser/Common"
 )
 
 /////////////////////////////////////////////////////////////
@@ -22,7 +22,7 @@ import (
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branch cannot be parsed.
-func ParseBranch(parser *Parser, source *com.TokenStream) ([]*com.TokenTree, error) {
+func ParseBranch(parser *Parser, source *cds.Stream[*gr.LeafToken]) ([]*gr.TokenTree, error) {
 	err := parser.Parse(source)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func ParseBranch(parser *Parser, source *com.TokenStream) ([]*com.TokenTree, err
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branches cannot be parsed.
-func ParseIS(parser *Parser, branches []*com.TokenStream) ([]gr.NonLeafToken, error) {
+func ParseIS(parser *Parser, branches []*cds.Stream[*LeafToken]) ([]gr.NonLeafToken, error) {
 	solutions := make([]hp.HResult[gr.NonLeafToken], 0)
 
 	for _, branch := range branches {

@@ -1,8 +1,8 @@
 package Lexer0
 
 import (
-	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 // SetEOFToken sets the end-of-file token in the token stream.
@@ -30,8 +30,8 @@ func setLookahead(tokens []*gr.LeafToken) {
 //   - branch: The branch to convert.
 //
 // Returns:
-//   - *gr.TokenStream: The token stream.
-func convertBranchToTokenStream(branch []*CurrentEval) *com.TokenStream {
+//   - *cds.Stream[*LeafToken]: The token stream.
+func convertBranchToTokenStream(branch []*CurrentEval) *cds.Stream[*gr.LeafToken] {
 	ts := make([]*gr.LeafToken, 0, len(branch))
 
 	for _, leaf := range branch {
@@ -42,5 +42,5 @@ func convertBranchToTokenStream(branch []*CurrentEval) *com.TokenStream {
 
 	setLookahead(ts)
 
-	return com.NewTokenStream(ts)
+	return cds.NewStream(ts)
 }

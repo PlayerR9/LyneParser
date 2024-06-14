@@ -2,7 +2,6 @@ package Grammar
 
 import (
 	"fmt"
-	"strings"
 	"unicode"
 )
 
@@ -93,7 +92,7 @@ type Tokener interface {
 	//   - lookahead: The next token in the input string.
 	SetLookahead(lookahead *LeafToken)
 
-	fmt.Stringer
+	fmt.GoStringer
 }
 
 // LeafToken represents a token that contains a single piece of data.
@@ -111,22 +110,9 @@ type LeafToken struct {
 	Lookahead *LeafToken
 }
 
-// String is a method of fmt.Stringer interface.
-//
-// It should only be used for debugging and logging purposes.
-//
-// Returns:
-//   - string: A string representation of the leaf token.
-func (t *LeafToken) String() string {
-	if t == nil {
-		return "LeafToken[nil]"
-	}
-
-	return fmt.Sprintf("LeafToken[id=%s, data='%s', at=%d]",
-		t.ID,
-		t.Data,
-		t.At,
-	)
+// GoString is a method of fmt.GoStringer interface.
+func (t *LeafToken) GoString() string {
+	return fmt.Sprintf("%+v", *t)
 }
 
 // GetID returns the identifier of the token.
@@ -203,28 +189,9 @@ type NonLeafToken struct {
 	Lookahead *LeafToken
 }
 
-// String is a method of fmt.Stringer interface.
-//
-// It should only be used for debugging and logging purposes.
-//
-// Returns:
-//   - string: A string representation of the non-leaf token.
-func (t *NonLeafToken) String() string {
-	if t == nil {
-		return "NonLeafToken[nil]"
-	}
-
-	values := make([]string, 0, len(t.Data))
-	for _, token := range t.Data {
-		values = append(values, token.String())
-	}
-
-	return fmt.Sprintf(
-		"NonLeafToken[id=%s, data=[%s], at=%d]",
-		t.ID,
-		strings.Join(values, ", "),
-		t.At,
-	)
+// GoString is a method of fmt.GoStringer interface.
+func (t *NonLeafToken) GoString() string {
+	return fmt.Sprintf("%+v", *t)
 }
 
 // GetID returns the identifier of the token.

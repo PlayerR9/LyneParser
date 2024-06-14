@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
-
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
 
@@ -175,7 +173,7 @@ func (ast *ASTer) filterWrongFields(child gr.Tokener, i int) error {
 		} else if ast.isLastOfTable(top, j) {
 			allExpected = append(allExpected, row[i])
 
-			return ers.NewErrUnexpected(child, allExpected...)
+			return gr.NewErrUnexpected(child.GoString(), allExpected...)
 		} else {
 			allExpected = append(allExpected, row[i])
 		}

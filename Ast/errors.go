@@ -44,21 +44,17 @@ type ErrInvalidParsing struct {
 
 // Error is a method of error interface.
 //
-// Returns:
-//
-//   - string: The error message.
+// Message: "invalid parsing: (root)".
 func (e *ErrInvalidParsing) Error() string {
-	return fmt.Sprintf("invalid parsing: %s", e.Root.String())
+	return fmt.Sprintf("invalid parsing: %+v", e.Root)
 }
 
 // NewErrInvalidParsing creates a new ErrInvalidParsing.
 //
 // Parameters:
-//
 //   - root: The root of the parsing where the error occurred.
 //
 // Returns:
-//
 //   - *ErrInvalidParsing: A pointer to the new error.
 func NewErrInvalidParsing(root gr.Tokener) *ErrInvalidParsing {
 	return &ErrInvalidParsing{Root: root}

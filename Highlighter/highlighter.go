@@ -3,12 +3,11 @@ package Highlighter
 import (
 	"unicode"
 
-	"github.com/gdamore/tcell"
-
-	com "github.com/PlayerR9/LyneParser/Common"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lx "github.com/PlayerR9/LyneParser/Lexer"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	"github.com/gdamore/tcell"
 )
 
 // Highlighter is a highlighter that applies styles to tokens.
@@ -153,7 +152,7 @@ func (h *Highlighter) Apply(source *cds.Stream[byte]) {
 //
 // Returns:
 //   - error: An error if the rules could not be applied.
-func (h *Highlighter) apply(stream *com.TokenStream, source []byte) error {
+func (h *Highlighter) apply(stream *cds.Stream[*gr.LeafToken], source []byte) error {
 	atSource := 0
 
 	for at := 0; ; at++ {
@@ -225,7 +224,7 @@ func (h *Highlighter) GetHighlight() *ValidText {
 //
 //	Hello, word!
 //	       ^
-func (h *Highlighter) SyntaxError(before, after *com.TokenStream, invalid []byte) {
+func (h *Highlighter) SyntaxError(before, after *cds.Stream[*LeafToken], invalid []byte) {
 	// 1. Highlight the tokens and split them into lines.
 	h.Apply(before)
 	beforeHighlight := h.data

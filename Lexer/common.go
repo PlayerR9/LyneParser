@@ -6,8 +6,6 @@ import (
 	teval "github.com/PlayerR9/MyGoLib/TreeLike/Explorer"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
-
-	com "github.com/PlayerR9/LyneParser/Common"
 )
 
 var (
@@ -49,7 +47,7 @@ func init() {
 //   - input: The input to lex.
 //
 // Returns:
-//   - []*gr.TokenStream: The tokens that have been lexed.
+//   - []*cds.Stream[*LeafToken]: The tokens that have been lexed.
 //   - error: An error if lexing fails.
 //
 // Errors:
@@ -57,7 +55,7 @@ func init() {
 //   - *ErrNoTokensToLex: There are no tokens to lex.
 //   - *ErrNoMatches: No matches are found in the source.
 //   - *ErrAllMatchesFailed: All matches failed.
-func Lex(lexer *Lexer, input []byte) ([]*com.TokenStream, error) {
+func Lex(lexer *Lexer, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
 	if lexer == nil {
 		return nil, ue.NewErrNilParameter("lexer")
 	}
@@ -80,9 +78,9 @@ func Lex(lexer *Lexer, input []byte) ([]*com.TokenStream, error) {
 //   - input: The input to lex.
 //
 // Returns:
-//   - []*gr.TokenStream: The tokens that have been lexed.
+//   - []*cds.Stream[*LeafToken]: The tokens that have been lexed.
 //   - error: An error if lexing fails.
-func FullLexer(grammar *gr.LexerGrammar, input []byte) ([]*com.TokenStream, error) {
+func FullLexer(grammar *gr.LexerGrammar, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
 	lexer, err := NewLexer(grammar)
 	if err != nil {
 		return nil, err

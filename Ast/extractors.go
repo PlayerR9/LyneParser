@@ -2,8 +2,6 @@ package Ast
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // ExtractString extracts a string from a token.
@@ -21,7 +19,7 @@ func ExtractString(root gr.Tokener, id string) (string, error) {
 	if ok, err := IsToken(root, id); err != nil {
 		return "", err
 	} else if !ok {
-		return "", ers.NewErrUnexpected(root, id)
+		return "", gr.NewErrUnexpected(root.GoString(), id)
 	}
 
 	return root.(*gr.LeafToken).Data, nil
@@ -116,7 +114,7 @@ func (e *Extractor[O]) Apply(root gr.Tokener) (O, error) {
 		if err != nil {
 			break
 		} else if !ok {
-			err = ers.NewErrUnexpected(root, e.lhs)
+			err = gr.NewErrUnexpected(root.GoString(), e.lhs)
 			break
 		}
 

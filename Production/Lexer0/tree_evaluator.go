@@ -1,7 +1,6 @@
 package Lexer0
 
 import (
-	com "github.com/PlayerR9/LyneParser/Common"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
@@ -106,7 +105,7 @@ func (te *TreeEvaluator) canContinue() bool {
 // Returns:
 //   - result: The tokens that have been lexed.
 //   - reason: An error if the tree evaluator has not been run yet.
-func (te *TreeEvaluator) GetBranches() ([]*com.TokenStream, error) {
+func (te *TreeEvaluator) GetBranches() ([]*cds.Stream[*gr.LeafToken], error) {
 	if te.root == nil {
 		return nil, ers.NewErrInvalidUsage(
 			ers.NewErrNilValue(),
@@ -118,7 +117,7 @@ func (te *TreeEvaluator) GetBranches() ([]*com.TokenStream, error) {
 
 	branches, invalidTokIndex := filterInvalidBranches(tokenBranches)
 	if invalidTokIndex != -1 {
-		var result []*com.TokenStream
+		var result []*cds.Stream[*gr.LeafToken]
 		for _, branch := range branches {
 			conv := convertBranchToTokenStream(branch)
 
@@ -130,7 +129,7 @@ func (te *TreeEvaluator) GetBranches() ([]*com.TokenStream, error) {
 
 	branches, err := RemoveToSkipTokens(branches)
 	if err != nil {
-		var result []*com.TokenStream
+		var result []*cds.Stream[*gr.LeafToken]
 		for _, branch := range branches {
 			conv := convertBranchToTokenStream(branch)
 
@@ -142,7 +141,7 @@ func (te *TreeEvaluator) GetBranches() ([]*com.TokenStream, error) {
 
 	te.root = nil
 
-	var result []*com.TokenStream
+	var result []*cds.Stream[*gr.LeafToken]
 	for _, branch := range branches {
 		conv := convertBranchToTokenStream(branch)
 

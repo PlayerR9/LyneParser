@@ -9,6 +9,32 @@ import (
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
+func parseProductionRule(str string) ([]*Production, error) {
+	sides, err := splitByArrow(str)
+	if err != nil {
+		return nil, ue.NewErrWhile("parsing production rules", err)
+	}
+
+	lhs := sides[0]
+	rhs := sides[1]
+
+	rhss := strings.Split(rhs, "|")
+
+	for i := 0; i < len(rhss); i++ {
+		rhss[i] = strings.TrimSpace(rhss[i])
+	}
+
+	var productions []*Production
+
+	for _, r := range rhss {
+		prod := NewProduction(lhs, r)
+
+		productions = append(productions, prod)
+	}
+
+	return productions, nil
+}
+
 // ParserGrammar represents a context-free grammar.
 type ParserGrammar struct {
 	// productions is a slice of productions in the grammar.
@@ -42,14 +68,12 @@ func NewParserGrammar(rules string) (*ParserGrammar, error) {
 			continue
 		}
 
-		sides, err := splitByArrow(rule)
+		tmp, err := parseProductionRule(rule)
 		if err != nil {
 			return nil, ue.NewErrWhile("parsing production rules", err)
 		}
 
-		prod := NewProduction(sides[0], sides[1])
-
-		productions = append(productions, prod)
+		productions = append(productions, tmp...)
 	}
 
 	productions = us.UniquefyEquals(productions, true)

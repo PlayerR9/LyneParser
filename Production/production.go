@@ -75,5 +75,5 @@ func init() {
 }
 
 func Lex(source string) error {
-
+	return nil
 }

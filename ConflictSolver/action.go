@@ -7,6 +7,7 @@ import (
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	ui "github.com/PlayerR9/MyGoLib/Units/Iterators"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
+	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // Actioner represents an action that the parser will take.
@@ -241,9 +242,9 @@ func MatchAction(a Actioner, top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) 
 
 	if ela != nil {
 		if tla == nil {
-			return gr.NewErrUnexpected("", *ela)
+			return ue.NewErrUnexpected("", *ela)
 		} else if *ela != tla.GetID() {
-			return gr.NewErrUnexpected(top.GoString(), *ela)
+			return ue.NewErrUnexpected(top.GoString(), *ela)
 		}
 	}
 
@@ -255,14 +256,14 @@ func MatchAction(a Actioner, top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) 
 			break
 		}
 
-		top, err := stack.Pop()
-		if err != nil {
-			return gr.NewErrUnexpected("", rhs)
+		top, ok := stack.Pop()
+		if !ok {
+			return ue.NewErrUnexpected("", rhs)
 		}
 
 		id := top.GetID()
 		if id != rhs {
-			return gr.NewErrUnexpected(top.GoString(), rhs)
+			return ue.NewErrUnexpected(top.GoString(), rhs)
 		}
 	}
 

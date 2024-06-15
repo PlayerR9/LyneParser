@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // ASTNoder is an interface for AST nodes.
@@ -170,12 +171,15 @@ func (ast *ASTer) filterWrongFields(child gr.Tokener, i int) error {
 		if err == nil && ok {
 			ast.table[top] = row
 			top++
-		} else if ast.isLastOfTable(top, j) {
-			allExpected = append(allExpected, row[i])
-
-			return gr.NewErrUnexpected(child.GoString(), allExpected...)
 		} else {
-			allExpected = append(allExpected, row[i])
+			ok := ast.isLastOfTable(top, j)
+			if ok {
+				allExpected = append(allExpected, row[i])
+
+				return ue.NewErrUnexpected(child.GoString(), allExpected...)
+			} else {
+				allExpected = append(allExpected, row[i])
+			}
 		}
 	}
 

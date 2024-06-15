@@ -1,13 +1,15 @@
 package Parser
 
 import (
+	"errors"
+
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // CurrentEval is a struct that represents the current evaluation of the parser.
@@ -72,13 +74,13 @@ func NewCurrentEval() *CurrentEval {
 //   - error: An error if the parse tree could not be retrieved.
 //
 // Errors:
-//   - *ers.ErrInvalidUsage: If Parse() has not been called.
+//   - *ue.ErrInvalidUsage: If Parse() has not been called.
 //   - *gr.ErrCycleDetected: A cycle is detected in the token tree.
-//   - *ers.ErrInvalidParameter: The top of the stack is nil.
+//   - *ue.ErrInvalidParameter: The top of the stack is nil.
 //   - *gr.ErrUnknowToken: The root is not a known token.
 func (ce *CurrentEval) GetParseTree() ([]*gr.TokenTree, error) {
 	if ce.stack.IsEmpty() {
-		return nil, ers.NewErrInvalidUsage(
+		return nil, ue.NewErrInvalidUsage(
 			NewErrNothingWasParsed(),
 			"Use Parse() to parse the input stream",
 		)
@@ -87,8 +89,8 @@ func (ce *CurrentEval) GetParseTree() ([]*gr.TokenTree, error) {
 	var forest []*gr.TokenTree
 
 	for {
-		top, err := ce.stack.Pop()
-		if err != nil {
+		top, ok := ce.stack.Pop()
+		if !ok {
 			break
 		}
 
@@ -113,9 +115,9 @@ func (ce *CurrentEval) shift(source *cds.Stream[*gr.LeafToken]) error {
 		return NewErrNoAccept()
 	}
 
-	err = ce.stack.Push(toks[0])
-	if err != nil {
-		return err
+	ok := ce.stack.Push(toks[0])
+	if !ok {
+		return ue.NewErrUnexpectedError(errors.New("could not push token onto stack"))
 	}
 
 	ce.currentIndex++
@@ -142,10 +144,10 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 			break
 		}
 
-		top, err := ce.stack.Pop()
-		if err != nil {
+		top, ok := ce.stack.Pop()
+		if !ok {
 			ce.stack.Refuse()
-			return ers.NewErrAfter(lhs, ers.NewErrUnexpected(nil, value))
+			return ue.NewErrAfter(lhs, ue.NewErrUnexpected("", value))
 		}
 
 		if lookahead == nil {
@@ -153,10 +155,9 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 		}
 
 		id := top.GetID()
-
 		if id != value {
 			ce.stack.Refuse()
-			return ers.NewErrAfter(lhs, gr.NewErrUnexpected(top.GoString(), value))
+			return ue.NewErrAfter(lhs, ue.NewErrUnexpected(top.GoString(), value))
 		}
 	}
 
@@ -166,9 +167,9 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 	tok := gr.NewNonLeafToken(lhs, 0, data...)
 	tok.Lookahead = lookahead
 
-	err := ce.stack.Push(tok)
-	if err != nil {
-		return err
+	ok := ce.stack.Push(tok)
+	if !ok {
+		return ue.NewErrUnexpectedError(errors.New("could not push token onto stack"))
 	}
 
 	return nil

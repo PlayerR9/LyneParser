@@ -7,7 +7,7 @@ import (
 	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
 	itf "github.com/PlayerR9/MyGoLib/Units/Iterators"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
@@ -150,14 +150,15 @@ func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToke
 	for i := len(p.rhs) - 1; i >= 0; i-- {
 		rhs := p.rhs[i]
 
-		top, err := stack.Pop()
-		if err != nil {
-			reason = ers.NewErrUnexpected(nil, rhs)
+		top, ok := stack.Pop()
+		if !ok {
+			reason = ue.NewErrUnexpected("", rhs)
 			break
 		}
 
-		if top.GetID() != rhs {
-			reason = NewErrUnexpected(top.GoString(), rhs)
+		id := top.GetID()
+		if id != rhs {
+			reason = ue.NewErrUnexpected(top.GoString(), rhs)
 			break
 		}
 
@@ -172,7 +173,9 @@ func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToke
 
 	slices.Reverse(solutions)
 
-	return NewNonLeafToken(p.lhs, at, solutions...), nil
+	tok := NewNonLeafToken(p.lhs, at, solutions...)
+
+	return tok, nil
 }
 
 // Copy is a method of Production that returns a copy of the production.
@@ -226,9 +229,9 @@ func (p *Production) Size() int {
 //     invalid.
 func (p *Production) GetRhsAt(index int) (string, error) {
 	if index < 0 || index >= len(p.rhs) {
-		return "", ers.NewErrInvalidParameter(
+		return "", ue.NewErrInvalidParameter(
 			"index",
-			ers.NewErrOutOfBounds(index, 0, len(p.rhs)),
+			ue.NewErrOutOfBounds(index, 0, len(p.rhs)),
 		)
 	}
 
@@ -270,7 +273,7 @@ func (p *Production) IndicesOfRhs(rhs string) []int {
 //   - error: An error if the index is invalid or the other production is nil.
 //
 // Errors:
-//   - *ers.ErrInvalidParameter: If the index is invalid or the other production is nil.
+//   - *ue.ErrInvalidParameter: If the index is invalid or the other production is nil.
 //   - *ErrLhsRhsMismatch: If the left-hand side of the other production does
 //     not match the symbol at the given index in the right-hand side of the
 //     production.
@@ -298,7 +301,7 @@ func (p *Production) ReplaceRhsAt(index int, rhs string) *Production {
 //   - error: An error if the index is invalid or the other production is nil.
 //
 // Errors:
-//   - *ers.ErrInvalidParameter: If the index is invalid or the other production is nil.
+//   - *ue.ErrInvalidParameter: If the index is invalid or the other production is nil.
 //   - *ErrLhsRhsMismatch: If the left-hand side of the other production does
 //     not match the symbol at the given index in the right-hand side of the
 //     production.

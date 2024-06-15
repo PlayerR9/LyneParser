@@ -419,8 +419,8 @@ func (cs *ConflictSolver) Solve() error {
 //   - []Actioner: The actions to take.
 //   - error: An error if the operation failed.
 func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]HelperElem, error) {
-	top, err := stack.Peek()
-	if err != nil {
+	top, ok := stack.Peek()
+	if !ok {
 		return nil, errors.New("no top token found")
 	}
 
@@ -432,12 +432,12 @@ func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]HelperElem
 	}
 
 	f := func(h *Helper) (*Helper, error) {
-		top, err := stack.Pop()
-		if err != nil {
+		top, ok := stack.Pop()
+		if !ok {
 			return nil, errors.New("no top token found")
 		}
 
-		err = h.Match(top, stack)
+		err := h.Match(top, stack)
 		if err != nil {
 			return nil, err
 		}
@@ -474,7 +474,8 @@ func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]HelperElem
 	firsts := make([]HelperElem, 0, len(success))
 
 	for _, final := range success {
-		firsts = append(firsts, final.GetAction())
+		act := final.GetAction()
+		firsts = append(firsts, act)
 	}
 
 	if len(success) == 1 {

@@ -45,14 +45,14 @@ func parseSingleRegexRule(rule string) (*RegProduction, error) {
 //   - error: An error if there was a problem parsing the rules.
 func parseRegexRules(rules string) ([]*RegProduction, error) {
 	lines := strings.Split(rules, "\n")
+	lines = us.RemoveEmpty(lines)
+	if len(lines) == 0 {
+		return nil, nil
+	}
 
 	var productions []*RegProduction
 
 	for i, line := range lines {
-		if line == "" {
-			continue
-		}
-
 		production, err := parseSingleRegexRule(line)
 		if err != nil {
 			return nil, ue.NewErrAt(i+1, "line", err)

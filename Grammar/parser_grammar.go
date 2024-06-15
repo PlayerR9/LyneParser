@@ -9,6 +9,14 @@ import (
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
+// parseProductionRule is a helper function that parses a production rule.
+//
+// Parameters:
+//   - str: The production rule to parse.
+//
+// Returns:
+//   - []*Production: A slice of productions.
+//   - error: An error if there was a problem parsing the production rule.
 func parseProductionRule(str string) ([]*Production, error) {
 	sides, err := splitByArrow(str)
 	if err != nil {
@@ -59,15 +67,18 @@ type ParserGrammar struct {
 //   - *ParserGrammar: A new empty ParserGrammar.
 func NewParserGrammar(rules string) (*ParserGrammar, error) {
 	parsed := strings.Split(rules, "\n")
+	parsed = us.RemoveEmpty(parsed)
+	if len(parsed) == 0 {
+		return &ParserGrammar{
+			productions: make([]*Production, 0),
+			symbols:     make([]string, 0),
+		}, nil
+	}
 
 	// Parse production rules
 	var productions []*Production
 
 	for _, rule := range parsed {
-		if rule == "" {
-			continue
-		}
-
 		tmp, err := parseProductionRule(rule)
 		if err != nil {
 			return nil, ue.NewErrWhile("parsing production rules", err)

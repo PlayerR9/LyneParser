@@ -4,16 +4,14 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
 
 var (
-	LexerGrammar *gr.LexerGrammar
+	TestGrammar *Grammar
 )
 
 func init() {
-	grammar, err := gr.NewLexerGrammar(
+	grammar, err := NewGrammar(
 		`WORD -> [a-zA-Z]+
 		ATTR -> ".*?"
 		OP_PAREN -> \(
@@ -30,7 +28,7 @@ func init() {
 		panic(err)
 	}
 
-	LexerGrammar = grammar
+	TestGrammar = grammar
 }
 
 func TestLex(t *testing.T) {
@@ -38,19 +36,11 @@ func TestLex(t *testing.T) {
 		Source string = "[char(\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\"Caring\")\n}]"
 	)
 
-	lexer, err := NewLexer(LexerGrammar)
-	if err != nil {
-		t.Fatalf("NewLexer() returned an error: %s", err.Error())
-	}
+	lexer := NewLexer(TestGrammar)
 
-	err = lexer.Lex([]byte(Source))
+	tokenBranches, err := Lex(lexer, []byte(Source))
 	if err != nil {
-		t.Fatalf("Lexer.Lex() returned an error: %s", err.Error())
-	}
-
-	tokenBranches, err := lexer.GetTokens()
-	if err != nil {
-		t.Fatalf("Lexer.GetTokens() returned an error: %s", err.Error())
+		t.Fatalf("Lex() returned an error: %s", err.Error())
 	}
 
 	// DEBUG: Print token branches

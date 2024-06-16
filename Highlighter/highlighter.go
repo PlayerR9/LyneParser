@@ -98,18 +98,20 @@ func (h *Highlighter) Apply(source *cds.Stream[byte]) {
 	h.data = h.makeData()
 
 	for {
-		hasError := h.lexer.Lex(source.GetItems()) != nil
+		items := source.GetItems()
 
-		tokens, err := h.lexer.GetTokens()
-		if err != nil {
-			panic(err)
-		} else if len(tokens) == 0 {
+		tokens, err := lx.Lex(h.lexer, items)
+		hasError := err != nil
+
+		if len(tokens) == 0 {
 			break
 		}
 
 		// Find the most ideal token stream to use
 		// As of now, we will use the first token stream
-		txt, err := NewValidText(tokens[0].GetItems())
+		tokenItems := tokens[0].GetItems()
+
+		txt, err := NewValidText(tokenItems)
 		if err != nil {
 			panic(err)
 		}
@@ -120,8 +122,8 @@ func (h *Highlighter) Apply(source *cds.Stream[byte]) {
 			break
 		}
 
-		items := tokens[0].GetItems()
-		lastItem := items[len(items)-1]
+		tokenItems = tokens[0].GetItems()
+		lastItem := tokenItems[len(tokenItems)-1]
 
 		firstInvalid := lastItem.At + len(lastItem.Data)
 
@@ -131,13 +133,15 @@ func (h *Highlighter) Apply(source *cds.Stream[byte]) {
 		indexOfWS := h.extractErrorSection(source, firstInvalid)
 		if indexOfWS == -1 {
 			// Anything else is an error
-			h.data.Add(NewNormalText(bytes[firstInvalid:], h.errorStyle))
+			nt := NewNormalText(bytes[firstInvalid:], h.errorStyle)
+			h.data.Add(nt)
 
 			return
 		}
 
 		// Extract the error section
-		h.data.Add(NewNormalText(bytes[firstInvalid:indexOfWS], h.errorStyle))
+		nt := NewNormalText(bytes[firstInvalid:indexOfWS], h.errorStyle)
+		h.data.Add(nt)
 
 		// Create a new token stream for the rest of the data
 		source = cds.NewStream(bytes[indexOfWS:])

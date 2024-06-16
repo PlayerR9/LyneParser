@@ -2,7 +2,6 @@ package ConflictSolver
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 

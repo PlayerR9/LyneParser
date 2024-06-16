@@ -1,9 +1,10 @@
-package Grammar
+package Lexer
 
 import (
 	"slices"
 	"strings"
 
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
@@ -16,16 +17,13 @@ import (
 // Returns:
 //   - *RegProduction: The production.
 //   - error: An error if there was a problem parsing the rule.
-func parseSingleRegexRule(rule string) (*RegProduction, error) {
-	sides, err := splitByArrow(rule)
+func parseSingleRegexRule(rule string) (*gr.RegProduction, error) {
+	sides, err := gr.SplitByArrow(rule)
 	if err != nil {
 		return nil, err
 	}
 
-	regProd := &RegProduction{
-		lhs: sides[0],
-		rhs: "^" + sides[1],
-	}
+	regProd := gr.NewRegProduction(sides[0], sides[1])
 
 	err = regProd.Compile()
 	if err != nil {
@@ -43,14 +41,14 @@ func parseSingleRegexRule(rule string) (*RegProduction, error) {
 // Returns:
 //   - []*RegProduction: A slice of productions.
 //   - error: An error if there was a problem parsing the rules.
-func parseRegexRules(rules string) ([]*RegProduction, error) {
+func parseRegexRules(rules string) ([]*gr.RegProduction, error) {
 	lines := strings.Split(rules, "\n")
 	lines = us.RemoveEmpty(lines)
 	if len(lines) == 0 {
 		return nil, nil
 	}
 
-	var productions []*RegProduction
+	var productions []*gr.RegProduction
 
 	for i, line := range lines {
 		production, err := parseSingleRegexRule(line)
@@ -66,10 +64,10 @@ func parseRegexRules(rules string) ([]*RegProduction, error) {
 	return productions, nil
 }
 
-// LexerGrammar represents a context-free grammar.
-type LexerGrammar struct {
+// Grammar represents a context-free grammar.
+type Grammar struct {
 	// productions is a slice of productions in the grammar.
-	productions []*RegProduction
+	productions []*gr.RegProduction
 
 	// lhsToSkip is a slice of productions to skip.
 	lhsToSkip []string
@@ -78,7 +76,7 @@ type LexerGrammar struct {
 	symbols []string
 }
 
-// NewLexerGrammar is a constructor of an empty LexerGrammar.
+// NewGrammar is a constructor of an empty LexerGrammar.
 //
 // A context-free grammar is a set of productions, each of which
 // consists of a non-terminal symbol and a sequence of symbols.
@@ -91,15 +89,15 @@ type LexerGrammar struct {
 //
 // Returns:
 //   - *LexerGrammar: A new empty LexerGrammar.
-func NewLexerGrammar(rules string, toSkip string) (*LexerGrammar, error) {
+func NewGrammar(rules string, toSkip string) (*Grammar, error) {
 	parsed, err := parseRegexRules(rules)
 	if err != nil {
 		return nil, ue.NewErrWhile("parsing regex rules", err)
 	}
 
 	if len(parsed) == 0 {
-		return &LexerGrammar{
-			productions: make([]*RegProduction, 0),
+		return &Grammar{
+			productions: make([]*gr.RegProduction, 0),
 			lhsToSkip:   make([]string, 0),
 			symbols:     make([]string, 0),
 		}, nil
@@ -112,7 +110,7 @@ func NewLexerGrammar(rules string, toSkip string) (*LexerGrammar, error) {
 	lhss = us.SliceFilter(
 		lhss,
 		func(lhs string) bool {
-			filterProductionWithLHS := func(p *RegProduction) bool {
+			filterProductionWithLHS := func(p *gr.RegProduction) bool {
 				return p != nil && p.GetLhs() == lhs
 			}
 
@@ -133,7 +131,7 @@ func NewLexerGrammar(rules string, toSkip string) (*LexerGrammar, error) {
 		}
 	}
 
-	return &LexerGrammar{
+	return &Grammar{
 		productions: parsed,
 		lhsToSkip:   lhss,
 		symbols:     symbols,
@@ -144,40 +142,19 @@ func NewLexerGrammar(rules string, toSkip string) (*LexerGrammar, error) {
 //
 // Returns:
 //   - []string: A slice of symbols in the grammar.
-func (g *LexerGrammar) GetSymbols() []string {
+func (g *Grammar) GetSymbols() []string {
 	symbols := make([]string, len(g.symbols))
 	copy(symbols, g.symbols)
 
 	return symbols
 }
 
-// RegexMatch returns a slice of MatchedResult that match the input token.
-//
-// Parameters:
-//   - at: The position in the input string.
-//   - b: The input stream to match. Refers to Productioner.Match.
-//
-// Returns:
-//   - []MatchedResult: A slice of MatchedResult that match the input token.
-func (g *LexerGrammar) RegexMatch(at int, b []byte) []*MatchedResult[*LeafToken] {
-	matches := make([]*MatchedResult[*LeafToken], 0)
-
-	for i, p := range g.productions {
-		matched := p.Match(at, b)
-		if matched != nil {
-			matches = append(matches, NewMatchResult(matched, i))
-		}
-	}
-
-	return matches
-}
-
-// GetRegProductions returns a slice of RegProduction in the grammar.
+// GetRegexProds returns a slice of RegProduction in the grammar.
 //
 // Returns:
 //   - []*RegProduction: A slice of RegProduction in the grammar.
-func (g *LexerGrammar) GetRegProductions() []*RegProduction {
-	regProds := make([]*RegProduction, len(g.productions))
+func (g *Grammar) GetRegexProds() []*gr.RegProduction {
+	regProds := make([]*gr.RegProduction, len(g.productions))
 	copy(regProds, g.productions)
 
 	return regProds
@@ -187,7 +164,7 @@ func (g *LexerGrammar) GetRegProductions() []*RegProduction {
 //
 // Returns:
 //   - []string: A slice of LHSs to skip.
-func (g *LexerGrammar) GetToSkip() []string {
+func (g *Grammar) GetToSkip() []string {
 	toSkip := make([]string, len(g.lhsToSkip))
 	copy(toSkip, g.lhsToSkip)
 

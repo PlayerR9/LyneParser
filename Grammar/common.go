@@ -19,7 +19,7 @@ const (
 	EpsilonSymbolID string = "ε"
 )
 
-// splitByArrow is a helper function that splits a string by an arrow.
+// SplitByArrow is a helper function that splits a string by an arrow.
 //
 // Parameters:
 //   - str: The string to split.
@@ -27,7 +27,7 @@ const (
 // Returns:
 //   - [2]string: The left-hand side and right-hand side of the string.
 //   - error: An error if there was a problem splitting the string.
-func splitByArrow(str string) ([2]string, error) {
+func SplitByArrow(str string) ([2]string, error) {
 	index := strings.Index(str, LeftToRight)
 	if index == -1 {
 		return [2]string{}, NewErrMissingArrow()

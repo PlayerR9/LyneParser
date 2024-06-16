@@ -1,18 +1,17 @@
 package Production
 
 import (
-	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lxr "github.com/PlayerR9/LyneParser/Lexer"
 	prs "github.com/PlayerR9/LyneParser/Parser"
 )
 
 var (
-	LexerGrammar  *gr.LexerGrammar
-	ParserGrammar *gr.ParserGrammar
+	LexerGrammar  *lxr.Grammar
+	ParserGrammar *prs.ParserGrammar
 )
 
 func init() {
-	grammar1, err := gr.NewLexerGrammar(
+	grammar1, err := lxr.NewGrammar(
 		`LHS -> [a-z][a-zA-Z0-9_]*
 		WORD -> [a-zA-Z0-9_]+
 		ARROW -> ->
@@ -29,7 +28,7 @@ func init() {
 
 	LexerGrammar = grammar1
 
-	grammar2, err := gr.NewParserGrammar(
+	grammar2, err := prs.NewParserGrammar(
 		`source -> LHS ARROW rhsCls EOF
 
 		rhsCls -> rhs
@@ -59,12 +58,7 @@ var (
 )
 
 func init() {
-	lexer, err := lxr.NewLexer(LexerGrammar)
-	if err != nil {
-		panic(err)
-	}
-
-	Lexer = lexer
+	Lexer = lxr.NewLexer(LexerGrammar)
 
 	parser, err := prs.NewParser(ParserGrammar)
 	if err != nil {

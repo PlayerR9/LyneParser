@@ -1,16 +1,23 @@
 package Parser
 
 import (
+	"strings"
 	"testing"
 
+	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
+	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 )
 
-var ParserGrammar *gr.ParserGrammar
+var (
+	TestGrammar *ParserGrammar
+)
 
 func init() {
-	grammar, err := gr.NewParserGrammar(
+	var err error
+
+	grammar, err := NewParserGrammar(
 		`source -> arrayObj EOF
 		key -> WORD
 		key -> key WORD
@@ -26,7 +33,76 @@ func init() {
 		panic(err)
 	}
 
-	ParserGrammar = grammar
+	TestGrammar = grammar
+}
+
+func TestAmbiguousShifts(t *testing.T) {
+	rules := TestGrammar.GetProductions()
+
+	tmp := cs.NewConflictSolver(TestGrammar.GetSymbols(), rules)
+
+	// DEBUG: Display the decision table before solving ambiguous shifts.
+	doc, err := ffs.SprintFString(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)), tmp)
+	if err != nil {
+		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
+	}
+
+	pages := strings.Join(ffs.Stringfy(doc), "\f")
+
+	t.Log(pages)
+
+	err = tmp.SolveAmbiguousShifts()
+	if err != nil {
+		t.Fatalf("ConflictSolver.SolveAmbiguousShifts() returned an error: %s", err.Error())
+	}
+
+	// DEBUG: Display the decision table after solving ambiguous shifts.
+	doc, err = ffs.SprintFString(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)), tmp)
+	if err != nil {
+		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
+	}
+
+	pages = strings.Join(ffs.Stringfy(doc), "\f")
+
+	t.Log(pages)
+}
+
+func TestConflictSolver(t *testing.T) {
+	rules := TestGrammar.GetProductions()
+
+	tmp := cs.NewConflictSolver(TestGrammar.GetSymbols(), rules)
+
+	err := tmp.SolveAmbiguousShifts()
+	if err != nil {
+		t.Fatalf("ConflictSolver.SolveAmbiguousShifts() returned an error: %s", err.Error())
+	}
+
+	// DEBUG: Display the decision table before solving conflicts.
+	doc, err := ffs.SprintFString(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)), tmp)
+	if err != nil {
+		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
+	}
+
+	pages := strings.Join(ffs.Stringfy(doc), "\f")
+
+	t.Log(pages)
+
+	err = tmp.Solve()
+	if err != nil {
+		t.Fatalf("ConflictSolver.Solve() returned an error: %s", err.Error())
+	}
+
+	// DEBUG: Display the decision table after solving conflicts.
+	doc, err = ffs.SprintFString(ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)), tmp)
+	if err != nil {
+		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
+	}
+
+	pages = strings.Join(ffs.Stringfy(doc), "\n")
+
+	t.Log(pages)
+
+	t.Fatalf("TestConflictSolver() is not implemented")
 }
 
 var LexedContent *cds.Stream[*gr.LeafToken]
@@ -138,7 +214,7 @@ func init() {
 }
 
 func TestParsing(t *testing.T) {
-	p, err := NewParser(ParserGrammar)
+	p, err := NewParser(TestGrammar)
 	if err != nil {
 		t.Fatalf("NewParser() returned an error: %s", err.Error())
 	}

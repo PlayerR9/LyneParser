@@ -1,73 +1,55 @@
 package Lexer
 
 import (
+	"sync"
+
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	teval "github.com/PlayerR9/MyGoLib/TreeLike/Explorer"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
-	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
-var (
-	// MatchWeightFunc is a weight function that returns the length of the match.
-	//
-	// Parameters:
-	//   - match: The match to weigh.
-	//
-	// Returns:
-	//   - float64: The weight of the match.
-	//   - bool: True if the weight is valid, false otherwise.
-	MatchWeightFunc us.WeightFunc[*gr.MatchedResult[*gr.LeafToken]]
-
-	// FilterEmptyBranch is a filter that filters out empty branches.
-	//
-	// Parameters:
-	//   - branch: The branch to filter.
-	//
-	// Returns:
-	//   - bool: True if the branch is not empty, false otherwise.
-	FilterEmptyBranch us.PredicateFilter[[]*teval.CurrentEval[*gr.LeafToken]]
-)
-
-func init() {
-	MatchWeightFunc = func(elem *gr.MatchedResult[*gr.LeafToken]) (float64, bool) {
-		return float64(len(elem.Matched.Data)), true
-	}
-
-	FilterEmptyBranch = func(branch []*teval.CurrentEval[*gr.LeafToken]) bool {
-		return len(branch) != 0
-	}
-}
-
-// Lex is a shorthand function that creates a new lexer, sets the source, lexes the content,
-// and returns the token streams.
+// Lex is the main function of the lexer. This can be parallelized.
 //
 // Parameters:
 //   - lexer: The lexer to use.
-//   - input: The input to lex.
+//   - source: The source to lex.
 //
 // Returns:
-//   - []*cds.Stream[*LeafToken]: The tokens that have been lexed.
 //   - error: An error if lexing fails.
 //
 // Errors:
-//   - *ue.ErrInvalidParameter: The lexer or input is nil.
 //   - *ErrNoTokensToLex: There are no tokens to lex.
 //   - *ErrNoMatches: No matches are found in the source.
 //   - *ErrAllMatchesFailed: All matches failed.
+//   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
 func Lex(lexer *Lexer, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
 	if lexer == nil {
 		return nil, ue.NewErrNilParameter("lexer")
 	}
 
-	err := lexer.Lex(input)
-	if err != nil {
-		tokens, _ := lexer.GetTokens()
+	lexer.mu.RLock()
 
-		return tokens, err
+	if len(lexer.productions) == 0 {
+		lexer.mu.RUnlock()
+		return nil, gr.NewErrNoProductionRulesFound()
 	}
 
-	return lexer.GetTokens()
+	prodCopy := make([]*gr.RegProduction, len(lexer.productions))
+	copy(prodCopy, lexer.productions)
+	toSkip := make([]string, len(lexer.toSkip))
+	copy(toSkip, lexer.toSkip)
+
+	lexer.mu.RUnlock()
+
+	stream := cds.NewStream(input)
+	tree, err := executeLexing(stream, prodCopy)
+	if err != nil {
+		tokenBranches, _ := getTokens(tree, toSkip)
+		return tokenBranches, err
+	}
+
+	tokenBranches, err := getTokens(tree, toSkip)
+	return tokenBranches, err
 }
 
 // FullLexer is a convenience function that creates a new lexer, lexes the content,
@@ -80,63 +62,74 @@ func Lex(lexer *Lexer, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
 // Returns:
 //   - []*cds.Stream[*LeafToken]: The tokens that have been lexed.
 //   - error: An error if lexing fails.
-func FullLexer(grammar *gr.LexerGrammar, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
-	lexer, err := NewLexer(grammar)
-	if err != nil {
-		return nil, err
+func FullLexer(grammar *Grammar, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
+	if grammar == nil {
+		return nil, ue.NewErrNilParameter("grammar")
 	}
 
-	err = lexer.Lex(input)
-	if err != nil {
-		tokens, _ := lexer.GetTokens()
+	productions := grammar.GetRegexProds()
+	toSkip := grammar.GetToSkip()
 
-		return tokens, err
+	if len(productions) == 0 {
+		return nil, gr.NewErrNoProductionRulesFound()
 	}
 
-	return lexer.GetTokens()
+	stream := cds.NewStream(input)
+	tree, err := executeLexing(stream, productions)
+	if err != nil {
+		tokenBranches, _ := getTokens(tree, toSkip)
+		return tokenBranches, err
+	}
+
+	tokenBranches, err := getTokens(tree, toSkip)
+	return tokenBranches, err
 }
 
-// MatchFrom matches the source stream from a given index with a list of production rules.
+// Lexer is a lexer that uses a grammar to tokenize a string.
+type Lexer struct {
+	// grammar is the grammar used by the lexer.
+	productions []*gr.RegProduction
+
+	// toSkip is a list of LHSs to skip.
+	toSkip []string
+
+	// mu is a mutex to protect the lexer.
+	mu sync.RWMutex
+}
+
+// NewLexer creates a new lexer.
 //
 // Parameters:
-//   - s: The source stream to match.
-//   - from: The index to start matching from.
-//   - ps: The production rules to match.
+//   - grammar: The grammar to use.
 //
 // Returns:
-//   - matches: A slice of MatchedResult that match the input token.
-//   - reason: An error if no matches are found.
+//   - Lexer: The new lexer.
 //
-// Errors:
-//   - *ue.ErrInvalidParameter: The from index is out of bounds.
-//   - *ErrNoMatches: No matches are found.
-func MatchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) (matches []*gr.MatchedResult[*gr.LeafToken], reason error) {
-	size := s.Size()
-
-	if from < 0 || from >= size {
-		reason = ue.NewErrInvalidParameter(
-			"from",
-			ue.NewErrOutOfBounds(from, 0, size),
-		)
-
-		return
-	}
-
-	subSet, err := s.Get(from, size)
-	if err != nil {
-		panic(err)
-	}
-
-	for i, p := range ps {
-		matched := p.Match(from, subSet)
-		if matched != nil {
-			matches = append(matches, gr.NewMatchResult(matched, i))
+// Example:
+//
+//	lexer, err := NewLexer(grammar)
+//	if err != nil {
+//	    // Handle error.
+//	}
+//
+//	branches, err := lexer.Lex(lexer, []byte("1 + 2"))
+//	if err != nil {
+//	    // Handle error.
+//	}
+//
+// // Continue with parsing.
+func NewLexer(grammar *Grammar) *Lexer {
+	if grammar == nil {
+		return &Lexer{
+			productions: nil,
+			toSkip:      nil,
 		}
 	}
 
-	if len(matches) == 0 {
-		reason = NewErrNoMatches()
+	lex := &Lexer{
+		productions: grammar.GetRegexProds(),
+		toSkip:      grammar.GetToSkip(),
 	}
 
-	return
+	return lex
 }

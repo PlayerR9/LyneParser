@@ -37,7 +37,7 @@ type Parser struct {
 // Errors:
 //   - *ers.ErrInvalidParameter: The grammar is nil.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
-func NewParser(grammar *gr.ParserGrammar) (*Parser, error) {
+func NewParser(grammar *ParserGrammar) (*Parser, error) {
 	if grammar == nil {
 		return nil, ers.NewErrNilParameter("grammar")
 	}

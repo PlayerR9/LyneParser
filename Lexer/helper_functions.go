@@ -1,9 +1,12 @@
 package Lexer
 
 import (
+	"slices"
+
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	tr "github.com/PlayerR9/LyneParser/TreeLike/StatusTree"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
@@ -26,7 +29,7 @@ var (
 	//
 	// Returns:
 	//   - bool: True if the branch is not empty, false otherwise.
-	filterEmptyBranch us.PredicateFilter[[]*CurrentEval]
+	filterEmptyBranch us.PredicateFilter[[]*uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// filterInvalidBranches filters out invalid branches.
 	//
@@ -36,7 +39,7 @@ var (
 	// Returns:
 	//   - [][]helperToken: The filtered branches.
 	//   - int: The index of the last invalid token. -1 if no invalid token is found.
-	filterInvalidBranches func(branches [][]*CurrentEval) ([][]*CurrentEval, int)
+	filterInvalidBranches func(branches [][]*uc.Pair[EvalStatus, *gr.LeafToken]) ([][]*uc.Pair[EvalStatus, *gr.LeafToken], int)
 
 	// filterIncompleteLeaves is a filter that filters out incomplete leaves.
 	//
@@ -45,7 +48,7 @@ var (
 	//
 	// Returns:
 	//   - bool: True if the leaf is incomplete, false otherwise.
-	filterIncompleteLeaves us.PredicateFilter[*CurrentEval]
+	filterIncompleteLeaves us.PredicateFilter[*uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// filterCompleteTokens is a filter that filters complete helper tokens.
 	//
@@ -54,7 +57,7 @@ var (
 	//
 	// Returns:
 	//   - bool: True if the helper tokens are incomplete, false otherwise.
-	filterCompleteTokens us.PredicateFilter[[]*CurrentEval]
+	filterCompleteTokens us.PredicateFilter[[]*uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// helperWeightFunc is a weight function that returns the length of the helper tokens.
 	//
@@ -64,7 +67,7 @@ var (
 	// Returns:
 	//   - float64: The weight of the helper tokens.
 	//   - bool: True if the weight is valid, false otherwise.
-	helperWeightFunc us.WeightFunc[[]*CurrentEval]
+	helperWeightFunc us.WeightFunc[[]*uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// filterErrorLeaves is a filter that filters out leaves that are in error.
 	//
@@ -73,7 +76,7 @@ var (
 	//
 	// Returns:
 	//   - bool: True if the leaf is in error, false otherwise.
-	filterErrorLeaves us.PredicateFilter[*CurrentEval]
+	filterErrorLeaves us.PredicateFilter[*uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// selectBestMatches selects the best matches from the list of matches.
 	// Usually, the best matches' euristic is the longest match.
@@ -93,7 +96,7 @@ var (
 	//
 	// Returns:
 	//   - []gr.TokenStream: The branches with the tokens removed.
-	removeToSkipTokens func(toSkip []string, branches [][]*CurrentEval) ([][]*CurrentEval, error)
+	removeToSkipTokens func(toSkip []string, branches [][]*uc.Pair[EvalStatus, *gr.LeafToken]) ([][]*uc.Pair[EvalStatus, *gr.LeafToken], error)
 )
 
 func init() {
@@ -101,11 +104,11 @@ func init() {
 		return float64(len(elem.Matched.Data)), true
 	}
 
-	filterEmptyBranch = func(branch []*CurrentEval) bool {
+	filterEmptyBranch = func(branch []*uc.Pair[EvalStatus, *gr.LeafToken]) bool {
 		return len(branch) != 0
 	}
 
-	filterInvalidBranches = func(branches [][]*CurrentEval) ([][]*CurrentEval, int) {
+	filterInvalidBranches = func(branches [][]*uc.Pair[EvalStatus, *gr.LeafToken]) ([][]*uc.Pair[EvalStatus, *gr.LeafToken], int) {
 		branches, ok := us.SFSeparateEarly(branches, filterCompleteTokens)
 		if ok {
 			return branches, -1
@@ -119,37 +122,36 @@ func init() {
 
 		elems := weights[0].GetData().First
 
-		return [][]*CurrentEval{elems}, len(elems)
+		return [][]*uc.Pair[EvalStatus, *gr.LeafToken]{elems}, len(elems)
 	}
 
-	filterIncompleteLeaves = func(h *CurrentEval) bool {
+	filterIncompleteLeaves = func(h *uc.Pair[EvalStatus, *gr.LeafToken]) bool {
 		if h == nil {
 			return true
 		}
 
-		return h.status == EvalIncomplete
+		return h.First == EvalIncomplete
 	}
 
-	filterCompleteTokens = func(h []*CurrentEval) bool {
+	filterCompleteTokens = func(h []*uc.Pair[EvalStatus, *gr.LeafToken]) bool {
 		if len(h) == 0 {
 			return false
 		}
 
-		status := h[len(h)-1].getStatus()
-
+		status := h[len(h)-1].First
 		return status == EvalComplete
 	}
 
-	helperWeightFunc = func(h []*CurrentEval) (float64, bool) {
+	helperWeightFunc = func(h []*uc.Pair[EvalStatus, *gr.LeafToken]) (float64, bool) {
 		return float64(len(h)), true
 	}
 
-	filterErrorLeaves = func(h *CurrentEval) bool {
+	filterErrorLeaves = func(h *uc.Pair[EvalStatus, *gr.LeafToken]) bool {
 		if h == nil {
 			return true
 		}
 
-		return h.status == EvalError
+		return h.First == EvalError
 	}
 
 	selectBestMatches = func(matches []*gr.MatchedResult[*gr.LeafToken]) []*gr.MatchedResult[*gr.LeafToken] {
@@ -159,8 +161,8 @@ func init() {
 		return us.ExtractResults(pairs)
 	}
 
-	removeToSkipTokens = func(toSkip []string, branches [][]*CurrentEval) ([][]*CurrentEval, error) {
-		var newBranches [][]*CurrentEval
+	removeToSkipTokens = func(toSkip []string, branches [][]*uc.Pair[EvalStatus, *gr.LeafToken]) ([][]*uc.Pair[EvalStatus, *gr.LeafToken], error) {
+		var newBranches [][]*uc.Pair[EvalStatus, *gr.LeafToken]
 		var reason error
 
 		for _, branch := range branches {
@@ -177,8 +179,8 @@ func init() {
 				return newBranches, reason
 			}
 
-			filterTokenDifferentID := func(h *CurrentEval) bool {
-				id := h.getElem().ID
+			filterTokenDifferentID := func(h *uc.Pair[EvalStatus, *gr.LeafToken]) bool {
+				id := h.Second.ID
 
 				return id != elem
 			}
@@ -189,6 +191,17 @@ func init() {
 		}
 
 		return newBranches, reason
+	}
+}
+
+var (
+	// SortFunc is a function that sorts the token stream.
+	sortFunc func(a, b *cds.Stream[*gr.LeafToken]) int
+)
+
+func init() {
+	sortFunc = func(a, b *cds.Stream[*gr.LeafToken]) int {
+		return b.Size() - a.Size()
 	}
 }
 
@@ -220,12 +233,11 @@ func setLookahead(tokens []*gr.LeafToken) {
 //
 // Returns:
 //   - *cds.Stream[*LeafToken]: The token stream.
-func convertBranchToTokenStream(branch []*CurrentEval) *cds.Stream[*gr.LeafToken] {
+func convertBranchToTokenStream(branch []*uc.Pair[EvalStatus, *gr.LeafToken]) *cds.Stream[*gr.LeafToken] {
 	ts := make([]*gr.LeafToken, 0, len(branch))
 
 	for _, leaf := range branch {
-		elem := leaf.getElem()
-		ts = append(ts, elem)
+		ts = append(ts, leaf.Second)
 	}
 
 	ts = setEOFToken(ts)
@@ -291,7 +303,7 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) (matches [
 // Returns:
 //   - result: The tokens that have been lexed.
 //   - reason: An error if the lexer has not been run yet.
-func getTokens(tree *tr.Tree[*CurrentEval], toSkip []string) ([]*cds.Stream[*gr.LeafToken], error) {
+func getTokens(tree *tr.Tree[EvalStatus, *gr.LeafToken], toSkip []string) ([]*cds.Stream[*gr.LeafToken], error) {
 	tokenBranches := tree.SnakeTraversal()
 
 	branches, invalidTokIndex := filterInvalidBranches(tokenBranches)
@@ -302,6 +314,9 @@ func getTokens(tree *tr.Tree[*CurrentEval], toSkip []string) ([]*cds.Stream[*gr.
 			conv := convertBranchToTokenStream(branch)
 			result = append(result, conv)
 		}
+
+		// Sort the result by size. (descending order)
+		slices.SortStableFunc(result, sortFunc)
 
 		return result, ue.NewErrAt(invalidTokIndex, "token", NewErrInvalidElement())
 	}
@@ -314,6 +329,8 @@ func getTokens(tree *tr.Tree[*CurrentEval], toSkip []string) ([]*cds.Stream[*gr.
 		conv := convertBranchToTokenStream(branch)
 		result = append(result, conv)
 	}
+
+	slices.SortStableFunc(result, sortFunc)
 
 	return result, err
 }

@@ -1,6 +1,7 @@
 package Lexer
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -67,6 +68,28 @@ func TestLex(t *testing.T) {
 		}
 
 		t.Logf("[]*Token{\n\t%s\n}", strings.Join(values, ",\n\t"))
+	}
+
+	t.Fatalf("Test failed")
+}
+
+func TestSyntaxError(t *testing.T) {
+	const (
+		Source string = "[char(!\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\")\n}]"
+	)
+
+	lexer := NewLexer(TestGrammar)
+
+	tokenBranches, _ := Lex(lexer, []byte(Source))
+	if len(tokenBranches) == 0 {
+		t.Fatalf("Lex() returned no token branches")
+	}
+
+	// DEBUG: Print syntax error
+	lines := FormatSyntaxError(tokenBranches[0], []byte(Source))
+
+	for _, line := range lines {
+		fmt.Println(line)
 	}
 
 	t.Fatalf("Test failed")

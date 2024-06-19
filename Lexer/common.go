@@ -2,6 +2,7 @@ package Lexer
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"sync"
 
@@ -27,6 +28,10 @@ import (
 func Lex(lexer *Lexer, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
 	if lexer == nil {
 		return nil, ue.NewErrNilParameter("lexer")
+	}
+
+	if len(input) == 0 {
+		return nil, errors.New("no tokens to lex")
 	}
 
 	lexer.mu.RLock()

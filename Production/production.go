@@ -7,7 +7,7 @@ import (
 
 var (
 	LexerGrammar  *lxr.Grammar
-	ParserGrammar *prs.ParserGrammar
+	ParserGrammar *prs.Grammar
 )
 
 func init() {
@@ -28,7 +28,7 @@ func init() {
 
 	LexerGrammar = grammar1
 
-	grammar2, err := prs.NewParserGrammar(
+	grammar2, err := prs.NewGrammar(
 		`source -> LHS ARROW rhsCls EOF
 
 		rhsCls -> rhs

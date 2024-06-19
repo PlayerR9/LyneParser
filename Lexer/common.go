@@ -29,6 +29,10 @@ func Lex(lexer *Lexer, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
 		return nil, ue.NewErrNilParameter("lexer")
 	}
 
+	if len(input) == 0 {
+		return nil, nil
+	}
+
 	lexer.mu.RLock()
 
 	if len(lexer.productions) == 0 {

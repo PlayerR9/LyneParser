@@ -11,13 +11,13 @@ import (
 )
 
 var (
-	TestGrammar *ParserGrammar
+	TestGrammar *Grammar
 )
 
 func init() {
 	var err error
 
-	grammar, err := NewParserGrammar(
+	grammar, err := NewGrammar(
 		`source -> arrayObj EOF
 		key -> WORD
 		key -> key WORD

@@ -38,8 +38,7 @@ func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction) uc.
 	filterFunc := func(leaf *tr.TreeNode[EvalStatus, *gr.LeafToken]) ([]*uc.Pair[EvalStatus, *gr.LeafToken], error) {
 		nextAt := leaf.Data.GetPos() + len(leaf.Data.Data)
 
-		ok := source.IsDone(nextAt, 1)
-		if ok {
+		if nextAt >= source.Size() {
 			leaf.ChangeStatus(EvalComplete)
 			return nil, nil
 		}

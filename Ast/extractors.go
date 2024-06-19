@@ -45,7 +45,7 @@ type Extractor[O any] struct {
 	lhs string
 
 	// checker is the AST checker.
-	checker SyntaxChecker
+	checker *SyntaxChecker
 
 	// core is the core function.
 	core CoreFunc[O]
@@ -87,7 +87,7 @@ type Extractor[O any] struct {
 // Inside the core function, you have to extract the strings from the children
 // provided in the roots parameter. The structure and syntax is handled by the
 // checker parameter.
-func NewExtractor[O any](lhs string, checker SyntaxChecker, core CoreFunc[O]) Extractor[O] {
+func NewExtractor[O any](lhs string, checker *SyntaxChecker, core CoreFunc[O]) Extractor[O] {
 	return Extractor[O]{
 		lhs:     lhs,
 		checker: checker,
@@ -108,6 +108,8 @@ func (e *Extractor[O]) Apply(root gr.Tokener) (O, error) {
 
 	if e.core == nil {
 		return result, ue.NewErrNilParameter("core")
+	} else if e.checker == nil {
+		return result, ue.NewErrNilParameter("checker")
 	}
 
 	for pos := 0; ; pos++ {

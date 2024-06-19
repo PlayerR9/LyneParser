@@ -1,6 +1,8 @@
 package Lexer
 
 import (
+	"errors"
+	"fmt"
 	"slices"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
@@ -31,16 +33,6 @@ var (
 	//   - bool: True if the branch is not empty, false otherwise.
 	filterEmptyBranch us.PredicateFilter[[]*uc.Pair[EvalStatus, *gr.LeafToken]]
 
-	// filterInvalidBranches filters out invalid branches.
-	//
-	// Parameters:
-	//   - branches: The branches to filter.
-	//
-	// Returns:
-	//   - [][]helperToken: The filtered branches.
-	//   - int: The index of the last invalid token. -1 if no invalid token is found.
-	filterInvalidBranches func(branches [][]*uc.Pair[EvalStatus, *gr.LeafToken]) ([][]*uc.Pair[EvalStatus, *gr.LeafToken], int)
-
 	// filterIncompleteLeaves is a filter that filters out incomplete leaves.
 	//
 	// Parameters:
@@ -58,16 +50,6 @@ var (
 	// Returns:
 	//   - bool: True if the helper tokens are incomplete, false otherwise.
 	filterCompleteTokens us.PredicateFilter[[]*uc.Pair[EvalStatus, *gr.LeafToken]]
-
-	// helperWeightFunc is a weight function that returns the length of the helper tokens.
-	//
-	// Parameters:
-	//   - h: The helper tokens to weigh.
-	//
-	// Returns:
-	//   - float64: The weight of the helper tokens.
-	//   - bool: True if the weight is valid, false otherwise.
-	helperWeightFunc us.WeightFunc[[]*uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// filterErrorLeaves is a filter that filters out leaves that are in error.
 	//
@@ -87,16 +69,6 @@ var (
 	// Returns:
 	//   - []*gr.MatchedResult[*gr.LeafToken]: The best matches.
 	selectBestMatches func(matches []*gr.MatchedResult[*gr.LeafToken]) []*gr.MatchedResult[*gr.LeafToken]
-
-	// removeToSkipTokens removes tokens that are marked as to skip in the grammar.
-	//
-	// Parameters:
-	//   - toSkip: The tokens to skip.
-	//   - branches: The branches to remove tokens from.
-	//
-	// Returns:
-	//   - []gr.TokenStream: The branches with the tokens removed.
-	removeToSkipTokens func(toSkip []string, branches [][]*uc.Pair[EvalStatus, *gr.LeafToken]) ([][]*uc.Pair[EvalStatus, *gr.LeafToken], error)
 )
 
 func init() {
@@ -108,21 +80,9 @@ func init() {
 		return len(branch) != 0
 	}
 
-	filterInvalidBranches = func(branches [][]*uc.Pair[EvalStatus, *gr.LeafToken]) ([][]*uc.Pair[EvalStatus, *gr.LeafToken], int) {
-		branches, ok := us.SFSeparateEarly(branches, filterCompleteTokens)
-		if ok {
-			return branches, -1
-		} else if len(branches) == 0 {
-			return nil, -1
-		}
-
-		// Return the longest branch.
-		weights := us.ApplyWeightFunc(branches, helperWeightFunc)
-		weights = us.FilterByPositiveWeight(weights)
-
-		elems := weights[0].GetData().First
-
-		return [][]*uc.Pair[EvalStatus, *gr.LeafToken]{elems}, len(elems)
+	filterCompleteTokens = func(h []*uc.Pair[EvalStatus, *gr.LeafToken]) bool {
+		status := h[len(h)-1].First
+		return status == EvalComplete
 	}
 
 	filterIncompleteLeaves = func(h *uc.Pair[EvalStatus, *gr.LeafToken]) bool {
@@ -131,19 +91,6 @@ func init() {
 		}
 
 		return h.First == EvalIncomplete
-	}
-
-	filterCompleteTokens = func(h []*uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-		if len(h) == 0 {
-			return false
-		}
-
-		status := h[len(h)-1].First
-		return status == EvalComplete
-	}
-
-	helperWeightFunc = func(h []*uc.Pair[EvalStatus, *gr.LeafToken]) (float64, bool) {
-		return float64(len(h)), true
 	}
 
 	filterErrorLeaves = func(h *uc.Pair[EvalStatus, *gr.LeafToken]) bool {
@@ -161,47 +108,16 @@ func init() {
 		return us.ExtractResults(pairs)
 	}
 
-	removeToSkipTokens = func(toSkip []string, branches [][]*uc.Pair[EvalStatus, *gr.LeafToken]) ([][]*uc.Pair[EvalStatus, *gr.LeafToken], error) {
-		var newBranches [][]*uc.Pair[EvalStatus, *gr.LeafToken]
-		var reason error
-
-		for _, branch := range branches {
-			if len(branch) != 0 {
-				newBranches = append(newBranches, branch[1:])
-			}
-		}
-
-		for _, elem := range toSkip {
-			newBranches = us.SliceFilter(newBranches, filterEmptyBranch)
-			if len(newBranches) == 0 {
-				reason = NewErrAllMatchesFailed()
-
-				return newBranches, reason
-			}
-
-			filterTokenDifferentID := func(h *uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-				id := h.Second.ID
-
-				return id != elem
-			}
-
-			for i := 0; i < len(newBranches); i++ {
-				newBranches[i] = us.SliceFilter(newBranches[i], filterTokenDifferentID)
-			}
-		}
-
-		return newBranches, reason
-	}
 }
 
 var (
 	// SortFunc is a function that sorts the token stream.
-	sortFunc func(a, b *cds.Stream[*gr.LeafToken]) int
+	sortFunc func(a, b []*uc.Pair[EvalStatus, *gr.LeafToken]) int
 )
 
 func init() {
-	sortFunc = func(a, b *cds.Stream[*gr.LeafToken]) int {
-		return b.Size() - a.Size()
+	sortFunc = func(a, b []*uc.Pair[EvalStatus, *gr.LeafToken]) int {
+		return len(b) - len(a)
 	}
 }
 
@@ -236,9 +152,8 @@ func setLookahead(tokens []*gr.LeafToken) {
 func convertBranchToTokenStream(branch []*uc.Pair[EvalStatus, *gr.LeafToken]) *cds.Stream[*gr.LeafToken] {
 	var ts []*gr.LeafToken
 
-	// +1 for removing the ROOT token
-	for i := 1; i < len(branch); i++ {
-		ts = append(ts, branch[i].Second)
+	for _, elem := range branch {
+		ts = append(ts, elem.Second)
 	}
 
 	ts = setEOFToken(ts)
@@ -296,42 +211,84 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) (matches [
 	return
 }
 
-// getTokens returns the tokens that have been lexed.
+// removeToSkipTokens removes the tokens that are in the toSkip list.
 //
-// Remember to use Lexer.RemoveToSkipTokens() to remove tokens that
-// are not needed for the parser (i.e., marked as to skip in the grammar).
+// Parameters:
+//   - toSkip: The tokens to skip.
+//   - branches: The branches to remove the tokens from.
+//
+// Returns:
+//   - [][]*uc.Pair[EvalStatus, *gr.LeafToken]: The branches with the tokens removed.
+func removeToSkipTokens(toSkip []string, branches [][]*uc.Pair[EvalStatus, *gr.LeafToken]) [][]*uc.Pair[EvalStatus, *gr.LeafToken] {
+	// Remove the ROOT token
+	for i := 0; i < len(branches); i++ {
+		branches[i] = branches[i][1:]
+	}
+
+	for _, elem := range toSkip {
+		filterTokenDifferentID := func(h *uc.Pair[EvalStatus, *gr.LeafToken]) bool {
+			id := h.Second.ID
+
+			return id != elem
+		}
+
+		for i := 0; i < len(branches); i++ {
+			branches[i] = us.SliceFilter(branches[i], filterTokenDifferentID)
+		}
+	}
+
+	branches = us.SliceFilter(branches, filterEmptyBranch)
+	return branches
+}
+
+// getTokens returns the tokens that have been lexed.
 //
 // Returns:
 //   - result: The tokens that have been lexed.
 //   - reason: An error if the lexer has not been run yet.
 func getTokens(tree *tr.Tree[EvalStatus, *gr.LeafToken], toSkip []string) ([]*cds.Stream[*gr.LeafToken], error) {
-	tokenBranches := tree.SnakeTraversal()
+	branches := tree.SnakeTraversal()
 
-	branches, invalidTokIndex := filterInvalidBranches(tokenBranches)
-	if invalidTokIndex != -1 {
-		var result []*cds.Stream[*gr.LeafToken]
+	branches = removeToSkipTokens(toSkip, branches)
+	if len(branches) == 0 {
+		return nil, errors.New("all tokens were skipped")
+	}
+
+	branches, ok := us.SFSeparateEarly(branches, filterCompleteTokens)
+
+	// Sort the branches by length (descending order)
+	slices.SortStableFunc(branches, sortFunc)
+
+	if ok {
+		result := make([]*cds.Stream[*gr.LeafToken], 0, len(branches))
 
 		for _, branch := range branches {
 			conv := convertBranchToTokenStream(branch)
 			result = append(result, conv)
 		}
 
-		// Sort the result by size. (descending order)
-		slices.SortStableFunc(result, sortFunc)
-
-		return result, ue.NewErrAt(invalidTokIndex, "token", NewErrInvalidElement())
+		return result, nil
 	}
 
-	branches, err := removeToSkipTokens(toSkip, branches)
+	// Assume that the longest branch is the one with the
+	// most likely error
+	firstBranch := branches[0]
+	size := len(firstBranch)
 
-	var result []*cds.Stream[*gr.LeafToken]
+	lastToken := firstBranch[size-1].Second
+
+	result := make([]*cds.Stream[*gr.LeafToken], 0, len(branches))
 
 	for _, branch := range branches {
 		conv := convertBranchToTokenStream(branch)
 		result = append(result, conv)
 	}
 
-	slices.SortStableFunc(result, sortFunc)
-
-	return result, err
+	return result, ue.NewErrPossibleError(
+		NewErrAllMatchesFailed(),
+		fmt.Errorf("after token %q, at index %d, there is no valid continuation",
+			lastToken.Data,
+			lastToken.At,
+		),
+	)
 }

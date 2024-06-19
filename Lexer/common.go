@@ -8,7 +8,6 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
-	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
 // Lex is the main function of the lexer. This can be parallelized.
@@ -137,36 +136,6 @@ func NewLexer(grammar *Grammar) *Lexer {
 	return lex
 }
 
-// findInvalidTokenIndex finds the index of the first invalid token in the data.
-// The function returns -1 if no invalid token is found.
-//
-// Parameters:
-//   - branch: The branch of tokens to search for.
-//   - data: The data to search in.
-//
-// Returns:
-//   - int: The index of the first invalid token.
-func findInvalidTokenIndex(branch []*gr.LeafToken, data []byte) int {
-	pos := 0
-
-	for _, token := range branch {
-		b := []byte(token.Data)
-
-		startIndex := us.FindSubsliceFrom(data, b, pos)
-		if startIndex == -1 {
-			return -1
-		}
-
-		pos += startIndex + len(token.Data)
-	}
-
-	if pos >= len(data) {
-		return -1
-	}
-
-	return pos
-}
-
 // writeArrow writes an arrow pointing to the position in the data.
 //
 // Parameters:
@@ -174,14 +143,37 @@ func findInvalidTokenIndex(branch []*gr.LeafToken, data []byte) int {
 //
 // Returns:
 //   - string: The arrow.
-func writeArrow(pos int) string {
+func writeArrow(faultyLine []byte) string {
 	var builder strings.Builder
 
-	leftStr := strings.Repeat(" ", pos)
-	builder.WriteString(leftStr)
+	for _, char := range faultyLine {
+		if char == '\t' {
+			builder.WriteRune('\t')
+		} else {
+			builder.WriteRune(' ')
+		}
+	}
+
 	builder.WriteRune('^')
 
 	return builder.String()
+}
+
+// splitBytesFromEnd splits the data into two parts from the end.
+//
+// Parameters:
+//   - data: The data to split.
+//
+// Returns:
+//   - [][]byte: The split data.
+func splitBytesFromEnd(data []byte) [][]byte {
+	for i := len(data) - 1; i >= 0; i-- {
+		if data[i] == '\n' {
+			return [][]byte{data[:i], data[i:]}
+		}
+	}
+
+	return [][]byte{data}
 }
 
 // FormatSyntaxError formats a syntax error in the data.
@@ -210,72 +202,56 @@ func writeArrow(pos int) string {
 //
 //	Hello, word!
 //	       ^
-func FormatSyntaxError(branch *cds.Stream[*gr.LeafToken], data []byte) []string {
+func FormatSyntaxError(branch *cds.Stream[*gr.LeafToken], data []byte) string {
 	if branch == nil {
-		lines := bytes.Split(data, []byte{'\n'})
-
-		var formatted []string
-		for _, line := range lines {
-			formatted = append(formatted, string(line))
-		}
-
-		return formatted
+		return string(data)
 	}
 
 	items := branch.GetItems()
+	lastToken := items[len(items)-2]
 
-	firstInvalid := findInvalidTokenIndex(items, data)
-	if firstInvalid == -1 {
-		lines := bytes.Split(data, []byte{'\n'})
-
-		var formatted []string
-		for _, line := range lines {
-			formatted = append(formatted, string(line))
-		}
-
-		return formatted
+	firstInvalid := lastToken.At + len(lastToken.Data)
+	if firstInvalid == len(data) {
+		return string(data)
 	}
-
-	var lines []string
-
-	before := data[:firstInvalid]
-
-	after := data[firstInvalid:]
-
-	// Write all lines before the one containing the invalid token.
-	beforeLines := bytes.Split(before, []byte{'\n'})
-	if len(beforeLines) > 1 {
-		joined := bytes.Join(beforeLines[:len(beforeLines)-1], []byte{'\n'})
-
-		lines = append(lines, string(joined))
-	}
-
-	// Write the faulty line.
-	faultyLine := beforeLines[len(beforeLines)-1]
-
-	afterLines := bytes.Split(after, []byte{'\n'})
 
 	var builder strings.Builder
 
+	before := data[:firstInvalid]
+	after := data[firstInvalid:]
+
+	// Write all lines before the one containing the invalid token.
+	beforeLines := splitBytesFromEnd(before)
+
+	var faultyLine []byte
+
+	if len(beforeLines) > 1 {
+		builder.Write(beforeLines[0])
+
+		faultyLine = beforeLines[1]
+	} else {
+		faultyLine = beforeLines[0]
+	}
+
 	builder.Write(faultyLine)
 
+	afterLines := bytes.SplitN(after, []byte{'\n'}, 2)
 	if len(afterLines) > 0 {
 		builder.Write(afterLines[0])
 	}
 
-	lines = append(lines, builder.String())
-
 	// Write the caret.
-	arrow := writeArrow(len(faultyLine))
-	lines = append(lines, arrow)
+	arrow := writeArrow(faultyLine)
+	builder.WriteRune('\n')
+	builder.WriteString(arrow)
 
 	if len(afterLines) == 0 {
-		return lines
+		return builder.String()
 	}
 
-	for _, line := range afterLines[1:] {
-		lines = append(lines, string(line))
-	}
+	builder.WriteRune('\n')
 
-	return lines
+	builder.Write(afterLines[1])
+
+	return builder.String()
 }

@@ -1,8 +1,6 @@
 package Lexer
 
 import (
-	"fmt"
-
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	tr "github.com/PlayerR9/LyneParser/TreeLike/StatusTree"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
@@ -25,10 +23,6 @@ func generateEvalTrees(matches []*gr.MatchedResult[*gr.LeafToken]) []*tr.Tree[Ev
 		currMatch := match.GetMatch()
 
 		tree := tr.NewTree(EvalIncomplete, currMatch)
-		tree.Observe(func(tn *tr.TreeNode[EvalStatus, *gr.LeafToken]) {
-			fmt.Printf("Child node pointer changed to %p\n", tn)
-		})
-
 		children = append(children, tree)
 	}
 
@@ -92,9 +86,7 @@ func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction) uc.
 func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*tr.Tree[EvalStatus, *gr.LeafToken], error) {
 	rootNode := gr.NewRootToken()
 	tree := tr.NewTree(EvalIncomplete, rootNode)
-	tree.Observe(func(tn *tr.TreeNode[EvalStatus, *gr.LeafToken]) {
-		fmt.Printf("Node pointer changed to %p\n", tn)
-	})
+	rootNode = gr.NewRootToken()
 	treeCopy := tr.NewTree(EvalIncomplete, rootNode)
 
 	matches, err := matchFrom(source, 0, productions)
@@ -110,14 +102,9 @@ func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*
 
 	treeCopy.SetChildren(children)
 
-	tree.Root().ModifyState(func(tn *tr.TreeNode[EvalStatus, *gr.LeafToken]) *tr.TreeNode[EvalStatus, *gr.LeafToken] {
-		tn.ChangeStatus(EvalComplete)
-		return tn
-	})
-	treeCopy.Root().ModifyState(func(tn *tr.TreeNode[EvalStatus, *gr.LeafToken]) *tr.TreeNode[EvalStatus, *gr.LeafToken] {
-		tn.ChangeStatus(EvalComplete)
-		return tn
-	})
+	tree.Root().ChangeStatus(EvalComplete)
+
+	treeCopy.Root().ChangeStatus(EvalComplete)
 
 	shouldContinue := true
 

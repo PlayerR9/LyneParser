@@ -75,7 +75,7 @@ func TestLex(t *testing.T) {
 
 func TestSyntaxError(t *testing.T) {
 	const (
-		Source string = "[char(!\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\")\n}]"
+		Source string = "[char(\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\")\n}]"
 	)
 
 	lexer := NewLexer(TestGrammar)
@@ -86,11 +86,8 @@ func TestSyntaxError(t *testing.T) {
 	}
 
 	// DEBUG: Print syntax error
-	lines := FormatSyntaxError(tokenBranches[0], []byte(Source))
-
-	for _, line := range lines {
-		fmt.Println(line)
-	}
+	line := FormatSyntaxError(tokenBranches[0], []byte(Source))
+	fmt.Println(line)
 
 	t.Fatalf("Test failed")
 }

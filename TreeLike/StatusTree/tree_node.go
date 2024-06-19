@@ -6,7 +6,6 @@ import (
 
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
-	rws "github.com/PlayerR9/MyGoLib/Safe/RWSafe"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
@@ -159,13 +158,13 @@ func (n *TreeNode[S, T]) Leaves() []*TreeNode[S, T] {
 func (n *TreeNode[S, T]) ToTree() *Tree[S, T] {
 	if len(n.children) == 0 {
 		return &Tree[S, T]{
-			root:   rws.NewSubject(n),
+			root:   n,
 			leaves: []*TreeNode[S, T]{n},
 			size:   1,
 		}
 	} else {
 		return &Tree[S, T]{
-			root:   rws.NewSubject(n),
+			root:   n,
 			leaves: n.Leaves(),
 			size:   n.Size(),
 		}
@@ -406,4 +405,12 @@ func (tn *TreeNode[S, T]) ChangeStatus(status S) {
 //   - S: The status of the tree node.
 func (tn *TreeNode[S, T]) GetStatus() S {
 	return tn.status
+}
+
+// setParent sets the parent of the tree node.
+//
+// Parameters:
+//   - parent: The parent to set.
+func (tn *TreeNode[S, T]) setParent(parent *TreeNode[S, T]) {
+	tn.parent = parent
 }

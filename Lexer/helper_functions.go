@@ -234,10 +234,11 @@ func setLookahead(tokens []*gr.LeafToken) {
 // Returns:
 //   - *cds.Stream[*LeafToken]: The token stream.
 func convertBranchToTokenStream(branch []*uc.Pair[EvalStatus, *gr.LeafToken]) *cds.Stream[*gr.LeafToken] {
-	ts := make([]*gr.LeafToken, 0, len(branch))
+	var ts []*gr.LeafToken
 
-	for _, leaf := range branch {
-		ts = append(ts, leaf.Second)
+	// +1 for removing the ROOT token
+	for i := 1; i < len(branch); i++ {
+		ts = append(ts, branch[i].Second)
 	}
 
 	ts = setEOFToken(ts)

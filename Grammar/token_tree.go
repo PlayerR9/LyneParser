@@ -213,3 +213,11 @@ func (tt *TokenTree) DebugString() string {
 func (tt *TokenTree) GetAllBranches() [][]Tokener {
 	return tt.tree.SnakeTraversal()
 }
+
+// GetRoot returns the root of the token tree.
+//
+// Returns:
+//   - Tokener: The root of the token tree.
+func (tt *TokenTree) GetRoot() Tokener {
+	return tt.tree.Root().Data
+}

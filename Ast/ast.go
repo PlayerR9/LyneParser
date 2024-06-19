@@ -1,28 +1,16 @@
 package Ast
 
 import (
-	"fmt"
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
-// ASTNoder is an interface for AST nodes.
-type ASTNoder interface {
-	// ToAST converts the parser node to an AST node.
-	//
-	// Parameters:
-	//   - root: The root to convert.
-	//
-	// Returns:
-	//   - error: The error if the conversion fails.
-	ToAST(root gr.Tokener) error
-
-	fmt.Stringer
-}
-
 // IsToken checks if a root is a token with a specific ID.
+//
+// This works regardless of whether the root is a leaf or non-leaf token.
 //
 // Parameters:
 //   - root: The root to check.
@@ -38,32 +26,56 @@ type ASTNoder interface {
 func IsToken(root gr.Tokener, id string) (bool, error) {
 	if root == nil {
 		return false, NewErrExpectedNonNil("root")
-	} else if root.GetID() != id {
+	}
+
+	rootID := root.GetID()
+	if rootID != id {
 		return false, nil
 	}
 
-	var ok bool
+	isTerminal := gr.IsTerminal(id)
 
-	if gr.IsTerminal(id) {
-		_, ok = root.(*gr.LeafToken)
-	} else {
-		_, ok = root.(*gr.NonLeafToken)
-	}
+	switch root := root.(type) {
+	case *gr.LeafToken:
+		if isTerminal {
+			return true, nil
+		}
 
-	if !ok {
+		return false, nil
+	case *gr.NonLeafToken:
+		if !isTerminal {
+			return true, nil
+		}
+
+		return false, nil
+	default:
 		return false, NewErrInvalidParsing(root)
-	} else {
-		return true, nil
 	}
 }
 
-// ASTer is a helper struct for AST checks.
-type ASTer struct {
+// SyntaxChecker is a helper struct for AST checks.
+type SyntaxChecker struct {
 	// table is the table of ASTs.
 	table [][]string
 }
 
-// NewASTer creates a new ASTer. The ASTer is used to check if a list of
+// Copy implements the common.Copier interface.
+func (ast *SyntaxChecker) Copy() uc.Copier {
+	table := make([][]string, 0, len(ast.table))
+
+	for _, row := range ast.table {
+		rowCopy := make([]string, len(row))
+		copy(rowCopy, row)
+
+		table = append(table, rowCopy)
+	}
+
+	return &SyntaxChecker{
+		table: table,
+	}
+}
+
+// NewSyntaxChecker creates a new ASTer. The ASTer is used to check if a list of
 // children matches an expected list of IDs.
 //
 // Parameters:
@@ -74,9 +86,11 @@ type ASTer struct {
 //
 // Example:
 //
-//	ast := NewASTer([]string{
-//		"lhs -> rhs1",
-//		"lhs -> rhs2",
+// lhs -> rhs1 | rhs2
+//
+//	ast := NewSyntaxChecker([]string{
+//		"rhs1",
+//		"rhs2",
 //	})
 //
 //	err := ast.Check([]gr.Tokener{
@@ -94,16 +108,17 @@ type ASTer struct {
 //	if err != nil {
 //		// Handle error.
 //	}
-func NewASTer(rules []string) ASTer {
-	ast := ASTer{
-		table: make([][]string, 0, len(rules)),
-	}
+func NewSyntaxChecker(rules []string) *SyntaxChecker {
+	table := make([][]string, 0, len(rules))
 
 	for _, rule := range rules {
-		ast.table = append(ast.table, strings.Fields(rule))
+		rows := strings.Fields(rule)
+		table = append(table, rows)
 	}
 
-	return ast
+	return &SyntaxChecker{
+		table: table,
+	}
 }
 
 // isLastOfTable is a helper function to check if the last element
@@ -115,7 +130,7 @@ func NewASTer(rules []string) ASTer {
 //
 // Returns:
 //   - bool: True if the last element is reached, false otherwise.
-func (ast *ASTer) isLastOfTable(top, i int) bool {
+func (ast *SyntaxChecker) isLastOfTable(top, i int) bool {
 	return top == 0 && i == len(ast.table)-1
 }
 
@@ -128,7 +143,7 @@ func (ast *ASTer) isLastOfTable(top, i int) bool {
 // Returns:
 //
 //   - error: The error if a field is missing.
-func (ast *ASTer) filterMissingFields(i int) error {
+func (ast *SyntaxChecker) filterMissingFields(i int) error {
 	top := 0
 
 	allMissing := make([]string, 0, len(ast.table))
@@ -161,7 +176,7 @@ func (ast *ASTer) filterMissingFields(i int) error {
 // Returns:
 //
 //   - error: The error if a field does not match the expected ID.
-func (ast *ASTer) filterWrongFields(child gr.Tokener, i int) error {
+func (ast *SyntaxChecker) filterWrongFields(child gr.Tokener, i int) error {
 	top := 0
 
 	allExpected := make([]string, 0, len(ast.table))
@@ -198,7 +213,7 @@ func (ast *ASTer) filterWrongFields(child gr.Tokener, i int) error {
 // Returns:
 //
 //   - error: The error if there are too many fields.
-func (ast *ASTer) filterTooManyFields(size int) error {
+func (ast *SyntaxChecker) filterTooManyFields(size int) error {
 	top := 0
 
 	for j := 0; j < len(ast.table); j++ {
@@ -236,18 +251,9 @@ func (ast *ASTer) filterTooManyFields(size int) error {
 // Returns:
 //
 //   - error: The error if the check fails.
-func (ast *ASTer) Check(children []gr.Tokener) error {
+func (ast *SyntaxChecker) Check(children []gr.Tokener) error {
 	// 1. Create a copy of the table.
-	astCopy := ASTer{
-		table: make([][]string, 0, len(ast.table)),
-	}
-
-	for _, row := range ast.table {
-		rowCopy := make([]string, len(row))
-		copy(rowCopy, row)
-
-		astCopy.table = append(astCopy.table, rowCopy)
-	}
+	astCopy := ast.Copy().(*SyntaxChecker)
 
 	// DEBUG: Print the table
 	// for _, row := range astCopy.table {

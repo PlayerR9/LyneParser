@@ -2,11 +2,46 @@ package Ast
 
 import (
 	"fmt"
+	"strings"
 
 	fs "github.com/PlayerR9/MyGoLib/Formatting/Strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
+
+// ErrAssumptionViolated is an error for when an assumption is violated.
+type ErrAssumptionViolated struct {
+	// Reason is the violated assumption.
+	Reason error
+}
+
+// Error implements the error interface.
+//
+// Message: "assumption violation: (assumption)".
+// If the assumption is nil, the message is "an assumption was violated".
+func (e *ErrAssumptionViolated) Error() string {
+	if e.Reason == nil {
+		return "an assumption was violated"
+	}
+
+	var builder strings.Builder
+
+	builder.WriteString("assumption violation: ")
+	builder.WriteString(e.Reason.Error())
+
+	return builder.String()
+}
+
+// NewErrAssumptionViolated creates a new ErrAssumptionViolated.
+//
+// Parameters:
+//   - reason: The violated assumption.
+//
+// Returns:
+//   - *ErrAssumptionViolated: A pointer to the new error.
+func NewErrAssumptionViolated(reason error) *ErrAssumptionViolated {
+	return &ErrAssumptionViolated{Reason: reason}
+}
 
 // ErrExpectedNonNil is an error for when a non-nil value is expected.
 type ErrExpectedNonNil struct {

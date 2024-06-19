@@ -2,8 +2,8 @@ package Lexer
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	tr "github.com/PlayerR9/LyneParser/TreeLike/StatusTree"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
+	tr "github.com/PlayerR9/MyGoLib/TreeLike/StatusTree"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )

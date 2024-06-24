@@ -2,7 +2,6 @@ package ConflictSolver
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	uts "github.com/PlayerR9/MyGoLib/Utility/Sorting"
 )
 
 // RuleTable represents a table of items.
@@ -11,7 +10,7 @@ type RuleTable struct {
 	items []*Item
 
 	// buckets is the buckets of the rule table.
-	buckets map[string]*uts.Bucket[*Helper]
+	buckets map[string][]*Helper
 }
 
 // NewRuleTable is a constructor of RuleTable.
@@ -51,8 +50,8 @@ func NewRuleTable(symbols []string, rules []*gr.Production) *RuleTable {
 //
 // Returns:
 //   - map[string]*uts.Bucket[*Helper]: The item buckets.
-func (rt *RuleTable) getItemBuckets() map[string]*uts.Bucket[*Helper] {
-	buckets := make(map[string]*uts.Bucket[*Helper])
+func (rt *RuleTable) getItemBuckets() map[string][]*Helper {
+	buckets := make(map[string][]*Helper)
 
 	for _, item := range rt.items {
 		symbol, err := item.Rule.GetRhsAt(item.Pos)
@@ -74,10 +73,12 @@ func (rt *RuleTable) getItemBuckets() map[string]*uts.Bucket[*Helper] {
 
 		prev, ok := buckets[symbol]
 		if !ok {
-			buckets[symbol] = uts.NewBucket([]*Helper{h})
+			prev = []*Helper{h}
 		} else {
-			prev.Add(h)
+			prev = append(prev, h)
 		}
+
+		buckets[symbol] = prev
 	}
 
 	return buckets
@@ -87,11 +88,14 @@ func (rt *RuleTable) getItemBuckets() map[string]*uts.Bucket[*Helper] {
 //
 // Returns:
 //   - map[string]*uts.Bucket[*Helper]: The copy of the buckets.
-func (rt *RuleTable) GetBucketsCopy() map[string]*uts.Bucket[*Helper] {
-	buckets := make(map[string]*uts.Bucket[*Helper])
+func (rt *RuleTable) GetBucketsCopy() map[string][]*Helper {
+	buckets := make(map[string][]*Helper)
 
 	for k, v := range rt.buckets {
-		buckets[k] = v.Copy().(*uts.Bucket[*Helper])
+		vCopy := make([]*Helper, len(v))
+		copy(vCopy, v)
+
+		buckets[k] = vCopy
 	}
 
 	return buckets

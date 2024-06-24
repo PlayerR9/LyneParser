@@ -14,7 +14,6 @@ import (
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
-	uts "github.com/PlayerR9/MyGoLib/Utility/Sorting"
 )
 
 var (
@@ -26,7 +25,7 @@ var GlobalDebugMode bool = true
 // ConflictSolver solves conflicts in a decision table.
 type ConflictSolver struct {
 	// table is a map of elements in the decision table.
-	table map[string]*uts.Bucket[*Helper]
+	table map[string][]*Helper
 
 	// rt is the rule table.
 	rt *RuleTable
@@ -110,16 +109,7 @@ func (cs *ConflictSolver) getHelpers() []*Helper {
 	var result []*Helper
 
 	for _, bucket := range cs.table {
-		iter := bucket.Iterator()
-
-		for {
-			h, err := iter.Consume()
-			if err != nil {
-				break
-			}
-
-			result = append(result, h)
-		}
+		result = append(result, bucket...)
 	}
 
 	return result
@@ -159,8 +149,8 @@ func (cs *ConflictSolver) solveSetLookaheadOnShifts() {
 //
 // Returns:
 //   - map[string][]*Helper: The helpers with look-ahead.
-func (cs *ConflictSolver) getHelpersWithLookahead() map[string]*uts.Bucket[*Helper] {
-	groups := make(map[string]*uts.Bucket[*Helper])
+func (cs *ConflictSolver) getHelpersWithLookahead() map[string][]*Helper {
+	groups := make(map[string][]*Helper)
 
 	todo := cs.getHelpers()
 
@@ -170,10 +160,12 @@ func (cs *ConflictSolver) getHelpersWithLookahead() map[string]*uts.Bucket[*Help
 		if lookahead != nil {
 			prev, ok := groups[*lookahead]
 			if !ok {
-				groups[*lookahead] = uts.NewBucket([]*Helper{h})
+				prev = []*Helper{h}
 			} else {
-				prev.Add(h)
+				prev = append(prev, h)
 			}
+
+			groups[*lookahead] = prev
 		}
 	}
 
@@ -204,7 +196,7 @@ func (cs *ConflictSolver) SolveAmbiguousShifts() error {
 	// unambiguously determine the next action.
 
 	for _, bucket := range helpersWithLookahead {
-		if bucket.GetSize() < 2 {
+		if len(bucket) < 2 {
 			continue
 		}
 
@@ -219,7 +211,7 @@ func (cs *ConflictSolver) SolveAmbiguousShifts() error {
 }
 
 // CMPerSymbol is a type that represents conflicts per symbol.
-type CMPerSymbol map[string]*uc.Pair[*uts.Bucket[*Helper], int]
+type CMPerSymbol map[string]uc.Pair[[]*Helper, int]
 
 // FindConflicts is a method that finds conflicts for a specific symbol.
 //
@@ -232,10 +224,11 @@ func (cs *ConflictSolver) FindConflicts() CMPerSymbol {
 	conflictMap := make(CMPerSymbol)
 
 	for symbol, bucket := range cs.table {
-		todo := bucket.Copy().(*uts.Bucket[*Helper])
+		todo := make([]*Helper, len(bucket))
+		copy(todo, bucket)
 
 		// 1. Remove every shift action that has a look-ahead.
-		todo.LinearKeep(func(h *Helper) bool {
+		todo = us.SliceFilter(todo, func(h *Helper) bool {
 			lookahead := h.GetLookahead()
 
 			return lookahead == nil
@@ -301,18 +294,11 @@ func (cs *ConflictSolver) MakeExpansionForests(index int, nextRhs map[*Helper]st
 	return possibleLookaheads, nil
 }
 
-func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts *uts.Bucket[*Helper]) (bool, error) {
+func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, error) {
 	// 1. Take the next symbol of each conflicting rule
 	nextRhs := make(map[*Helper]string)
 
-	iter := conflicts.Iterator()
-
-	for {
-		c, err := iter.Consume()
-		if err != nil {
-			break
-		}
-
+	for _, c := range conflicts {
 		rhs, err := c.GetRhsAt(index + 1)
 		if err != nil {
 			continue
@@ -345,15 +331,9 @@ func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts *uts.Bucket[*Helpe
 		newR.ForceLookahead(forest[0])
 
 		for key, bucket := range cs.table {
-			slice := make([]*Helper, 0, bucket.GetSize())
+			slice := make([]*Helper, 0, len(bucket))
 
-			iter := bucket.Iterator()
-			for {
-				h, err := iter.Consume()
-				if err != nil {
-					break
-				}
-
+			for _, h := range bucket {
 				if h == c {
 					slice = append(slice, newR)
 				} else {
@@ -361,7 +341,7 @@ func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts *uts.Bucket[*Helpe
 				}
 			}
 
-			cs.table[key] = uts.NewBucket(slice)
+			cs.table[key] = slice
 		}
 	}
 
@@ -445,17 +425,8 @@ func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]HelperElem
 		return h, nil
 	}
 
-	slice := make([]*Helper, 0, elems.GetSize())
-
-	iter := elems.Iterator()
-	for {
-		h, err := iter.Consume()
-		if err != nil {
-			break
-		}
-
-		slice = append(slice, h)
-	}
+	slice := make([]*Helper, len(elems))
+	copy(slice, elems)
 
 	successOrFail, ok := us.EvaluateSimpleHelpers(slice, f)
 	if !ok {

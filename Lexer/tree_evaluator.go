@@ -34,8 +34,8 @@ func generateEvalTrees(matches []*gr.MatchedResult[*gr.LeafToken]) []*tr.Tree[Ev
 // Returns:
 //   - bool: True if all leaves are complete, false otherwise.
 //   - error: An error of type *ErrAllMatchesFailed if all matches failed.
-func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction) uc.EvalManyFunc[*tr.TreeNode[EvalStatus, *gr.LeafToken], *uc.Pair[EvalStatus, *gr.LeafToken]] {
-	filterFunc := func(leaf *tr.TreeNode[EvalStatus, *gr.LeafToken]) ([]*uc.Pair[EvalStatus, *gr.LeafToken], error) {
+func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction) uc.EvalManyFunc[*tr.TreeNode[EvalStatus, *gr.LeafToken], uc.Pair[EvalStatus, *gr.LeafToken]] {
+	filterFunc := func(leaf *tr.TreeNode[EvalStatus, *gr.LeafToken]) ([]uc.Pair[EvalStatus, *gr.LeafToken], error) {
 		nextAt := leaf.Data.GetPos() + len(leaf.Data.Data)
 
 		if nextAt >= source.Size() {
@@ -52,7 +52,7 @@ func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction) uc.
 		// Get the longest match.
 		matches = selectBestMatches(matches)
 
-		children := make([]*uc.Pair[EvalStatus, *gr.LeafToken], 0, len(matches))
+		children := make([]uc.Pair[EvalStatus, *gr.LeafToken], 0, len(matches))
 
 		for _, match := range matches {
 			curr := match.GetMatch()

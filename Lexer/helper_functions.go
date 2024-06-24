@@ -31,7 +31,7 @@ var (
 	//
 	// Returns:
 	//   - bool: True if the branch is not empty, false otherwise.
-	filterEmptyBranch us.PredicateFilter[[]*uc.Pair[EvalStatus, *gr.LeafToken]]
+	filterEmptyBranch us.PredicateFilter[[]uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// filterIncompleteLeaves is a filter that filters out incomplete leaves.
 	//
@@ -40,7 +40,7 @@ var (
 	//
 	// Returns:
 	//   - bool: True if the leaf is incomplete, false otherwise.
-	filterIncompleteLeaves us.PredicateFilter[*uc.Pair[EvalStatus, *gr.LeafToken]]
+	filterIncompleteLeaves us.PredicateFilter[uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// filterCompleteTokens is a filter that filters complete helper tokens.
 	//
@@ -49,7 +49,7 @@ var (
 	//
 	// Returns:
 	//   - bool: True if the helper tokens are incomplete, false otherwise.
-	filterCompleteTokens us.PredicateFilter[[]*uc.Pair[EvalStatus, *gr.LeafToken]]
+	filterCompleteTokens us.PredicateFilter[[]uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// filterErrorLeaves is a filter that filters out leaves that are in error.
 	//
@@ -58,7 +58,7 @@ var (
 	//
 	// Returns:
 	//   - bool: True if the leaf is in error, false otherwise.
-	filterErrorLeaves us.PredicateFilter[*uc.Pair[EvalStatus, *gr.LeafToken]]
+	filterErrorLeaves us.PredicateFilter[uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// selectBestMatches selects the best matches from the list of matches.
 	// Usually, the best matches' euristic is the longest match.
@@ -76,28 +76,20 @@ func init() {
 		return float64(len(elem.Matched.Data)), true
 	}
 
-	filterEmptyBranch = func(branch []*uc.Pair[EvalStatus, *gr.LeafToken]) bool {
+	filterEmptyBranch = func(branch []uc.Pair[EvalStatus, *gr.LeafToken]) bool {
 		return len(branch) != 0
 	}
 
-	filterCompleteTokens = func(h []*uc.Pair[EvalStatus, *gr.LeafToken]) bool {
+	filterCompleteTokens = func(h []uc.Pair[EvalStatus, *gr.LeafToken]) bool {
 		status := h[len(h)-1].First
 		return status == EvalComplete
 	}
 
-	filterIncompleteLeaves = func(h *uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-		if h == nil {
-			return true
-		}
-
+	filterIncompleteLeaves = func(h uc.Pair[EvalStatus, *gr.LeafToken]) bool {
 		return h.First == EvalIncomplete
 	}
 
-	filterErrorLeaves = func(h *uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-		if h == nil {
-			return true
-		}
-
+	filterErrorLeaves = func(h uc.Pair[EvalStatus, *gr.LeafToken]) bool {
 		return h.First == EvalError
 	}
 
@@ -112,11 +104,11 @@ func init() {
 
 var (
 	// SortFunc is a function that sorts the token stream.
-	sortFunc func(a, b []*uc.Pair[EvalStatus, *gr.LeafToken]) int
+	sortFunc func(a, b []uc.Pair[EvalStatus, *gr.LeafToken]) int
 )
 
 func init() {
-	sortFunc = func(a, b []*uc.Pair[EvalStatus, *gr.LeafToken]) int {
+	sortFunc = func(a, b []uc.Pair[EvalStatus, *gr.LeafToken]) int {
 		return len(b) - len(a)
 	}
 }
@@ -149,7 +141,7 @@ func setLookahead(tokens []*gr.LeafToken) {
 //
 // Returns:
 //   - *cds.Stream[*LeafToken]: The token stream.
-func convertBranchToTokenStream(branch []*uc.Pair[EvalStatus, *gr.LeafToken]) *cds.Stream[*gr.LeafToken] {
+func convertBranchToTokenStream(branch []uc.Pair[EvalStatus, *gr.LeafToken]) *cds.Stream[*gr.LeafToken] {
 	var ts []*gr.LeafToken
 
 	for _, elem := range branch {
@@ -219,14 +211,14 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) (matches [
 //
 // Returns:
 //   - [][]*uc.Pair[EvalStatus, *gr.LeafToken]: The branches with the tokens removed.
-func removeToSkipTokens(toSkip []string, branches [][]*uc.Pair[EvalStatus, *gr.LeafToken]) [][]*uc.Pair[EvalStatus, *gr.LeafToken] {
+func removeToSkipTokens(toSkip []string, branches [][]uc.Pair[EvalStatus, *gr.LeafToken]) [][]uc.Pair[EvalStatus, *gr.LeafToken] {
 	// Remove the ROOT token
 	for i := 0; i < len(branches); i++ {
 		branches[i] = branches[i][1:]
 	}
 
 	for _, elem := range toSkip {
-		filterTokenDifferentID := func(h *uc.Pair[EvalStatus, *gr.LeafToken]) bool {
+		filterTokenDifferentID := func(h uc.Pair[EvalStatus, *gr.LeafToken]) bool {
 			id := h.Second.ID
 
 			return id != elem

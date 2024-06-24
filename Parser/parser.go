@@ -6,15 +6,11 @@ import (
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	feval "github.com/PlayerR9/MyGoLib/Evaluations/Slices"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // Parser is a parser that uses a stack to parse a stream of tokens.
 type Parser struct {
-	// evaluator is the evaluator that the parser will use to evaluate the parse trees.
-	evaluator *feval.FrontierEvaluator[*CurrentEval]
-
 	// evals is a list of evaluations that the parser will use.
 	evals []*CurrentEval
 
@@ -35,11 +31,11 @@ type Parser struct {
 //   - error: An error if the parser could not be created.
 //
 // Errors:
-//   - *ers.ErrInvalidParameter: The grammar is nil.
+//   - *ue.ErrInvalidParameter: The grammar is nil.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
-func NewParser(grammar *ParserGrammar) (*Parser, error) {
+func NewParser(grammar *Grammar) (*Parser, error) {
 	if grammar == nil {
-		return nil, ers.NewErrNilParameter("grammar")
+		return nil, ue.NewErrNilParameter("grammar")
 	}
 
 	productions := grammar.GetProductions()
@@ -61,15 +57,23 @@ func NewParser(grammar *ParserGrammar) (*Parser, error) {
 
 // Parse parses the input stream using the parser's decision function.
 //
+// Parameters:
+//   - p: The parser to use.
+//   - source: The input stream to parse.
+//
 // Returns:
 //   - error: An error if the input stream could not be parsed.
-func (p *Parser) Parse(source *cds.Stream[*gr.LeafToken]) error {
-	if source == nil || source.IsEmpty() {
-		return errors.New("source is empty")
+func Parse(p *Parser, source *cds.Stream[*gr.LeafToken]) error {
+	if p == nil {
+		return ue.NewErrNilParameter("parser")
 	}
 
 	if p.dt == nil {
 		return errors.New("no grammar was set")
+	}
+
+	if source == nil || source.IsEmpty() {
+		return errors.New("source is empty")
 	}
 
 	ceRoot := NewCurrentEval()
@@ -79,13 +83,9 @@ func (p *Parser) Parse(source *cds.Stream[*gr.LeafToken]) error {
 		return err
 	}
 
-	p.evaluator = feval.NewFrontierEvaluator(func(ce *CurrentEval) ([]*CurrentEval, error) {
-		return ce.Parse(source, p.dt)
-	})
+	sols := evaluate(p.dt, source, ceRoot)
 
-	p.evaluator.Evaluate(ceRoot)
-
-	results, err := p.evaluator.GetResults()
+	results, err := extractResults(sols)
 	if err != nil {
 		return err
 	}

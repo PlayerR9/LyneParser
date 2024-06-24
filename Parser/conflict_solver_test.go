@@ -11,13 +11,13 @@ import (
 )
 
 var (
-	TestGrammar *ParserGrammar
+	TestGrammar *Grammar
 )
 
 func init() {
 	var err error
 
-	grammar, err := NewParserGrammar(
+	grammar, err := NewGrammar(
 		`source -> arrayObj EOF
 		key -> WORD
 		key -> key WORD
@@ -219,7 +219,7 @@ func TestParsing(t *testing.T) {
 		t.Fatalf("NewParser() returned an error: %s", err.Error())
 	}
 
-	err = p.Parse(LexedContent)
+	err = Parse(p, LexedContent)
 	if err != nil {
 		t.Fatalf("Parser.Parse() returned an error: %s", err.Error())
 	}

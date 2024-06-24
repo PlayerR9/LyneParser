@@ -100,16 +100,19 @@ func (h *Highlighter) Apply(source *cds.Stream[byte]) {
 	for {
 		items := source.GetItems()
 
-		tokens, err := lx.Lex(h.lexer, items)
+		alx := lx.Lex(h.lexer, items)
+
+		branch, err := alx.GetBranch()
+
 		hasError := err != nil
 
-		if len(tokens) == 0 {
+		if branch == nil {
 			break
 		}
 
 		// Find the most ideal token stream to use
 		// As of now, we will use the first token stream
-		tokenItems := tokens[0].GetItems()
+		tokenItems := branch.GetItems()
 
 		txt, err := NewValidText(tokenItems)
 		if err != nil {
@@ -122,7 +125,7 @@ func (h *Highlighter) Apply(source *cds.Stream[byte]) {
 			break
 		}
 
-		tokenItems = tokens[0].GetItems()
+		tokenItems = branch.GetItems()
 		lastItem := tokenItems[len(tokenItems)-1]
 
 		firstInvalid := lastItem.At + len(lastItem.Data)

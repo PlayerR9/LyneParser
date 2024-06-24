@@ -5,7 +5,8 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
+	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
@@ -217,7 +218,7 @@ func (h *Helper) SubstituteRhsAt(index int, otherH *Helper) *Helper {
 //
 // Behaviors:
 //   - The stack is refused.
-func (h *Helper) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+func (h *Helper) Match(top gr.Tokener, stack *ud.History[lls.Stacker[gr.Tokener]]) error {
 	var err error
 
 	switch act := h.Action.(type) {
@@ -230,7 +231,7 @@ func (h *Helper) Match(top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error 
 	}
 
 	// Refuse the stack
-	stack.Refuse()
+	stack.Reject()
 
 	if err != nil {
 		return err

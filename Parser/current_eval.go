@@ -1,13 +1,11 @@
 package Parser
 
 import (
-	"errors"
-
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
-	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
@@ -15,7 +13,7 @@ import (
 // CurrentEval is a struct that represents the current evaluation of the parser.
 type CurrentEval struct {
 	// stack represents the stack that the parser will use.
-	stack *ds.DoubleStack[gr.Tokener]
+	stack *ud.History[lls.Stacker[gr.Tokener]]
 
 	// currentIndex is the current index of the input stream.
 	currentIndex int
@@ -30,7 +28,7 @@ type CurrentEval struct {
 //   - uc.Copier: A copy of the current evaluation.
 func (ce *CurrentEval) Copy() uc.Copier {
 	return &CurrentEval{
-		stack:        ce.stack.Copy().(*ds.DoubleStack[gr.Tokener]),
+		stack:        ce.stack.Copy().(*ud.History[lls.Stacker[gr.Tokener]]),
 		currentIndex: ce.currentIndex,
 		isDone:       ce.isDone,
 	}
@@ -54,12 +52,7 @@ func NewCurrentEval() *CurrentEval {
 		isDone:       false,
 	}
 
-	stack, err := ds.NewDoubleStack(Stacker.NewLinkedStack[gr.Tokener]())
-	if err != nil {
-		panic(err)
-	}
-
-	ce.stack = stack
+	ce.stack = lls.NewStackWithHistory(lls.NewLinkedStack[gr.Tokener]())
 
 	return ce
 }
@@ -79,20 +72,15 @@ func NewCurrentEval() *CurrentEval {
 //   - *ue.ErrInvalidParameter: The top of the stack is nil.
 //   - *gr.ErrUnknowToken: The root is not a known token.
 func (ce *CurrentEval) GetParseTree() ([]*gr.TokenTree, error) {
-	if ce.stack.IsEmpty() {
-		return nil, ue.NewErrInvalidUsage(
-			NewErrNothingWasParsed(),
-			"Use Parse() to parse the input stream",
-		)
-	}
-
 	var forest []*gr.TokenTree
 
 	for {
-		top, ok := ce.stack.Pop()
-		if !ok {
+		cmd := lls.NewPop[gr.Tokener]()
+		err := ce.stack.ExecuteCommand(cmd)
+		if err != nil {
 			break
 		}
+		top := cmd.Value()
 
 		tree, err := gr.NewTokenTree(top)
 		if err != nil {
@@ -115,10 +103,8 @@ func (ce *CurrentEval) shift(source *cds.Stream[*gr.LeafToken]) error {
 		return NewErrNoAccept()
 	}
 
-	ok := ce.stack.Push(toks[0])
-	if !ok {
-		return ue.NewErrUnexpectedError(errors.New("could not push token onto stack"))
-	}
+	cmd := lls.NewPush[gr.Tokener](toks[0])
+	ce.stack.ExecuteCommand(cmd)
 
 	ce.currentIndex++
 
@@ -137,6 +123,7 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 	rhss := rule.ReverseIterator()
 
 	var lookahead *gr.LeafToken = nil
+	var popped []gr.Tokener
 
 	for {
 		value, err := rhss.Consume()
@@ -144,11 +131,15 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 			break
 		}
 
-		top, ok := ce.stack.Pop()
-		if !ok {
-			ce.stack.Refuse()
+		cmd := lls.NewPop[gr.Tokener]()
+		err = ce.stack.ExecuteCommand(cmd)
+		if err != nil {
+			ce.stack.Reject()
 			return ue.NewErrAfter(lhs, ue.NewErrUnexpected("", value))
 		}
+		top := cmd.Value()
+
+		popped = append(popped, top)
 
 		if lookahead == nil {
 			lookahead = top.GetLookahead()
@@ -156,21 +147,18 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 
 		id := top.GetID()
 		if id != value {
-			ce.stack.Refuse()
+			ce.stack.Reject()
 			return ue.NewErrAfter(lhs, ue.NewErrUnexpected(top.GoString(), value))
 		}
 	}
 
-	data := ce.stack.GetExtracted()
 	ce.stack.Accept()
 
-	tok := gr.NewNonLeafToken(lhs, 0, data...)
+	tok := gr.NewNonLeafToken(lhs, 0, popped...)
 	tok.Lookahead = lookahead
 
-	ok := ce.stack.Push(tok)
-	if !ok {
-		return ue.NewErrUnexpectedError(errors.New("could not push token onto stack"))
-	}
+	cmd := lls.NewPush[gr.Tokener](tok)
+	ce.stack.ExecuteCommand(cmd)
 
 	return nil
 }
@@ -219,7 +207,7 @@ func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *cds.Stream[
 //   - error: An error if the input stream could not be parsed.
 func (ce *CurrentEval) Parse(source *cds.Stream[*gr.LeafToken], dt *cs.ConflictSolver) ([]*CurrentEval, error) {
 	decisions, err := dt.Match(ce.stack)
-	ce.stack.Refuse()
+	ce.stack.Reject()
 
 	if err != nil {
 		return nil, err

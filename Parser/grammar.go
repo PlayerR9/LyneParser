@@ -5,7 +5,8 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
+	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
@@ -44,8 +45,8 @@ func parseProductionRule(str string) ([]*gr.Production, error) {
 	return productions, nil
 }
 
-// ParserGrammar represents a context-free grammar.
-type ParserGrammar struct {
+// Grammar represents a context-free grammar.
+type Grammar struct {
 	// productions is a slice of productions in the grammar.
 	productions []*gr.Production
 
@@ -53,7 +54,7 @@ type ParserGrammar struct {
 	symbols []string
 }
 
-// NewParserGrammar is a constructor of an empty ParserGrammar.
+// NewGrammar is a constructor of an empty ParserGrammar.
 //
 // A context-free grammar is a set of productions, each of which
 // consists of a non-terminal symbol and a sequence of symbols.
@@ -66,11 +67,11 @@ type ParserGrammar struct {
 //
 // Returns:
 //   - *ParserGrammar: A new empty ParserGrammar.
-func NewParserGrammar(rules string) (*ParserGrammar, error) {
+func NewGrammar(rules string) (*Grammar, error) {
 	parsed := strings.Split(rules, "\n")
 	parsed = us.RemoveEmpty(parsed)
 	if len(parsed) == 0 {
-		return &ParserGrammar{
+		return &Grammar{
 			productions: make([]*gr.Production, 0),
 			symbols:     make([]string, 0),
 		}, nil
@@ -91,7 +92,7 @@ func NewParserGrammar(rules string) (*ParserGrammar, error) {
 	productions = us.UniquefyEquals(productions, true)
 
 	if productions == nil {
-		return &ParserGrammar{
+		return &Grammar{
 			productions: make([]*gr.Production, 0),
 			symbols:     make([]string, 0),
 		}, nil
@@ -110,7 +111,7 @@ func NewParserGrammar(rules string) (*ParserGrammar, error) {
 		}
 	}
 
-	grammar := &ParserGrammar{
+	grammar := &Grammar{
 		productions: productions,
 		symbols:     symbols,
 	}
@@ -122,7 +123,7 @@ func NewParserGrammar(rules string) (*ParserGrammar, error) {
 //
 // Returns:
 //   - []string: A slice of symbols in the grammar.
-func (g *ParserGrammar) GetSymbols() []string {
+func (g *Grammar) GetSymbols() []string {
 	symbols := make([]string, len(g.symbols))
 	copy(symbols, g.symbols)
 
@@ -137,7 +138,7 @@ func (g *ParserGrammar) GetSymbols() []string {
 //
 // Returns:
 //   - []MatchedResult: A slice of MatchedResult that match the input token.
-func (g *ParserGrammar) ProductionMatch(at int, stack *ds.DoubleStack[gr.Tokener]) []*gr.MatchedResult[*gr.NonLeafToken] {
+func (g *Grammar) ProductionMatch(at int, stack *ud.History[lls.Stacker[gr.Tokener]]) []*gr.MatchedResult[*gr.NonLeafToken] {
 	matches := make([]*gr.MatchedResult[*gr.NonLeafToken], 0)
 
 	for i, p := range g.productions {
@@ -154,7 +155,7 @@ func (g *ParserGrammar) ProductionMatch(at int, stack *ds.DoubleStack[gr.Tokener
 //
 // Returns:
 //   - []*Production: A slice of Production in the grammar.
-func (g *ParserGrammar) GetProductions() []*gr.Production {
+func (g *Grammar) GetProductions() []*gr.Production {
 	prods := make([]*gr.Production, len(g.productions))
 	copy(prods, g.productions)
 

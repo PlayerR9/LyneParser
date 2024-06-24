@@ -2,7 +2,6 @@ package Lexer
 
 import (
 	"bytes"
-	"errors"
 	"strings"
 	"sync"
 
@@ -18,27 +17,24 @@ import (
 //   - source: The source to lex.
 //
 // Returns:
-//   - error: An error if lexing fails.
+//   - ActiveLexer: The active lexer. Nil if there are no tokens to lex or
+//     grammar is invalid.
 //
 // Errors:
 //   - *ErrNoTokensToLex: There are no tokens to lex.
 //   - *ErrNoMatches: No matches are found in the source.
 //   - *ErrAllMatchesFailed: All matches failed.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
-func Lex(lexer *Lexer, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
-	if lexer == nil {
-		return nil, ue.NewErrNilParameter("lexer")
-	}
-
-	if len(input) == 0 {
-		return nil, errors.New("no tokens to lex")
+func Lex(lexer *Lexer, input []byte) *ActiveLexer {
+	if lexer == nil || len(input) == 0 {
+		return nil
 	}
 
 	lexer.mu.RLock()
+	defer lexer.mu.RUnlock()
 
 	if len(lexer.productions) == 0 {
-		lexer.mu.RUnlock()
-		return nil, gr.NewErrNoProductionRulesFound()
+		return nil
 	}
 
 	prodCopy := make([]*gr.RegProduction, len(lexer.productions))
@@ -46,17 +42,10 @@ func Lex(lexer *Lexer, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
 	toSkip := make([]string, len(lexer.toSkip))
 	copy(toSkip, lexer.toSkip)
 
-	lexer.mu.RUnlock()
-
 	stream := cds.NewStream(input)
-	tree, err := executeLexing(stream, prodCopy)
-	if err != nil {
-		tokenBranches, _ := getTokens(tree, toSkip)
-		return tokenBranches, err
-	}
+	ls := newLexState(stream, prodCopy, toSkip)
 
-	tokenBranches, err := getTokens(tree, toSkip)
-	return tokenBranches, err
+	return ls
 }
 
 // FullLexer is a convenience function that creates a new lexer, lexes the content,

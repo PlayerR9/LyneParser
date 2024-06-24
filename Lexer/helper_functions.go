@@ -1,10 +1,6 @@
 package Lexer
 
 import (
-	"errors"
-	"fmt"
-	"slices"
-
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	tr "github.com/PlayerR9/MyGoLib/TreeLike/StatusTree"
@@ -138,14 +134,27 @@ func setLookahead(tokens []*gr.LeafToken) {
 //
 // Parameters:
 //   - branch: The branch to convert.
+//   - toSkip: The tokens to skip.
 //
 // Returns:
 //   - *cds.Stream[*LeafToken]: The token stream.
-func convertBranchToTokenStream(branch []uc.Pair[EvalStatus, *gr.LeafToken]) *cds.Stream[*gr.LeafToken] {
+func convertBranchToTokenStream(branch []*tr.TreeNode[EvalStatus, *gr.LeafToken], toSkip []string) *cds.Stream[*gr.LeafToken] {
+	branch = branch[1:]
+
+	for _, elem := range toSkip {
+		filterTokenDifferentID := func(h *tr.TreeNode[EvalStatus, *gr.LeafToken]) bool {
+			id := h.Data.ID
+
+			return id != elem
+		}
+
+		branch = us.SliceFilter(branch, filterTokenDifferentID)
+	}
+
 	var ts []*gr.LeafToken
 
 	for _, elem := range branch {
-		ts = append(ts, elem.Second)
+		ts = append(ts, elem.Data)
 	}
 
 	ts = setEOFToken(ts)
@@ -203,36 +212,7 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) (matches [
 	return
 }
 
-// removeToSkipTokens removes the tokens that are in the toSkip list.
-//
-// Parameters:
-//   - toSkip: The tokens to skip.
-//   - branches: The branches to remove the tokens from.
-//
-// Returns:
-//   - [][]*uc.Pair[EvalStatus, *gr.LeafToken]: The branches with the tokens removed.
-func removeToSkipTokens(toSkip []string, branches [][]uc.Pair[EvalStatus, *gr.LeafToken]) [][]uc.Pair[EvalStatus, *gr.LeafToken] {
-	// Remove the ROOT token
-	for i := 0; i < len(branches); i++ {
-		branches[i] = branches[i][1:]
-	}
-
-	for _, elem := range toSkip {
-		filterTokenDifferentID := func(h uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-			id := h.Second.ID
-
-			return id != elem
-		}
-
-		for i := 0; i < len(branches); i++ {
-			branches[i] = us.SliceFilter(branches[i], filterTokenDifferentID)
-		}
-	}
-
-	branches = us.SliceFilter(branches, filterEmptyBranch)
-	return branches
-}
-
+/*
 // getTokens returns the tokens that have been lexed.
 //
 // Returns:
@@ -284,3 +264,4 @@ func getTokens(tree *tr.Tree[EvalStatus, *gr.LeafToken], toSkip []string) ([]*cd
 		),
 	)
 }
+*/

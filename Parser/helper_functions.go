@@ -3,10 +3,105 @@ package Parser
 import (
 	"errors"
 
+	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
+	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
+
+// evaluate evaluates the frontier evaluator given an element.
+//
+// Parameters:
+//   - elem: The element to evaluate.
+//
+// Behaviors:
+//   - If the element is accepted, the solutions will be set to the element.
+//   - If the element is not accepted, the solutions will be set to the results of the matcher.
+//   - If the matcher returns an error, the solutions will be set to the error.
+//   - The evaluations assume that, the more the element is elaborated, the more the weight increases.
+//     Thus, it is assumed to be the most likely solution as it is the most elaborated. Euristic: Depth.
+func evaluate(dt *cs.ConflictSolver, source *cds.Stream[*gr.LeafToken], elem *CurrentEval) []*us.WeightedHelper[*CurrentEval] {
+	ok := elem.Accept()
+	if ok {
+		h := us.NewWeightedHelper(elem, nil, 0.0)
+
+		sols := []*us.WeightedHelper[*CurrentEval]{h}
+
+		return sols
+	}
+
+	var sols []*us.WeightedHelper[*CurrentEval]
+
+	p := uc.NewPair(elem, 0.0)
+	S := Stacker.NewArrayStack(p)
+
+	for {
+		p, ok := S.Pop()
+		if !ok {
+			break
+		}
+
+		nexts, err := p.First.Parse(source, dt)
+		if err != nil {
+			h := us.NewWeightedHelper(p.First, err, p.Second)
+
+			sols = append(sols, h)
+			continue
+		}
+
+		newPairs := make([]uc.Pair[*CurrentEval, float64], 0, len(nexts))
+
+		for _, next := range nexts {
+			p := uc.NewPair(next, p.Second+1.0)
+
+			newPairs = append(newPairs, p)
+		}
+
+		for _, pair := range newPairs {
+			ok := pair.First.Accept()
+			if ok {
+				h := us.NewWeightedHelper(pair.First, nil, pair.Second)
+
+				sols = append(sols, h)
+			} else {
+				S.Push(pair)
+			}
+		}
+	}
+
+	return sols
+}
+
+// extractResults gets the results of the frontier evaluator.
+//
+// Returns:
+//   - []T: The results of the frontier evaluator.
+//   - error: An error if the frontier evaluator failed.
+//
+// Behaviors:
+//   - If the solutions are empty, the function returns nil.
+//   - If the solutions contain errors, the function returns the first error.
+//   - Otherwise, the function returns the solutions.
+func extractResults(sols []*us.WeightedHelper[*CurrentEval]) ([]*CurrentEval, error) {
+	if len(sols) == 0 {
+		return nil, nil
+	}
+
+	results, ok := us.SuccessOrFail(sols, true)
+
+	extracted := us.ExtractResults(results)
+
+	if !ok {
+		// Determine the most likely error.
+		// As of now, we will just return the first error.
+		return extracted, results[0].GetData().Second
+	} else {
+		return extracted, nil
+	}
+}
 
 /////////////////////////////////////////////////////////////
 
@@ -23,7 +118,7 @@ import (
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branch cannot be parsed.
 func ParseBranch(parser *Parser, source *cds.Stream[*gr.LeafToken]) ([]*gr.TokenTree, error) {
-	err := parser.Parse(source)
+	err := Parse(parser, source)
 	if err != nil {
 		return nil, err
 	}

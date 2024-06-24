@@ -4,7 +4,8 @@ import (
 	"slices"
 	"strings"
 
-	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
+	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	itf "github.com/PlayerR9/MyGoLib/Units/Iterators"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
@@ -142,7 +143,7 @@ func (p *Production) GetSymbols() []string {
 //     string. In parsers, however, it is not really used (at = 0). Despite
 //     that, it can be used to provide additional information to the parser
 //     for error reporting or debugging.
-func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToken, error) {
+func (p *Production) Match(at int, stack *ud.History[lls.Stacker[Tokener]]) (*NonLeafToken, error) {
 	solutions := make([]Tokener, 0)
 
 	var reason error = nil
@@ -150,11 +151,13 @@ func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToke
 	for i := len(p.rhs) - 1; i >= 0; i-- {
 		rhs := p.rhs[i]
 
-		top, ok := stack.Pop()
-		if !ok {
+		cmd := lls.NewPop[Tokener]()
+		err := stack.ExecuteCommand(cmd)
+		if err != nil {
 			reason = ue.NewErrUnexpected("", rhs)
 			break
 		}
+		top := cmd.Value()
 
 		id := top.GetID()
 		if id != rhs {
@@ -165,7 +168,7 @@ func (p *Production) Match(at int, stack *ds.DoubleStack[Tokener]) (*NonLeafToke
 		solutions = append(solutions, top)
 	}
 
-	stack.Refuse()
+	stack.Reject()
 
 	if reason != nil {
 		return nil, reason

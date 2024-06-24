@@ -39,13 +39,18 @@ func TestLex(t *testing.T) {
 
 	lexer := NewLexer(TestGrammar)
 
-	tokenBranches, err := Lex(lexer, []byte(Source))
-	if err != nil {
-		t.Fatalf("Lex() returned an error: %s", err.Error())
-	}
+	for i := 0; ; i++ {
+		alx := Lex(lexer, []byte(Source))
 
-	// DEBUG: Print token branches
-	for i, branch := range tokenBranches {
+		branch, err := alx.GetBranch()
+		if err != nil {
+			t.Fatalf("Lex() returned an error: %s", err.Error())
+		}
+
+		if branch == nil {
+			break
+		}
+
 		t.Logf("Branch %d", i)
 
 		var values []string
@@ -80,13 +85,19 @@ func TestSyntaxError(t *testing.T) {
 
 	lexer := NewLexer(TestGrammar)
 
-	tokenBranches, _ := Lex(lexer, []byte(Source))
-	if len(tokenBranches) == 0 {
-		t.Fatalf("Lex() returned no token branches")
+	alx := Lex(lexer, []byte(Source))
+
+	branch, err := alx.GetBranch()
+	if err != nil {
+		t.Fatalf("Lex() returned an error: %s", err.Error())
+	}
+
+	if branch == nil {
+		t.Fatalf("Lex() returned no branches")
 	}
 
 	// DEBUG: Print syntax error
-	line := FormatSyntaxError(tokenBranches[0], []byte(Source))
+	line := FormatSyntaxError(branch, []byte(Source))
 	fmt.Println(line)
 
 	t.Fatalf("Test failed")

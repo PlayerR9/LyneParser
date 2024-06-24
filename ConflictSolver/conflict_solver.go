@@ -10,7 +10,8 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
-	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
+	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
@@ -398,8 +399,13 @@ func (cs *ConflictSolver) Solve() error {
 // Returns:
 //   - []Actioner: The actions to take.
 //   - error: An error if the operation failed.
-func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]HelperElem, error) {
-	top, ok := stack.Peek()
+func (cs *ConflictSolver) Match(stack *ud.History[lls.Stacker[gr.Tokener]]) ([]HelperElem, error) {
+	var top gr.Tokener
+	var ok bool
+
+	stack.ReadData(func(data lls.Stacker[gr.Tokener]) {
+		top, ok = data.Peek()
+	})
 	if !ok {
 		return nil, errors.New("no top token found")
 	}
@@ -412,12 +418,14 @@ func (cs *ConflictSolver) Match(stack *ds.DoubleStack[gr.Tokener]) ([]HelperElem
 	}
 
 	f := func(h *Helper) (*Helper, error) {
-		top, ok := stack.Pop()
-		if !ok {
+		cmd := lls.NewPop[gr.Tokener]()
+		err := stack.ExecuteCommand(cmd)
+		if err != nil {
 			return nil, errors.New("no top token found")
 		}
+		top := cmd.Value()
 
-		err := h.Match(top, stack)
+		err = h.Match(top, stack)
 		if err != nil {
 			return nil, err
 		}

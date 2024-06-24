@@ -4,7 +4,8 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	ds "github.com/PlayerR9/MyGoLib/ListLike/DoubleLL"
+	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	ui "github.com/PlayerR9/MyGoLib/Units/Iterators"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	ue "github.com/PlayerR9/MyGoLib/Units/errors"
@@ -236,7 +237,7 @@ func (a *ActReduce) ShouldAccept() bool {
 //
 // Returns:
 //   - error: An error if the action does not match the top of the stack.
-func MatchAction(a Actioner, top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) error {
+func MatchAction(a Actioner, top gr.Tokener, stack *ud.History[lls.Stacker[gr.Tokener]]) error {
 	ela := a.GetLookahead()
 	tla := top.GetLookahead()
 
@@ -256,10 +257,12 @@ func MatchAction(a Actioner, top gr.Tokener, stack *ds.DoubleStack[gr.Tokener]) 
 			break
 		}
 
-		top, ok := stack.Pop()
-		if !ok {
+		cmd := lls.NewPop[gr.Tokener]()
+		err = stack.ExecuteCommand(cmd)
+		if err != nil {
 			return ue.NewErrUnexpected("", rhs)
 		}
+		top := cmd.Value()
 
 		id := top.GetID()
 		if id != rhs {

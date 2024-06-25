@@ -3,50 +3,11 @@ package Lexer
 import (
 	"bytes"
 	"strings"
-	"sync"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
+	tr "github.com/PlayerR9/MyGoLib/TreeLike/StatusTree"
 )
-
-// Lex is the main function of the lexer. This can be parallelized.
-//
-// Parameters:
-//   - lexer: The lexer to use.
-//   - source: The source to lex.
-//
-// Returns:
-//   - ActiveLexer: The active lexer. Nil if there are no tokens to lex or
-//     grammar is invalid.
-//
-// Errors:
-//   - *ErrNoTokensToLex: There are no tokens to lex.
-//   - *ErrNoMatches: No matches are found in the source.
-//   - *ErrAllMatchesFailed: All matches failed.
-//   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
-func Lex(lexer *Lexer, input []byte) *ActiveLexer {
-	if lexer == nil || len(input) == 0 {
-		return nil
-	}
-
-	lexer.mu.RLock()
-	defer lexer.mu.RUnlock()
-
-	if len(lexer.productions) == 0 {
-		return nil
-	}
-
-	prodCopy := make([]*gr.RegProduction, len(lexer.productions))
-	copy(prodCopy, lexer.productions)
-	toSkip := make([]string, len(lexer.toSkip))
-	copy(toSkip, lexer.toSkip)
-
-	stream := cds.NewStream(input)
-	ls := newLexState(stream, prodCopy, toSkip)
-
-	return ls
-}
 
 // FullLexer is a convenience function that creates a new lexer, lexes the content,
 // and returns the token streams.
@@ -58,74 +19,27 @@ func Lex(lexer *Lexer, input []byte) *ActiveLexer {
 // Returns:
 //   - []*cds.Stream[*LeafToken]: The tokens that have been lexed.
 //   - error: An error if lexing fails.
-func FullLexer(grammar *Grammar, input []byte) ([]*cds.Stream[*gr.LeafToken], error) {
+func FullLexer(grammar *Grammar, input []byte) *Lexer {
+	lex := new(Lexer)
+
 	if grammar == nil {
-		return nil, ue.NewErrNilParameter("grammar")
+		return lex
 	}
 
-	productions := grammar.GetRegexProds()
-	toSkip := grammar.GetToSkip()
+	lex.productions = grammar.GetRegexProds()
+	lex.toSkip = grammar.GetToSkip()
 
-	if len(productions) == 0 {
-		return nil, gr.NewErrNoProductionRulesFound()
+	if len(input) == 0 || len(lex.productions) == 0 {
+		return nil
 	}
 
-	stream := cds.NewStream(input)
-	tree, err := executeLexing(stream, productions)
-	if err != nil {
-		tokenBranches, _ := getTokens(tree, toSkip)
-		return tokenBranches, err
-	}
+	lex.source = cds.NewStream(input)
 
-	tokenBranches, err := getTokens(tree, toSkip)
-	return tokenBranches, err
-}
+	rootNode := gr.NewRootToken()
 
-// Lexer is a lexer that uses a grammar to tokenize a string.
-type Lexer struct {
-	// grammar is the grammar used by the lexer.
-	productions []*gr.RegProduction
-
-	// toSkip is a list of LHSs to skip.
-	toSkip []string
-
-	// mu is a mutex to protect the lexer.
-	mu sync.RWMutex
-}
-
-// NewLexer creates a new lexer.
-//
-// Parameters:
-//   - grammar: The grammar to use.
-//
-// Returns:
-//   - Lexer: The new lexer.
-//
-// Example:
-//
-//	lexer, err := NewLexer(grammar)
-//	if err != nil {
-//	    // Handle error.
-//	}
-//
-//	branches, err := lexer.Lex(lexer, []byte("1 + 2"))
-//	if err != nil {
-//	    // Handle error.
-//	}
-//
-// // Continue with parsing.
-func NewLexer(grammar *Grammar) *Lexer {
-	if grammar == nil {
-		return &Lexer{
-			productions: nil,
-			toSkip:      nil,
-		}
-	}
-
-	lex := &Lexer{
-		productions: grammar.GetRegexProds(),
-		toSkip:      grammar.GetToSkip(),
-	}
+	lex.tree = tr.NewTreeWithHistory(EvalIncomplete, rootNode)
+	lex.isFirst = true
+	lex.canContinue = true
 
 	return lex
 }

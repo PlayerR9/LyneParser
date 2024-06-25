@@ -13,7 +13,6 @@ import (
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
@@ -52,23 +51,23 @@ func (cs *ConflictSolver) FString(trav *ffs.Traversor, opts ...ffs.Option) error
 	for i, h := range helpers {
 		err := trav.AppendString(strconv.Itoa(counter))
 		if err != nil {
-			return ue.NewErrAt(i, "helper", err)
+			return uc.NewErrAt(i, "helper", err)
 		}
 
 		err = trav.AppendRune('.')
 		if err != nil {
-			return ue.NewErrAt(i, "helper", err)
+			return uc.NewErrAt(i, "helper", err)
 		}
 
 		if h != nil {
 			err = trav.AppendRune(' ')
 			if err != nil {
-				return ue.NewErrAt(i, "helper", err)
+				return uc.NewErrAt(i, "helper", err)
 			}
 
 			err = trav.AppendString(h.String())
 			if err != nil {
-				return ue.NewErrAt(i, "helper", err)
+				return uc.NewErrAt(i, "helper", err)
 			}
 		}
 
@@ -92,7 +91,7 @@ func (cs *ConflictSolver) FString(trav *ffs.Traversor, opts ...ffs.Option) error
 //
 // Errors:
 //   - *ErrCannotCreateItem: If an item cannot be created.
-//   - *ers.ErrInvalidParameter: If the item is nil.
+//   - *uc.ErrInvalidParameter: If the item is nil.
 func NewConflictSolver(symbols []string, rules []*gr.Production) *ConflictSolver {
 	rt := NewRuleTable(symbols, rules)
 

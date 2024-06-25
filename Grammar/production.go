@@ -6,9 +6,7 @@ import (
 
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
-	itf "github.com/PlayerR9/MyGoLib/Units/Iterators"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
@@ -90,9 +88,9 @@ func (p *Production) GetLhs() string {
 // production that iterates over the right-hand side of the production.
 //
 // Returns:
-//   - itf.Iterater[string]: An iterator for the production.
-func (p *Production) Iterator() itf.Iterater[string] {
-	return itf.NewSimpleIterator(p.rhs)
+//   - uc.Iterater[string]: An iterator for the production.
+func (p *Production) Iterator() uc.Iterater[string] {
+	return uc.NewSimpleIterator(p.rhs)
 }
 
 // ReverseIterator is a method of Production that returns a reverse
@@ -100,13 +98,13 @@ func (p *Production) Iterator() itf.Iterater[string] {
 // the production in reverse.
 //
 // Returns:
-//   - itf.Iterater[string]: A reverse iterator for the production.
-func (p *Production) ReverseIterator() itf.Iterater[string] {
+//   - uc.Iterater[string]: A reverse iterator for the production.
+func (p *Production) ReverseIterator() uc.Iterater[string] {
 	slice := make([]string, len(p.rhs))
 	copy(slice, p.rhs)
 	slices.Reverse(slice)
 
-	return itf.NewSimpleIterator(slice)
+	return uc.NewSimpleIterator(slice)
 }
 
 // GetSymbols is a method of Production that returns a slice of symbols
@@ -154,14 +152,14 @@ func (p *Production) Match(at int, stack *ud.History[lls.Stacker[Tokener]]) (*No
 		cmd := lls.NewPop[Tokener]()
 		err := stack.ExecuteCommand(cmd)
 		if err != nil {
-			reason = ue.NewErrUnexpected("", rhs)
+			reason = uc.NewErrUnexpected("", rhs)
 			break
 		}
 		top := cmd.Value()
 
 		id := top.GetID()
 		if id != rhs {
-			reason = ue.NewErrUnexpected(top.GoString(), rhs)
+			reason = uc.NewErrUnexpected(top.GoString(), rhs)
 			break
 		}
 
@@ -232,9 +230,9 @@ func (p *Production) Size() int {
 //     invalid.
 func (p *Production) GetRhsAt(index int) (string, error) {
 	if index < 0 || index >= len(p.rhs) {
-		return "", ue.NewErrInvalidParameter(
+		return "", uc.NewErrInvalidParameter(
 			"index",
-			ue.NewErrOutOfBounds(index, 0, len(p.rhs)),
+			uc.NewErrOutOfBounds(index, 0, len(p.rhs)),
 		)
 	}
 
@@ -276,7 +274,7 @@ func (p *Production) IndicesOfRhs(rhs string) []int {
 //   - error: An error if the index is invalid or the other production is nil.
 //
 // Errors:
-//   - *ue.ErrInvalidParameter: If the index is invalid or the other production is nil.
+//   - *uc.ErrInvalidParameter: If the index is invalid or the other production is nil.
 //   - *ErrLhsRhsMismatch: If the left-hand side of the other production does
 //     not match the symbol at the given index in the right-hand side of the
 //     production.
@@ -304,7 +302,7 @@ func (p *Production) ReplaceRhsAt(index int, rhs string) *Production {
 //   - error: An error if the index is invalid or the other production is nil.
 //
 // Errors:
-//   - *ue.ErrInvalidParameter: If the index is invalid or the other production is nil.
+//   - *uc.ErrInvalidParameter: If the index is invalid or the other production is nil.
 //   - *ErrLhsRhsMismatch: If the left-hand side of the other production does
 //     not match the symbol at the given index in the right-hand side of the
 //     production.

@@ -8,7 +8,6 @@ import (
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 type HelperElem interface {
@@ -147,7 +146,7 @@ func (h *Helper) AppendRhs(symbol string) error {
 	case *ActShift:
 		act.AppendRhs(symbol)
 	default:
-		return ue.NewErrUnexpectedType("action", act)
+		return uc.NewErrUnexpectedType("action", act)
 	}
 
 	return nil
@@ -227,7 +226,7 @@ func (h *Helper) Match(top gr.Tokener, stack *ud.History[lls.Stacker[gr.Tokener]
 	case *ActShift:
 		err = MatchAction(act.Action, top, stack)
 	default:
-		return ue.NewErrUnexpectedType("action", act)
+		return uc.NewErrUnexpectedType("action", act)
 	}
 
 	// Refuse the stack

@@ -6,8 +6,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lx "github.com/PlayerR9/LyneParser/Lexer"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	ui "github.com/PlayerR9/MyGoLib/Units/Iterators"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	"github.com/gdamore/tcell"
 )
 
@@ -38,7 +37,7 @@ type Highlighter struct {
 //   - *Highlighter: The new Highlighter.
 func NewHighlighter(lexer *lx.Lexer, defaultStyle tcell.Style) (*Highlighter, error) {
 	if lexer == nil {
-		return nil, ers.NewErrNilParameter("lexer")
+		return nil, uc.NewErrNilParameter("lexer")
 	}
 
 	return &Highlighter{
@@ -104,7 +103,7 @@ func (h *Highlighter) Apply(data []byte) {
 		var hasError bool
 
 		if err != nil {
-			ok := ers.As[*ui.ErrExhaustedIter](err)
+			ok := uc.Is[*uc.ErrExhaustedIter](err)
 			if !ok {
 				hasError = true
 			}

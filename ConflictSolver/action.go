@@ -6,9 +6,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
-	ui "github.com/PlayerR9/MyGoLib/Units/Iterators"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // Actioner represents an action that the parser will take.
@@ -22,8 +20,8 @@ type Actioner interface {
 	// Iterator returns an iterator of the right-hand side tokens.
 	//
 	// Returns:
-	//   - ui.Iterater[string]: An iterator of the right-hand side tokens.
-	Iterator() ui.Iterater[string]
+	//   - uc.Iterater[string]: An iterator of the right-hand side tokens.
+	Iterator() uc.Iterater[string]
 }
 
 // Action represents an action in a decision table.
@@ -51,8 +49,8 @@ func (a *Action) String() string {
 }
 
 // Iterator implements the Iterators.Iterater interface.
-func (a *Action) Iterator() ui.Iterater[string] {
-	return ui.NewSimpleIterator(a.rhs)
+func (a *Action) Iterator() uc.Iterater[string] {
+	return uc.NewSimpleIterator(a.rhs)
 }
 
 // AppendRhs appends a right-hand side token to the action.
@@ -243,9 +241,9 @@ func MatchAction(a Actioner, top gr.Tokener, stack *ud.History[lls.Stacker[gr.To
 
 	if ela != nil {
 		if tla == nil {
-			return ue.NewErrUnexpected("", *ela)
+			return uc.NewErrUnexpected("", *ela)
 		} else if *ela != tla.GetID() {
-			return ue.NewErrUnexpected(top.GoString(), *ela)
+			return uc.NewErrUnexpected(top.GoString(), *ela)
 		}
 	}
 
@@ -260,13 +258,13 @@ func MatchAction(a Actioner, top gr.Tokener, stack *ud.History[lls.Stacker[gr.To
 		cmd := lls.NewPop[gr.Tokener]()
 		err = stack.ExecuteCommand(cmd)
 		if err != nil {
-			return ue.NewErrUnexpected("", rhs)
+			return uc.NewErrUnexpected("", rhs)
 		}
 		top := cmd.Value()
 
 		id := top.GetID()
 		if id != rhs {
-			return ue.NewErrUnexpected(top.GoString(), rhs)
+			return uc.NewErrUnexpected(top.GoString(), rhs)
 		}
 	}
 

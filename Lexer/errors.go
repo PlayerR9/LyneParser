@@ -1,8 +1,7 @@
 package Lexer
 
 import (
-	ui "github.com/PlayerR9/MyGoLib/Units/Iterators"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
 // ErrNoMatches is an error that is returned when there are no
@@ -78,6 +77,6 @@ func IsDone(err error) bool {
 		return true
 	}
 
-	ok := ue.As[*ui.ErrExhaustedIter](err)
+	ok := uc.Is[*uc.ErrExhaustedIter](err)
 	return ok
 }

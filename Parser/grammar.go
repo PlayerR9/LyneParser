@@ -7,7 +7,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
@@ -22,7 +22,7 @@ import (
 func parseProductionRule(str string) ([]*gr.Production, error) {
 	sides, err := gr.SplitByArrow(str)
 	if err != nil {
-		return nil, ue.NewErrWhile("parsing production rules", err)
+		return nil, uc.NewErrWhile("parsing production rules", err)
 	}
 
 	lhs := sides[0]
@@ -83,7 +83,7 @@ func NewGrammar(rules string) (*Grammar, error) {
 	for _, rule := range parsed {
 		tmp, err := parseProductionRule(rule)
 		if err != nil {
-			return nil, ue.NewErrWhile("parsing production rules", err)
+			return nil, uc.NewErrWhile("parsing production rules", err)
 		}
 
 		productions = append(productions, tmp...)

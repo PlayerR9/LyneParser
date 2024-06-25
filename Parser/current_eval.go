@@ -7,7 +7,6 @@ import (
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // CurrentEval is a struct that represents the current evaluation of the parser.
@@ -67,9 +66,9 @@ func NewCurrentEval() *CurrentEval {
 //   - error: An error if the parse tree could not be retrieved.
 //
 // Errors:
-//   - *ue.ErrInvalidUsage: If Parse() has not been called.
+//   - *uc.ErrInvalidUsage: If Parse() has not been called.
 //   - *gr.ErrCycleDetected: A cycle is detected in the token tree.
-//   - *ue.ErrInvalidParameter: The top of the stack is nil.
+//   - *uc.ErrInvalidParameter: The top of the stack is nil.
 //   - *gr.ErrUnknowToken: The root is not a known token.
 func (ce *CurrentEval) GetParseTree() ([]*gr.TokenTree, error) {
 	var forest []*gr.TokenTree
@@ -135,7 +134,7 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 		err = ce.stack.ExecuteCommand(cmd)
 		if err != nil {
 			ce.stack.Reject()
-			return ue.NewErrAfter(lhs, ue.NewErrUnexpected("", value))
+			return uc.NewErrAfter(lhs, uc.NewErrUnexpected("", value))
 		}
 		top := cmd.Value()
 
@@ -148,7 +147,7 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 		id := top.GetID()
 		if id != value {
 			ce.stack.Reject()
-			return ue.NewErrAfter(lhs, ue.NewErrUnexpected(top.GoString(), value))
+			return uc.NewErrAfter(lhs, uc.NewErrUnexpected(top.GoString(), value))
 		}
 	}
 

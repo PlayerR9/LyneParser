@@ -6,22 +6,21 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
-	tr "github.com/PlayerR9/MyGoLib/TreeLike/StatusTree"
+	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
-	ui "github.com/PlayerR9/MyGoLib/Units/Iterators"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
 type leavesResult struct {
-	leaves []*tr.TreeNode[EvalStatus, *gr.LeafToken]
+	leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
 }
 
 func (lr *leavesResult) Size() int {
 	return len(lr.leaves)
 }
 
-func (lr *leavesResult) getFirst() *tr.TreeNode[EvalStatus, *gr.LeafToken] {
+func (lr *leavesResult) getFirst() *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]] {
 	if len(lr.leaves) == 0 {
 		return nil
 	}
@@ -32,25 +31,13 @@ func (lr *leavesResult) getFirst() *tr.TreeNode[EvalStatus, *gr.LeafToken] {
 	return first
 }
 
-type Branch struct {
-
-}
-
-func newBranch(leaf *tr.TreeNode[EvalStatus, *gr.LeafToken], tree *ud.History[*tr.Tree[EvalStatus, *gr.LeafToken]]) *Branch {
-	tree.ReadData(func(data *tr.Tree[EvalStatus, *gr.LeafToken]) {
-		data.
-	
-	
-	return &Branch{}
-}
-
 // SourceIterator is an iterator that uses a grammar to tokenize a string.
 type SourceIterator struct {
 	// source is the source to lex.
 	source *cds.Stream[byte]
 
 	// tree is the tree to use.
-	tree *ud.History[*tr.Tree[EvalStatus, *gr.LeafToken]]
+	tree *ud.History[*tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]]
 
 	// productions are the production rules to use.
 	productions []*gr.RegProduction
@@ -62,7 +49,7 @@ type SourceIterator struct {
 	canContinue bool
 
 	// errBranches are the branches that have errors.
-	errBranches []*tr.TreeNode[EvalStatus, *gr.LeafToken]
+	errBranches []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
 }
 
 // Size implements the Iterater interface.
@@ -71,7 +58,7 @@ type SourceIterator struct {
 // of course, this is just an approximation as, to get the exact size,
 // we would need to traverse the entire tree.
 func (si *SourceIterator) Size() (count int) {
-	f := func(data *tr.Tree[EvalStatus, *gr.LeafToken]) {
+	f := func(data *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
 		count = data.Size()
 	}
 
@@ -85,7 +72,7 @@ func (si *SourceIterator) Size() (count int) {
 // Parameters:
 //   - root: The root of the tree to add the leaves to.
 //   - matches: The matches to add to the tree evaluator.
-func generateEvalTrees(matches []*gr.MatchedResult[*gr.LeafToken]) []*tr.Tree[EvalStatus, *gr.LeafToken] {
+func generateEvalTrees(matches []*gr.MatchedResult[*gr.LeafToken]) []*tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]] {
 	// DEBUG: Display the matches
 	fmt.Println("Matches:")
 	for _, match := range matches {
@@ -95,12 +82,14 @@ func generateEvalTrees(matches []*gr.MatchedResult[*gr.LeafToken]) []*tr.Tree[Ev
 	// Get the longest match.
 	matches = selectBestMatches(matches)
 
-	children := make([]*tr.Tree[EvalStatus, *gr.LeafToken], 0, len(matches))
+	children := make([]*tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], 0, len(matches))
 
 	for _, match := range matches {
 		currMatch := match.GetMatch()
 
-		tree := tr.NewTree(EvalIncomplete, currMatch)
+		inf := tr.NewStatusInfo(currMatch, EvalIncomplete)
+
+		tree := tr.NewTree(inf)
 		children = append(children, tree)
 	}
 
@@ -115,7 +104,7 @@ func (si *SourceIterator) lexOne() error {
 	if si.isFirst {
 		matches, err := matchFrom(si.source, 0, si.productions)
 		if err != nil {
-			return ers.NewErrAt(0, "position", err)
+			return uc.NewErrAt(0, "position", err)
 		}
 
 		children := generateEvalTrees(matches)
@@ -123,14 +112,15 @@ func (si *SourceIterator) lexOne() error {
 		cmd := tr.NewSetChildrenCmd(children)
 		si.tree.ExecuteCommand(cmd)
 
-		si.tree.ReadData(func(data *tr.Tree[EvalStatus, *gr.LeafToken]) {
+		si.tree.ReadData(func(data *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
 			root := data.Root()
-			root.ChangeStatus(EvalComplete)
+			ld := root.Data
+			ld.ChangeStatus(EvalComplete)
 		})
 
 		// DEBUG: Display the resulting tree
 		fmt.Println("Resulting Tree:")
-		si.tree.ReadData(func(data *tr.Tree[EvalStatus, *gr.LeafToken]) {
+		si.tree.ReadData(func(data *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
 			p, trav := ffs.NewStdPrinter(
 				ffs.NewFormatter(ffs.NewIndentConfig("   ", 0)),
 			)
@@ -158,17 +148,19 @@ func (si *SourceIterator) lexOne() error {
 
 		si.tree.Accept()
 
-		var leaves []*tr.TreeNode[EvalStatus, *gr.LeafToken]
+		var leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
 
-		si.tree.ReadData(func(data *tr.Tree[EvalStatus, *gr.LeafToken]) {
+		si.tree.ReadData(func(data *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
 			leaves = data.GetLeaves()
 		})
 
-		var success []*tr.TreeNode[EvalStatus, *gr.LeafToken]
-		var failed []*tr.TreeNode[EvalStatus, *gr.LeafToken]
+		var success []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
+		var failed []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
 
 		for _, leaf := range leaves {
-			status := leaf.GetStatus()
+			ld := leaf.Data
+
+			status := ld.GetStatus()
 			if status == EvalError {
 				failed = append(failed, leaf)
 			} else {
@@ -200,16 +192,16 @@ func (si *SourceIterator) Consume() (*leavesResult, error) {
 
 	for {
 		if !si.canContinue {
-			return nil, ui.NewErrExhaustedIter()
+			return nil, uc.NewErrExhaustedIter()
 		}
 
-		var leaves []*tr.TreeNode[EvalStatus, *gr.LeafToken]
+		var leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
 
 		err := si.lexOne()
 		if err != nil {
 			si.canContinue = false
 
-			f := func(data *tr.Tree[EvalStatus, *gr.LeafToken]) {
+			f := func(data *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
 				leaves = data.GetLeaves()
 			}
 
@@ -219,8 +211,9 @@ func (si *SourceIterator) Consume() (*leavesResult, error) {
 		}
 
 		// Ignore error leaves.
-		leaves = us.SliceFilter(leaves, func(leaf *tr.TreeNode[EvalStatus, *gr.LeafToken]) bool {
-			status := leaf.GetStatus()
+		leaves = us.SliceFilter(leaves, func(leaf *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) bool {
+			ld := leaf.Data
+			status := ld.GetStatus()
 
 			return status != EvalError
 		})
@@ -244,7 +237,9 @@ func (si *SourceIterator) Restart() {
 
 	rootNode := gr.NewRootToken()
 
-	tree := tr.NewTreeWithHistory(EvalIncomplete, rootNode)
+	p := tr.NewStatusInfo(rootNode, EvalIncomplete)
+
+	tree := tr.NewTreeWithHistory(p)
 	si.tree = tree
 }
 
@@ -259,7 +254,9 @@ func (si *SourceIterator) Restart() {
 func newSourceIterator(source *cds.Stream[byte], productions []*gr.RegProduction) *SourceIterator {
 	rootNode := gr.NewRootToken()
 
-	tree := tr.NewTreeWithHistory(EvalIncomplete, rootNode)
+	p := tr.NewStatusInfo(rootNode, EvalIncomplete)
+
+	tree := tr.NewTreeWithHistory(p)
 
 	si := &SourceIterator{
 		source:      source,
@@ -275,12 +272,12 @@ func newSourceIterator(source *cds.Stream[byte], productions []*gr.RegProduction
 // getCompletedBranch gets the completed branch of the tree.
 //
 // Returns:
-//   - []*tr.TreeNode[EvalStatus, *gr.LeafToken]: The completed branch.
+//   - []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]: The completed branch.
 //   - bool: True if the branch can continue, false otherwise.
-func (si *SourceIterator) getCompletedBranch() ([]*tr.TreeNode[EvalStatus, *gr.LeafToken], bool) {
-	var leaves []*tr.TreeNode[EvalStatus, *gr.LeafToken]
+func (si *SourceIterator) getCompletedBranch() ([]*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], bool) {
+	var leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
 
-	f := func(data *tr.Tree[EvalStatus, *gr.LeafToken]) {
+	f := func(data *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
 		leaves = data.GetLeaves()
 	}
 
@@ -288,10 +285,11 @@ func (si *SourceIterator) getCompletedBranch() ([]*tr.TreeNode[EvalStatus, *gr.L
 
 	canContinue := false
 
-	var completedLeaves []*tr.TreeNode[EvalStatus, *gr.LeafToken]
+	var completedLeaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
 
 	for _, leaf := range leaves {
-		status := leaf.GetStatus()
+		ld := leaf.Data
+		status := ld.GetStatus()
 
 		if status == EvalComplete {
 			completedLeaves = append(completedLeaves, leaf)
@@ -307,7 +305,7 @@ func (si *SourceIterator) getCompletedBranch() ([]*tr.TreeNode[EvalStatus, *gr.L
 //
 // Parameters:
 //   - leaf: The leaf to delete.
-func (si *SourceIterator) deleteBranch(leaf *tr.TreeNode[EvalStatus, *gr.LeafToken]) {
+func (si *SourceIterator) deleteBranch(leaf *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
 	cmd := tr.NewDeleteBranchContainingCmd(leaf)
 	si.tree.ExecuteCommand(cmd)
 	si.tree.Accept()
@@ -387,9 +385,9 @@ func (li *LexerIterator) Restart() {
 //
 // Errors:
 //   - *ErrEmptyInput: The source is empty.
-//   - *ers.ErrAt: An error occurred at a specific index.
+//   - *uc.ErrAt: An error occurred at a specific index.
 //   - *ErrAllMatchesFailed: All matches failed.
-func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*tr.Tree[EvalStatus, *gr.LeafToken], error) {
+func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], error) {
 	rootNode := gr.NewRootToken()
 
 	tree := tr.NewTreeWithHistory(EvalIncomplete, rootNode)
@@ -398,7 +396,7 @@ func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*
 	if err != nil {
 		data := extractData(tree)
 
-		return data, ers.NewErrAt(0, "position", err)
+		return data, uc.NewErrAt(0, "position", err)
 	}
 
 	children := generateEvalTrees(matches)
@@ -406,7 +404,7 @@ func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*
 	cmd := tr.NewSetChildrenCmd(children)
 	tree.ExecuteCommand(cmd)
 
-	tree.ReadData(func(data *tr.Tree[EvalStatus, *gr.LeafToken]) {
+	tree.ReadData(func(data *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
 		root := data.Root()
 		root.ChangeStatus(EvalComplete)
 	})
@@ -440,9 +438,9 @@ func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*
 
 		tree.Accept()
 
-		var completedLeaves []*tr.TreeNode[EvalStatus, *gr.LeafToken]
+		var completedLeaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
 
-		tree.ReadData(func(data *tr.Tree[EvalStatus, *gr.LeafToken]) {
+		tree.ReadData(func(data *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
 			completedLeaves = data.GetLeaves()
 		})
 

@@ -5,7 +5,6 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // IsToken checks if a root is a token with a specific ID.
@@ -191,7 +190,7 @@ func (ast *SyntaxChecker) filterWrongFields(child gr.Tokener, i int) error {
 			if ok {
 				allExpected = append(allExpected, row[i])
 
-				return ue.NewErrUnexpected(child.GoString(), allExpected...)
+				return uc.NewErrUnexpected(child.GoString(), allExpected...)
 			} else {
 				allExpected = append(allExpected, row[i])
 			}

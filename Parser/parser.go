@@ -6,7 +6,7 @@ import (
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
 // Parser is a parser that uses a stack to parse a stream of tokens.
@@ -31,11 +31,11 @@ type Parser struct {
 //   - error: An error if the parser could not be created.
 //
 // Errors:
-//   - *ue.ErrInvalidParameter: The grammar is nil.
+//   - *uc.ErrInvalidParameter: The grammar is nil.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
 func NewParser(grammar *Grammar) (*Parser, error) {
 	if grammar == nil {
-		return nil, ue.NewErrNilParameter("grammar")
+		return nil, uc.NewErrNilParameter("grammar")
 	}
 
 	productions := grammar.GetProductions()
@@ -65,7 +65,7 @@ func NewParser(grammar *Grammar) (*Parser, error) {
 //   - error: An error if the input stream could not be parsed.
 func Parse(p *Parser, source *cds.Stream[*gr.LeafToken]) error {
 	if p == nil {
-		return ue.NewErrNilParameter("parser")
+		return uc.NewErrNilParameter("parser")
 	}
 
 	if p.dt == nil {

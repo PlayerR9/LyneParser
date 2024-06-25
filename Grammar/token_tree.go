@@ -7,7 +7,6 @@ import (
 	trt "github.com/PlayerR9/MyGoLib/TreeLike/Traversor"
 	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // TTInfo is the information about the token tree.
@@ -39,13 +38,13 @@ func (tti *TTInfo) Copy() uc.Copier {
 //
 // Returns:
 //   - *TTInfo: The new TTInfo.
-//   - error: An error of type *ers.ErrInvalidParameter if the root is nil.
+//   - error: An error of type *uc.ErrInvalidParameter if the root is nil.
 //
 // Behaviors:
 //   - The depth of the root is set to 0.
 func NewTTInfo(root Tokener) (*TTInfo, error) {
 	if root == nil {
-		return nil, ers.NewErrNilParameter("root")
+		return nil, uc.NewErrNilParameter("root")
 	}
 
 	info := &TTInfo{
@@ -113,7 +112,7 @@ type TokenTree struct {
 //
 // Errors:
 //   - *ErrCycleDetected: A cycle is detected in the token tree.
-//   - *ers.ErrInvalidParameter: The root is nil.
+//   - *uc.ErrInvalidParameter: The root is nil.
 //   - *ErrUnknowToken: The root is not a known token.
 func NewTokenTree(root Tokener) (*TokenTree, error) {
 	treeInfo, err := NewTTInfo(root)

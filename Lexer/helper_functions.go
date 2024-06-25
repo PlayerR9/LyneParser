@@ -1,6 +1,8 @@
 package Lexer
 
 import (
+	"fmt"
+
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	tr "github.com/PlayerR9/MyGoLib/TreeLike/StatusTree"
@@ -19,33 +21,6 @@ var (
 	//   - float64: The weight of the match.
 	//   - bool: True if the weight is valid, false otherwise.
 	matchWeightFunc us.WeightFunc[*gr.MatchedResult[*gr.LeafToken]]
-
-	// filterEmptyBranch is a filter that filters out empty branches.
-	//
-	// Parameters:
-	//   - branch: The branch to filter.
-	//
-	// Returns:
-	//   - bool: True if the branch is not empty, false otherwise.
-	filterEmptyBranch us.PredicateFilter[[]uc.Pair[EvalStatus, *gr.LeafToken]]
-
-	// filterIncompleteLeaves is a filter that filters out incomplete leaves.
-	//
-	// Parameters:
-	//   - leaf: The leaf to filter.
-	//
-	// Returns:
-	//   - bool: True if the leaf is incomplete, false otherwise.
-	filterIncompleteLeaves us.PredicateFilter[uc.Pair[EvalStatus, *gr.LeafToken]]
-
-	// filterCompleteTokens is a filter that filters complete helper tokens.
-	//
-	// Parameters:
-	//   - h: The helper tokens to filter.
-	//
-	// Returns:
-	//   - bool: True if the helper tokens are incomplete, false otherwise.
-	filterCompleteTokens us.PredicateFilter[[]uc.Pair[EvalStatus, *gr.LeafToken]]
 
 	// filterErrorLeaves is a filter that filters out leaves that are in error.
 	//
@@ -72,41 +47,26 @@ func init() {
 		return float64(len(elem.Matched.Data)), true
 	}
 
-	filterEmptyBranch = func(branch []uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-		return len(branch) != 0
-	}
-
-	filterCompleteTokens = func(h []uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-		status := h[len(h)-1].First
-		return status == EvalComplete
-	}
-
-	filterIncompleteLeaves = func(h uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-		return h.First == EvalIncomplete
-	}
-
 	filterErrorLeaves = func(h uc.Pair[EvalStatus, *gr.LeafToken]) bool {
 		return h.First == EvalError
 	}
 
 	selectBestMatches = func(matches []*gr.MatchedResult[*gr.LeafToken]) []*gr.MatchedResult[*gr.LeafToken] {
+		fmt.Println("Selecting best matches...")
+
 		weights := us.ApplyWeightFunc(matches, matchWeightFunc)
 		pairs := us.FilterByPositiveWeight(weights)
 
-		return us.ExtractResults(pairs)
+		results := us.ExtractResults(pairs)
+
+		fmt.Println("The best matches are:")
+		for _, elem := range results {
+			fmt.Printf("\t%+v\n", elem.Matched.Data)
+		}
+
+		return results
 	}
 
-}
-
-var (
-	// SortFunc is a function that sorts the token stream.
-	sortFunc func(a, b []uc.Pair[EvalStatus, *gr.LeafToken]) int
-)
-
-func init() {
-	sortFunc = func(a, b []uc.Pair[EvalStatus, *gr.LeafToken]) int {
-		return len(b) - len(a)
-	}
 }
 
 // SetEOFToken sets the end-of-file token in the token stream.
@@ -210,6 +170,46 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) (matches [
 	}
 
 	return
+}
+
+// filterLeaves processes the leaves in the tree evaluator.
+//
+// Returns:
+//   - bool: True if all leaves are complete, false otherwise.
+//   - error: An error of type *ErrAllMatchesFailed if all matches failed.
+func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction) uc.EvalManyFunc[*tr.TreeNode[EvalStatus, *gr.LeafToken], uc.Pair[EvalStatus, *gr.LeafToken]] {
+	filterFunc := func(leaf *tr.TreeNode[EvalStatus, *gr.LeafToken]) ([]uc.Pair[EvalStatus, *gr.LeafToken], error) {
+		nextAt := leaf.Data.GetPos() + len(leaf.Data.Data)
+
+		if nextAt >= source.Size() {
+			leaf.ChangeStatus(EvalComplete)
+			return nil, nil
+		}
+
+		matches, err := matchFrom(source, nextAt, productions)
+		if err != nil {
+			leaf.ChangeStatus(EvalError)
+			return nil, nil
+		}
+
+		// Get the longest match.
+		matches = selectBestMatches(matches)
+
+		children := make([]uc.Pair[EvalStatus, *gr.LeafToken], 0, len(matches))
+
+		for _, match := range matches {
+			curr := match.GetMatch()
+			p := uc.NewPair(EvalIncomplete, curr)
+
+			children = append(children, p)
+		}
+
+		leaf.ChangeStatus(EvalComplete)
+
+		return children, nil
+	}
+
+	return filterFunc
 }
 
 /*

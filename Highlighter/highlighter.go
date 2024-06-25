@@ -6,6 +6,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lx "github.com/PlayerR9/LyneParser/Lexer"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
+	ui "github.com/PlayerR9/MyGoLib/Units/Iterators"
 	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 	"github.com/gdamore/tcell"
 )
@@ -70,12 +71,12 @@ func (h *Highlighter) ChangeErrorStyle(style tcell.Style) {
 	h.errorStyle = style
 }
 
-func (h *Highlighter) extractErrorSection(source *cds.Stream[byte], firstInvalid int) int {
+func (h *Highlighter) extractErrorSection(data []byte, firstInvalid int) int {
 	// go until the first whitespace character
-	bytes := source.GetItems()
+	for i := firstInvalid; i < len(data); i++ {
+		ok := unicode.IsSpace(rune(data[i]))
 
-	for i := firstInvalid; i < len(bytes); i++ {
-		if unicode.IsSpace(rune(bytes[i])) {
+		if ok {
 			return i
 		}
 	}
@@ -93,21 +94,20 @@ func (h *Highlighter) makeData() *Data {
 	}
 }
 
-func (h *Highlighter) Apply(source *cds.Stream[byte]) {
-	h.source = source.GetItems()
+func (h *Highlighter) Apply(data []byte) {
 	h.data = h.makeData()
 
+	iter := h.lexer.Lex(data)
+
 	for {
-		items := source.GetItems()
+		branch, err := iter.Consume()
+		var hasError bool
 
-		alx := lx.Lex(h.lexer, items)
-
-		branch, err := alx.GetBranch()
-
-		hasError := err != nil
-
-		if branch == nil {
-			break
+		if err != nil {
+			ok := ers.As[*ui.ErrExhaustedIter](err)
+			if !ok {
+				hasError = true
+			}
 		}
 
 		// Find the most ideal token stream to use
@@ -131,23 +131,21 @@ func (h *Highlighter) Apply(source *cds.Stream[byte]) {
 		firstInvalid := lastItem.At + len(lastItem.Data)
 
 		// go until the first whitespace character
-		bytes := source.GetItems()
-
-		indexOfWS := h.extractErrorSection(source, firstInvalid)
+		indexOfWS := h.extractErrorSection(data, firstInvalid)
 		if indexOfWS == -1 {
 			// Anything else is an error
-			nt := NewNormalText(bytes[firstInvalid:], h.errorStyle)
+			nt := NewNormalText(data[firstInvalid:], h.errorStyle)
 			h.data.Add(nt)
 
 			return
 		}
 
 		// Extract the error section
-		nt := NewNormalText(bytes[firstInvalid:indexOfWS], h.errorStyle)
+		nt := NewNormalText(data[firstInvalid:indexOfWS], h.errorStyle)
 		h.data.Add(nt)
 
 		// Create a new token stream for the rest of the data
-		source = cds.NewStream(bytes[indexOfWS:])
+		data = data[indexOfWS:]
 	}
 }
 

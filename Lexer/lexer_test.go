@@ -41,7 +41,10 @@ func TestLex(t *testing.T) {
 
 	lexer := NewLexer(TestGrammar)
 
-	iter := lexer.Lex([]byte(Source))
+	v := NewVerbose(true)
+	defer v.Close()
+
+	iter := lexer.Lex([]byte(Source), v)
 
 	var branch *cds.Stream[*gr.LeafToken]
 	var err error
@@ -82,7 +85,10 @@ func TestSyntaxError(t *testing.T) {
 
 	lexer := NewLexer(TestGrammar)
 
-	iter := lexer.Lex([]byte(Source))
+	v := NewVerbose(true)
+	defer v.Close()
+
+	iter := lexer.Lex([]byte(Source), v)
 
 	branch, err := iter.Consume()
 	if err != nil {

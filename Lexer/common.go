@@ -68,8 +68,8 @@ func NewLexer(grammar *Grammar) *Lexer {
 // Lex is the main function of the lexer. This can be parallelized.
 //
 // Parameters:
-//   - lexer: The lexer to use.
 //   - source: The source to lex.
+//   - logger: A verbose logger.
 //
 // Returns:
 //   - Lexer: The active lexer. Nil if there are no tokens to lex or
@@ -80,7 +80,7 @@ func NewLexer(grammar *Grammar) *Lexer {
 //   - *ErrNoMatches: No matches are found in the source.
 //   - *ErrAllMatchesFailed: All matches failed.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
-func (l *Lexer) Lex(input []byte) *LexerIterator {
+func (l *Lexer) Lex(input []byte, logger *Verbose) *LexerIterator {
 	prodCopy := make([]*gr.RegProduction, len(l.productions))
 	copy(prodCopy, l.productions)
 	toSkip := make([]string, len(l.toSkip))
@@ -88,7 +88,7 @@ func (l *Lexer) Lex(input []byte) *LexerIterator {
 
 	stream := cds.NewStream(input)
 
-	si := newSourceIterator(stream, prodCopy)
+	si := newSourceIterator(stream, prodCopy, logger)
 
 	li := &LexerIterator{
 		toSkip:     toSkip,
@@ -107,16 +107,17 @@ func (l *Lexer) Lex(input []byte) *LexerIterator {
 // Parameters:
 //   - grammar: The grammar to use.
 //   - input: The input to lex.
+//   - logger: A verbose logger.
 //
 // Returns:
 //   - *LexerIterator: The lexer iterator.
-func FullLexer(grammar *Grammar, input []byte) *LexerIterator {
+func FullLexer(grammar *Grammar, input []byte, logger *Verbose) *LexerIterator {
 	lexer := NewLexer(grammar)
 	if lexer == nil {
 		return nil
 	}
 
-	iter := lexer.Lex(input)
+	iter := lexer.Lex(input, logger)
 
 	return iter
 }

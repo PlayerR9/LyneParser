@@ -109,7 +109,14 @@ func (p *RegProduction) Match(at int, b []byte) *LeafToken {
 		return nil
 	}
 
-	return NewLeafToken(p.lhs, string(data), at)
+	// Must be an exact match.
+	if len(data) != len(b) {
+		return nil
+	}
+
+	lt := NewLeafToken(p.lhs, string(data), at)
+
+	return lt
 }
 
 // Copy is a method of RegProduction that returns a copy of the production.

@@ -96,7 +96,10 @@ func (h *Highlighter) makeData() *Data {
 func (h *Highlighter) Apply(data []byte) {
 	h.data = h.makeData()
 
-	iter := h.lexer.Lex(data)
+	v := lx.NewVerbose(true)
+	defer v.Close()
+
+	iter := h.lexer.Lex(data, v)
 
 	for {
 		branch, err := iter.Consume()

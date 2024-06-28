@@ -11,7 +11,7 @@ import (
 )
 
 type Lexer struct {
-	is *stm.InputStream
+	is stm.Stream
 
 	tokens []gr.Token
 }
@@ -22,7 +22,7 @@ func (l *Lexer) peekNext() (*rune, error) {
 		return &char, nil
 	}
 
-	ok := stm.IsExhausted(err)
+	ok := stm.IsStreamExhausted(err)
 	if ok {
 		return nil, nil
 	}
@@ -194,7 +194,7 @@ func (l *Lexer) lexOne() (gr.Token, error) {
 }
 
 func Lex(data []byte) ([]gr.Token, error) {
-	is := stm.NewInputStream(data)
+	is := stm.NewStream(data)
 
 	l := &Lexer{
 		is: is,
@@ -216,7 +216,7 @@ func Lex(data []byte) ([]gr.Token, error) {
 
 	l.tokens = addEOF(l.tokens)
 
-	ok := stm.IsExhausted(err)
+	ok := stm.IsStreamExhausted(err)
 	if !ok {
 		return l.tokens, fmt.Errorf("failed to lex one: %w", err)
 	}

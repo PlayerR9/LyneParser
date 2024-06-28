@@ -6,20 +6,53 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	tr "github.com/PlayerR9/MyGoLib/TreeLike/StatusTree"
 )
 
-// FullLexer is a convenience function that creates a new lexer, lexes the content,
-// and returns the token streams.
+// Lexer is a lexer that uses a grammar to tokenize a string.
+type Lexer struct {
+	// productions are the production rules to use.
+	productions []*gr.RegProduction
+
+	// toSkip are the tokens to skip.
+	toSkip []string
+}
+
+// NewLexer creates a new lexer.
 //
 // Parameters:
 //   - grammar: The grammar to use.
-//   - input: The input to lex.
 //
 // Returns:
-//   - []*cds.Stream[*LeafToken]: The tokens that have been lexed.
-//   - error: An error if lexing fails.
-func FullLexer(grammar *Grammar, input []byte) *Lexer {
+//   - Lexer: The new lexer.
+//
+// Example:
+//
+//	lexer, err := NewLexer(grammar)
+//	if err != nil {
+//	    // Handle error.
+//	}
+//
+//	iter := lexer.Lex([]byte("1 + 2"))
+//
+//	var branch *cds.Stream[*gr.LeafToken]
+//	var err error
+//
+//	for {
+//	    branch, err = iter.Consume()
+//	    if err != nil {
+//	        break
+//	    }
+//
+//	    // Parse the branch.
+//	}
+//
+//	ok := IsDone(err)
+//	if !ok {
+//	    // Handle error.
+//	}
+//
+//	// Finished successfully.
+func NewLexer(grammar *Grammar) *Lexer {
 	lex := new(Lexer)
 
 	if grammar == nil {
@@ -29,19 +62,64 @@ func FullLexer(grammar *Grammar, input []byte) *Lexer {
 	lex.productions = grammar.GetRegexProds()
 	lex.toSkip = grammar.GetToSkip()
 
-	if len(input) == 0 || len(lex.productions) == 0 {
+	return lex
+}
+
+// Lex is the main function of the lexer. This can be parallelized.
+//
+// Parameters:
+//   - source: The source to lex.
+//   - logger: A verbose logger.
+//
+// Returns:
+//   - Lexer: The active lexer. Nil if there are no tokens to lex or
+//     grammar is invalid.
+//
+// Errors:
+//   - *ErrNoTokensToLex: There are no tokens to lex.
+//   - *ErrNoMatches: No matches are found in the source.
+//   - *ErrAllMatchesFailed: All matches failed.
+//   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
+func (l *Lexer) Lex(input []byte, logger *Verbose) *LexerIterator {
+	prodCopy := make([]*gr.RegProduction, len(l.productions))
+	copy(prodCopy, l.productions)
+	toSkip := make([]string, len(l.toSkip))
+	copy(toSkip, l.toSkip)
+
+	stream := cds.NewStream(input)
+
+	si := newSourceIterator(stream, prodCopy, logger)
+
+	li := &LexerIterator{
+		toSkip:     toSkip,
+		sourceIter: si,
+		completedLeaves: &leavesResult{
+			leaves: nil,
+		},
+	}
+
+	return li
+}
+
+// FullLexer is a convenience function that creates a new lexer, lexes the content,
+// and returns the token streams.
+//
+// Parameters:
+//   - grammar: The grammar to use.
+//   - input: The input to lex.
+//   - logger: A verbose logger.
+//
+// Returns:
+//   - *LexerIterator: The lexer iterator.
+func FullLexer(grammar *Grammar, input []byte, logger *Verbose) *LexerIterator {
+	lexer := NewLexer(grammar)
+	if lexer == nil {
 		return nil
 	}
 
-	lex.source = cds.NewStream(input)
+	iter := lexer.Lex(input, logger)
 
-	rootNode := gr.NewRootToken()
-
-	lex.tree = tr.NewTreeWithHistory(EvalIncomplete, rootNode)
-	lex.isFirst = true
-	lex.canContinue = true
-
-	return lex
+	return iter
 }
 
 // writeArrow writes an arrow pointing to the position in the data.

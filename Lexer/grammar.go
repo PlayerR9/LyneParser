@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
@@ -53,7 +53,7 @@ func parseRegexRules(rules string) ([]*gr.RegProduction, error) {
 	for i, line := range lines {
 		production, err := parseSingleRegexRule(line)
 		if err != nil {
-			return nil, ue.NewErrAt(i+1, "line", err)
+			return nil, uc.NewErrAt(i+1, "line", err)
 		}
 
 		if production != nil {
@@ -92,7 +92,7 @@ type Grammar struct {
 func NewGrammar(rules string, toSkip string) (*Grammar, error) {
 	parsed, err := parseRegexRules(rules)
 	if err != nil {
-		return nil, ue.NewErrWhile("parsing regex rules", err)
+		return nil, uc.NewErrWhile("parsing regex rules", err)
 	}
 
 	if len(parsed) == 0 {

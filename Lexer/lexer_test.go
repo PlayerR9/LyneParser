@@ -2,9 +2,11 @@ package Lexer
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"testing"
+
+	gr "github.com/PlayerR9/LyneParser/Grammar"
+	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 )
 
 var (
@@ -39,66 +41,66 @@ func TestLex(t *testing.T) {
 
 	lexer := NewLexer(TestGrammar)
 
+	v := NewVerbose(true)
+	defer v.Close()
+
+	iter := lexer.Lex([]byte(Source), v)
+
+	var branch *cds.Stream[*gr.LeafToken]
+	var err error
+
 	for i := 0; ; i++ {
-		alx := Lex(lexer, []byte(Source))
-
-		branch, err := alx.GetBranch()
+		branch, err = iter.Consume()
 		if err != nil {
-			t.Fatalf("Lex() returned an error: %s", err.Error())
-		}
-
-		if branch == nil {
 			break
 		}
 
 		t.Logf("Branch %d", i)
 
-		var values []string
-		var builder strings.Builder
+		items := branch.GetItems()
+		values := make([]string, 0, len(items))
 
-		for _, token := range branch.GetItems() {
-			builder.WriteString("&Token{\n")
-			builder.WriteString("\t\tID: ")
-			builder.WriteString(strconv.Quote(token.ID))
-			builder.WriteString(",\n")
-			builder.WriteString("\t\tData: ")
-			builder.WriteString(strconv.Quote(token.Data))
-			builder.WriteString(",\n")
-			builder.WriteString("\t\tAt: ")
-			builder.WriteString(strconv.Itoa(token.At))
-			builder.WriteString(",\n}")
-
-			values = append(values, builder.String())
-			builder.Reset()
+		for _, token := range items {
+			str := fmt.Sprintf("%+v", token)
+			values = append(values, str)
 		}
 
-		t.Logf("[]*Token{\n\t%s\n}", strings.Join(values, ",\n\t"))
+		joinedStr := strings.Join(values, "\n")
+
+		t.Logf("Branch %d:\n%s", i, joinedStr)
 	}
 
-	t.Fatalf("Test failed")
+	ok := IsDone(err)
+	if !ok {
+		t.Errorf("Lex() returned an error: %s", err.Error())
+	}
+
+	t.Fatalf("Done")
 }
 
 func TestSyntaxError(t *testing.T) {
 	const (
-		Source string = "[char(\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\")\n}]"
+		Source string = "[char!(\"Mark\"){\n\tSpecies(\"Human\")\n\tPersonality(\"Kind\"+\")\n}]"
 	)
 
 	lexer := NewLexer(TestGrammar)
 
-	alx := Lex(lexer, []byte(Source))
+	v := NewVerbose(true)
+	defer v.Close()
 
-	branch, err := alx.GetBranch()
+	iter := lexer.Lex([]byte(Source), v)
+
+	branch, err := iter.Consume()
 	if err != nil {
-		t.Fatalf("Lex() returned an error: %s", err.Error())
-	}
-
-	if branch == nil {
-		t.Fatalf("Lex() returned no branches")
+		ok := IsDone(err)
+		if !ok {
+			t.Fatalf("Lex() returned an error: %s", err.Error())
+		}
 	}
 
 	// DEBUG: Print syntax error
 	line := FormatSyntaxError(branch, []byte(Source))
 	fmt.Println(line)
 
-	t.Fatalf("Test failed")
+	t.Fatalf("Syntax error:")
 }

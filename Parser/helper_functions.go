@@ -8,7 +8,6 @@ import (
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
@@ -125,11 +124,11 @@ func ParseBranch(parser *Parser, source *cds.Stream[*gr.LeafToken]) ([]*gr.Token
 
 	roots, err := parser.GetParseTree()
 	if err != nil {
-		return roots, ers.NewErrIgnorable(err)
+		return roots, uc.NewErrIgnorable(err)
 	}
 
 	if len(roots) == 0 {
-		return nil, ers.NewErrIgnorable(errors.New("no roots found"))
+		return nil, uc.NewErrIgnorable(errors.New("no roots found"))
 	}
 
 	return roots, nil

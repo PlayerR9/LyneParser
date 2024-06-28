@@ -2,7 +2,7 @@ package ConflictSolver
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
 // SolveConflicts solves conflicts in a decision table.
@@ -16,7 +16,7 @@ import (
 //   - error: An error if the operation failed.
 func SolveConflicts(symbols []string, rules []*gr.Production) (*ConflictSolver, error) {
 	if len(rules) == 0 {
-		return nil, ers.NewErrInvalidParameter("rules", ers.NewErrEmpty(rules))
+		return nil, uc.NewErrInvalidParameter("rules", uc.NewErrEmpty(rules))
 	}
 
 	cs := NewConflictSolver(symbols, rules)

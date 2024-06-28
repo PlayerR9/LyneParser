@@ -3,9 +3,8 @@ package Lexer
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	tr "github.com/PlayerR9/MyGoLib/TreeLike/StatusTree"
+	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
@@ -20,33 +19,6 @@ var (
 	//   - bool: True if the weight is valid, false otherwise.
 	matchWeightFunc us.WeightFunc[*gr.MatchedResult[*gr.LeafToken]]
 
-	// filterEmptyBranch is a filter that filters out empty branches.
-	//
-	// Parameters:
-	//   - branch: The branch to filter.
-	//
-	// Returns:
-	//   - bool: True if the branch is not empty, false otherwise.
-	filterEmptyBranch us.PredicateFilter[[]uc.Pair[EvalStatus, *gr.LeafToken]]
-
-	// filterIncompleteLeaves is a filter that filters out incomplete leaves.
-	//
-	// Parameters:
-	//   - leaf: The leaf to filter.
-	//
-	// Returns:
-	//   - bool: True if the leaf is incomplete, false otherwise.
-	filterIncompleteLeaves us.PredicateFilter[uc.Pair[EvalStatus, *gr.LeafToken]]
-
-	// filterCompleteTokens is a filter that filters complete helper tokens.
-	//
-	// Parameters:
-	//   - h: The helper tokens to filter.
-	//
-	// Returns:
-	//   - bool: True if the helper tokens are incomplete, false otherwise.
-	filterCompleteTokens us.PredicateFilter[[]uc.Pair[EvalStatus, *gr.LeafToken]]
-
 	// filterErrorLeaves is a filter that filters out leaves that are in error.
 	//
 	// Parameters:
@@ -54,17 +26,18 @@ var (
 	//
 	// Returns:
 	//   - bool: True if the leaf is in error, false otherwise.
-	filterErrorLeaves us.PredicateFilter[uc.Pair[EvalStatus, *gr.LeafToken]]
+	filterErrorLeaves us.PredicateFilter[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
 
 	// selectBestMatches selects the best matches from the list of matches.
 	// Usually, the best matches' euristic is the longest match.
 	//
 	// Parameters:
 	//   - matches: The list of matches.
+	//   - logger: A verbose logger.
 	//
 	// Returns:
 	//   - []*gr.MatchedResult[*gr.LeafToken]: The best matches.
-	selectBestMatches func(matches []*gr.MatchedResult[*gr.LeafToken]) []*gr.MatchedResult[*gr.LeafToken]
+	selectBestMatches func(matches []*gr.MatchedResult[*gr.LeafToken], logger *Verbose) []*gr.MatchedResult[*gr.LeafToken]
 )
 
 func init() {
@@ -72,41 +45,32 @@ func init() {
 		return float64(len(elem.Matched.Data)), true
 	}
 
-	filterEmptyBranch = func(branch []uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-		return len(branch) != 0
+	filterErrorLeaves = func(h *tr.StatusInfo[EvalStatus, *gr.LeafToken]) bool {
+		status := h.GetStatus()
+		return status == EvalError
 	}
 
-	filterCompleteTokens = func(h []uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-		status := h[len(h)-1].First
-		return status == EvalComplete
-	}
+	selectBestMatches = func(matches []*gr.MatchedResult[*gr.LeafToken], logger *Verbose) []*gr.MatchedResult[*gr.LeafToken] {
+		logger.DoIf(func(p *Printer) {
+			p.Print("Selecting best matches...")
+		})
 
-	filterIncompleteLeaves = func(h uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-		return h.First == EvalIncomplete
-	}
-
-	filterErrorLeaves = func(h uc.Pair[EvalStatus, *gr.LeafToken]) bool {
-		return h.First == EvalError
-	}
-
-	selectBestMatches = func(matches []*gr.MatchedResult[*gr.LeafToken]) []*gr.MatchedResult[*gr.LeafToken] {
 		weights := us.ApplyWeightFunc(matches, matchWeightFunc)
 		pairs := us.FilterByPositiveWeight(weights)
 
-		return us.ExtractResults(pairs)
+		results := us.ExtractResults(pairs)
+
+		logger.DoIf(func(p *Printer) {
+			p.Print("The best matches are:")
+
+			for _, elem := range results {
+				p.Printf("\t%+v", elem.Matched.Data)
+			}
+		})
+
+		return results
 	}
 
-}
-
-var (
-	// SortFunc is a function that sorts the token stream.
-	sortFunc func(a, b []uc.Pair[EvalStatus, *gr.LeafToken]) int
-)
-
-func init() {
-	sortFunc = func(a, b []uc.Pair[EvalStatus, *gr.LeafToken]) int {
-		return len(b) - len(a)
-	}
 }
 
 // SetEOFToken sets the end-of-file token in the token stream.
@@ -138,14 +102,13 @@ func setLookahead(tokens []*gr.LeafToken) {
 //
 // Returns:
 //   - *cds.Stream[*LeafToken]: The token stream.
-func convertBranchToTokenStream(branch []*tr.TreeNode[EvalStatus, *gr.LeafToken], toSkip []string) *cds.Stream[*gr.LeafToken] {
+func convertBranchToTokenStream(branch []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], toSkip []string) *cds.Stream[*gr.LeafToken] {
 	branch = branch[1:]
 
 	for _, elem := range toSkip {
-		filterTokenDifferentID := func(h *tr.TreeNode[EvalStatus, *gr.LeafToken]) bool {
-			id := h.Data.ID
-
-			return id != elem
+		filterTokenDifferentID := func(h *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) bool {
+			data := h.Data.GetData()
+			return data.ID != elem
 		}
 
 		branch = us.SliceFilter(branch, filterTokenDifferentID)
@@ -154,7 +117,8 @@ func convertBranchToTokenStream(branch []*tr.TreeNode[EvalStatus, *gr.LeafToken]
 	var ts []*gr.LeafToken
 
 	for _, elem := range branch {
-		ts = append(ts, elem.Data)
+		data := elem.Data.GetData()
+		ts = append(ts, data)
 	}
 
 	ts = setEOFToken(ts)
@@ -178,38 +142,95 @@ func convertBranchToTokenStream(branch []*tr.TreeNode[EvalStatus, *gr.LeafToken]
 //   - reason: An error if no matches are found.
 //
 // Errors:
-//   - *ue.ErrInvalidParameter: The from index is out of bounds.
+//   - *uc.ErrInvalidParameter: The from index is out of bounds.
 //   - *ErrNoMatches: No matches are found.
-func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) (matches []*gr.MatchedResult[*gr.LeafToken], reason error) {
+func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) ([]*gr.MatchedResult[*gr.LeafToken], error) {
 	size := s.Size()
 
 	if from < 0 || from >= size {
-		reason = ue.NewErrInvalidParameter(
+		return nil, uc.NewErrInvalidParameter(
 			"from",
-			ue.NewErrOutOfBounds(from, 0, size),
+			uc.NewErrOutOfBounds(from, 0, size),
 		)
-
-		return
 	}
 
-	subSet, err := s.Get(from, size)
-	if err != nil {
-		panic(err)
+	type Result struct {
+		subset  []byte
+		matches []*gr.MatchedResult[*gr.LeafToken]
 	}
 
-	for i, p := range ps {
-		matched := p.Match(from, subSet)
-		if matched != nil {
-			res := gr.NewMatchResult(matched, i)
-			matches = append(matches, res)
+	var prevResult *Result
+
+	for i := 1; i <= size; i++ {
+		subset, _ := s.Get(from, i)
+
+		var matches []*gr.MatchedResult[*gr.LeafToken]
+
+		for i, p := range ps {
+			matched := p.Match(from, subset)
+			if matched != nil {
+				res := gr.NewMatchResult(matched, i)
+				matches = append(matches, res)
+			}
+		}
+
+		if len(matches) != 0 {
+			result := &Result{
+				subset:  subset,
+				matches: matches,
+			}
+
+			prevResult = result
 		}
 	}
 
-	if len(matches) == 0 {
-		reason = NewErrNoMatches()
+	if prevResult == nil {
+		return nil, NewErrNoMatches()
 	}
 
-	return
+	return prevResult.matches, nil
+}
+
+// filterLeaves processes the leaves in the tree evaluator.
+//
+// Parameters:
+//   - source: The source stream to match.
+//   - productions: The production rules to match.
+//   - logger: A verbose logger.
+//
+// Returns:
+//   - bool: True if all leaves are complete, false otherwise.
+//   - error: An error of type *ErrAllMatchesFailed if all matches failed.
+func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction, logger *Verbose) uc.EvalManyFunc[*tr.StatusInfo[EvalStatus, *gr.LeafToken], *tr.StatusInfo[EvalStatus, *gr.LeafToken]] {
+	filterFunc := func(ld *tr.StatusInfo[EvalStatus, *gr.LeafToken]) ([]*tr.StatusInfo[EvalStatus, *gr.LeafToken], error) {
+		data := ld.GetData()
+
+		var nextAt int
+
+		if data.ID == gr.RootTokenID {
+			nextAt = 0
+		} else {
+			nextAt = data.GetPos() + len(data.Data)
+		}
+
+		if nextAt >= source.Size() {
+			ld.ChangeStatus(EvalComplete)
+			return nil, nil
+		}
+
+		matches, err := matchFrom(source, nextAt, productions)
+		if err != nil {
+			ld.ChangeStatus(EvalError)
+			return nil, nil
+		}
+
+		children := generateEvalTrees(matches, logger)
+		ld.ChangeStatus(EvalComplete)
+
+		return children, nil
+	}
+
+	return filterFunc
 }
 
 /*
@@ -218,7 +239,7 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) (matches [
 // Returns:
 //   - result: The tokens that have been lexed.
 //   - reason: An error if the lexer has not been run yet.
-func getTokens(tree *tr.Tree[EvalStatus, *gr.LeafToken], toSkip []string) ([]*cds.Stream[*gr.LeafToken], error) {
+func getTokens(tree *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], toSkip []string) ([]*cds.Stream[*gr.LeafToken], error) {
 	branches := tree.SnakeTraversal()
 
 	branches = removeToSkipTokens(toSkip, branches)
@@ -256,7 +277,7 @@ func getTokens(tree *tr.Tree[EvalStatus, *gr.LeafToken], toSkip []string) ([]*cd
 		result = append(result, conv)
 	}
 
-	return result, ue.NewErrPossibleError(
+	return result, uc.NewErrPossibleError(
 		NewErrAllMatchesFailed(),
 		fmt.Errorf("after token %q, at index %d, there is no valid continuation",
 			lastToken.Data,

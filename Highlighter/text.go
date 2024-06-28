@@ -1,10 +1,9 @@
 package Highlighter
 
 import (
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
-	"github.com/gdamore/tcell"
-
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
+	"github.com/gdamore/tcell"
 )
 
 // Texter is a text.
@@ -62,12 +61,12 @@ type ValidText struct {
 //
 // Returns:
 //   - *ValidText: The new highlighted data.
-//   - error: An error of type *ers.ErrInvalidParameter if the tokens are empty.
+//   - error: An error of type *uc.ErrInvalidParameter if the tokens are empty.
 func NewValidText(tokens []*gr.LeafToken) (*ValidText, error) {
 	if len(tokens) == 0 {
-		return nil, ers.NewErrInvalidParameter(
+		return nil, uc.NewErrInvalidParameter(
 			"tokens",
-			ers.NewErrEmpty(tokens),
+			uc.NewErrEmpty(tokens),
 		)
 	}
 
@@ -86,7 +85,7 @@ func NewValidText(tokens []*gr.LeafToken) (*ValidText, error) {
 //   - y: The y coordinate to draw the unit at.
 //
 // Returns:
-//   - error: An error of type *ers.ErrInvalidParameter if the table is nil.
+//   - error: An error of type *uc.ErrInvalidParameter if the table is nil.
 //
 // Behaviors:
 //   - Any value that would be drawn outside of the table is not drawn.

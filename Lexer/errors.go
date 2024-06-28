@@ -1,5 +1,9 @@
 package Lexer
 
+import (
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
+)
+
 // ErrNoMatches is an error that is returned when there are no
 // matches at a position.
 type ErrNoMatches struct{}
@@ -58,4 +62,21 @@ func (e *ErrInvalidElement) Error() string {
 //   - *ErrInvalidElement: The new error.
 func NewErrInvalidElement() *ErrInvalidElement {
 	return &ErrInvalidElement{}
+}
+
+// IsDone checks if an error is a completion error or nil.
+//
+// Parameters:
+//   - err: The error to check.
+//
+// Returns:
+//   - bool: True if the error is a completion error or nil.
+//     False otherwise.
+func IsDone(err error) bool {
+	if err == nil {
+		return true
+	}
+
+	ok := uc.Is[*uc.ErrExhaustedIter](err)
+	return ok
 }

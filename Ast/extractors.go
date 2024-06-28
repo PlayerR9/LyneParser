@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	ue "github.com/PlayerR9/MyGoLib/Units/errors"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
 // ExtractString extracts a string from a token.
@@ -21,7 +21,7 @@ func ExtractString(root gr.Tokener, id string) (string, error) {
 	if err != nil {
 		return "", err
 	} else if !ok {
-		return "", ue.NewErrUnexpected(root.GoString(), id)
+		return "", uc.NewErrUnexpected(root.GoString(), id)
 	}
 
 	return root.(*gr.LeafToken).Data, nil
@@ -107,9 +107,9 @@ func (e *Extractor[O]) Apply(root gr.Tokener) (O, error) {
 	var result O
 
 	if e.core == nil {
-		return result, ue.NewErrNilParameter("core")
+		return result, uc.NewErrNilParameter("core")
 	} else if e.checker == nil {
-		return result, ue.NewErrNilParameter("checker")
+		return result, uc.NewErrNilParameter("checker")
 	}
 
 	for pos := 0; ; pos++ {
@@ -121,7 +121,7 @@ func (e *Extractor[O]) Apply(root gr.Tokener) (O, error) {
 		if !ok {
 			rootID := root.GetID()
 
-			return result, ue.NewErrUnexpected(rootID, e.lhs)
+			return result, uc.NewErrUnexpected(rootID, e.lhs)
 		}
 
 		// ASSUMPTION: 1st RHS is a non-terminal symbol.

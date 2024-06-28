@@ -7,7 +7,6 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	ers "github.com/PlayerR9/MyGoLib/Units/errors"
 )
 
 // Item represents an item in a decision table.
@@ -77,19 +76,19 @@ func (i *Item) Copy() uc.Copier {
 //
 // Returns:
 //   - *Item: The pointer to the new Item.
-//   - error: An error of type *ers.ErrInvalidParameter if the rule is nil or
+//   - error: An error of type *uc.ErrInvalidParameter if the rule is nil or
 //     the pos is out of bounds.
 func NewItem(rule *gr.Production, pos int, ruleIndex int) (*Item, error) {
 	if rule == nil {
-		return nil, ers.NewErrNilParameter("rule")
+		return nil, uc.NewErrNilParameter("rule")
 	}
 
 	size := rule.Size()
 
 	if pos < 0 || pos >= size {
-		return nil, ers.NewErrInvalidParameter(
+		return nil, uc.NewErrInvalidParameter(
 			"pos",
-			ers.NewErrOutOfBounds(pos, 0, size),
+			uc.NewErrOutOfBounds(pos, 0, size),
 		)
 	}
 
@@ -118,7 +117,7 @@ func (item *Item) GetPos() int {
 //   - error: An error if it is unable to get the right-hand side.
 //
 // Errors:
-//   - *ers.ErrInvalidParameter: If the index is out of bounds or the item's rule
+//   - *uc.ErrInvalidParameter: If the index is out of bounds or the item's rule
 //     is nil.
 func (item *Item) GetRhsAt(index int) (string, error) {
 	return item.Rule.GetRhsAt(index)
@@ -178,7 +177,7 @@ func (item *Item) IsReduce() bool {
 //   - error: An error if it is unable to replace the right-hand side.
 //
 // Errors:
-//   - *ers.ErrInvalidParameter: If the other item is nil, otherI.Rule is nil,
+//   - *uc.ErrInvalidParameter: If the other item is nil, otherI.Rule is nil,
 //     or the index is out of bounds.
 //   - *gr.ErrLhsRhsMismatch: If the left-hand side of the production rule does
 //     not match the right-hand side.
@@ -204,7 +203,7 @@ func (item *Item) ReplaceRhsAt(index int, rhs string) *Item {
 //   - error: An error if it is unable to replace the right-hand side.
 //
 // Errors:
-//   - *ers.ErrInvalidParameter: If the other item is nil, otherI.Rule is nil,
+//   - *uc.ErrInvalidParameter: If the other item is nil, otherI.Rule is nil,
 //     or the index is out of bounds.
 //   - *gr.ErrLhsRhsMismatch: If the left-hand side of the production rule does
 //     not match the right-hand side.

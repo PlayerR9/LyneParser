@@ -1,6 +1,7 @@
 package ConflictSolver
 
 import (
+	"fmt"
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
@@ -8,21 +9,6 @@ import (
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
-
-// Actioner represents an action that the parser will take.
-type Actioner interface {
-	// GetLookahead returns the lookahead token ID for the action.
-	//
-	// Returns:
-	//   - *string: The lookahead token ID.
-	GetLookahead() *string
-
-	// Iterator returns an iterator of the right-hand side tokens.
-	//
-	// Returns:
-	//   - uc.Iterater[string]: An iterator of the right-hand side tokens.
-	Iterator() uc.Iterater[string]
-}
 
 // Action represents an action in a decision table.
 type Action struct {
@@ -33,7 +19,7 @@ type Action struct {
 	rhs []string
 }
 
-// String implements the fmt.Stringer interface.
+// String implements the Actioner interface.
 func (a *Action) String() string {
 	if a.lookahead == nil {
 		return strings.Join(a.rhs, " ")
@@ -50,7 +36,8 @@ func (a *Action) String() string {
 
 // Iterator implements the Iterators.Iterater interface.
 func (a *Action) Iterator() uc.Iterater[string] {
-	return uc.NewSimpleIterator(a.rhs)
+	iter := uc.NewSimpleIterator(a.rhs)
+	return iter
 }
 
 // AppendRhs appends a right-hand side token to the action.
@@ -85,12 +72,29 @@ func (a *Action) GetLookahead() *string {
 	return a.lookahead
 }
 
+// Actioner represents an action that the parser will take.
+type Actioner interface {
+	// GetLookahead returns the lookahead token ID for the action.
+	//
+	// Returns:
+	//   - *string: The lookahead token ID.
+	GetLookahead() *string
+
+	// Iterator returns an iterator of the right-hand side tokens.
+	//
+	// Returns:
+	//   - uc.Iterater[string]: An iterator of the right-hand side tokens.
+	Iterator() uc.Iterater[string]
+
+	fmt.Stringer
+}
+
 // ActShift represents a shift action.
 type ActShift struct {
 	*Action
 }
 
-// String implements the fmt.Stringer interface.
+// String implements the Actioner interface.
 func (a *ActShift) String() string {
 	var builder strings.Builder
 
@@ -120,12 +124,13 @@ func (a *ActShift) Copy() uc.Copier {
 // Returns:
 //   - *ActShift: A pointer to the new shift action.
 func NewActShift() *ActShift {
-	return &ActShift{
+	as := &ActShift{
 		Action: &Action{
 			lookahead: nil,
 			rhs:       make([]string, 0),
 		},
 	}
+	return as
 }
 
 // ActReduce represents a reduce action.
@@ -143,7 +148,7 @@ type ActReduce struct {
 	shouldAccept bool
 }
 
-// String implements the fmt.Stringer interface.
+// String implements the Actioner interface.
 func (a *ActReduce) String() string {
 	var builder strings.Builder
 
@@ -164,7 +169,7 @@ func (a *ActReduce) Copy() uc.Copier {
 	rhsCopy := make([]string, len(a.Action.rhs))
 	copy(rhsCopy, a.Action.rhs)
 
-	return &ActReduce{
+	ar := &ActReduce{
 		Action: &Action{
 			lookahead: a.Action.lookahead,
 			rhs:       rhsCopy,
@@ -173,6 +178,7 @@ func (a *ActReduce) Copy() uc.Copier {
 		original:     a.original,
 		shouldAccept: a.shouldAccept,
 	}
+	return ar
 }
 
 // NewActReduce creates a new reduce action.
@@ -191,7 +197,7 @@ func NewActReduce(rule *gr.Production, shouldAccept bool) *ActReduce {
 		return nil
 	}
 
-	return &ActReduce{
+	ar := &ActReduce{
 		Action: &Action{
 			lookahead: nil,
 			rhs:       make([]string, 0),
@@ -200,6 +206,7 @@ func NewActReduce(rule *gr.Production, shouldAccept bool) *ActReduce {
 		original:     rule,
 		shouldAccept: shouldAccept,
 	}
+	return ar
 }
 
 // GetRule returns the rule to reduce by.

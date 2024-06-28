@@ -6,6 +6,26 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
 
+// IsToken checks if a root is a token with a specific ID.
+//
+// This works regardless of whether the root is a leaf or non-leaf token.
+//
+// Parameters:
+//   - root: The root to check.
+//   - id: The ID to check.
+//
+// Returns:
+//   - bool: True if the root is a token with the ID, false otherwise.
+func IsToken(root gr.Token, id string) bool {
+	rootID := root.GetID()
+	if rootID != id {
+		return false
+	}
+
+	isTerminal := gr.IsTerminal(id)
+	return isTerminal
+}
+
 // Aster is an interface for AST nodes.
 type Aster interface {
 	// AstOf converts the children to an AST node.
@@ -30,18 +50,14 @@ type Aster interface {
 func AstOf[T Aster](tree *gr.TokenTree, source T) (T, error) {
 	root := tree.GetRoot()
 
-	ok, err := IsToken(root, "source")
-	if err != nil {
-		return *new(T), fmt.Errorf("failed to check if the root is a source token: %w", err)
-	}
-
+	ok := IsToken(root, "source")
 	if !ok {
 		return *new(T), fmt.Errorf("the root is not a source token")
 	}
 
 	children := root.Data.([]gr.Token)
 
-	err = source.AstOf(children)
+	err := source.AstOf(children)
 	if err != nil {
 		return *new(T), fmt.Errorf("failed to construct the AST: %w", err)
 	}

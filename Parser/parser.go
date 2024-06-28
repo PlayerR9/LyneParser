@@ -112,7 +112,7 @@ func (p *Parser) GetParseTree() ([]*gr.TokenTree, error) {
 		return nil, errors.New("nothing was parsed. Use Parse() to parse the input stream")
 	}
 
-	forest := make([]*gr.TokenTree, 0)
+	var forest []*gr.TokenTree
 
 	for _, eval := range p.evals {
 		tmp, err := eval.GetParseTree()

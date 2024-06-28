@@ -2,70 +2,12 @@ package ConflictSolver
 
 import "fmt"
 
-// ErrItemIsNil is an error that is returned when an item is nil.
-type ErrItemIsNil struct{}
-
-// Error returns the error message: "item is nil".
-//
-// Returns:
-//   - string: The error message.
-func (e *ErrItemIsNil) Error() string {
-	return "item is nil"
-}
-
-// NewErrItemIsNil creates a new error of type *ErrItemIsNil.
-//
-// Returns:
-//   - *ErrItemIsNil: A pointer to the new error.
-func NewErrItemIsNil() *ErrItemIsNil {
-	return &ErrItemIsNil{}
-}
-
-// ErrInvalidPosition is an error that is returned when a position is invalid (i.e., less than 0).
-type ErrInvalidPosition struct{}
-
-// Error returns the error message: "invalid position".
-//
-// Returns:
-//   - string: The error message.
-func (e *ErrInvalidPosition) Error() string {
-	return "invalid position"
-}
-
-// NewErrInvalidPosition creates a new error of type *ErrInvalidPosition.
-//
-// Returns:
-//   - *ErrInvalidPosition: A pointer to the new error.
-func NewErrInvalidPosition() *ErrInvalidPosition {
-	return &ErrInvalidPosition{}
-}
-
-// ErrCannotCreateItem is an error that is returned when an item cannot be created.
-type ErrCannotCreateItem struct{}
-
-// Error returns the error message: "cannot create item".
-//
-// Returns:
-//   - string: The error message.
-func (e *ErrCannotCreateItem) Error() string {
-	return "cannot create item"
-}
-
-// NewErrCannotCreateItem creates a new error of type *ErrCannotCreateItem.
-//
-// Returns:
-//   - *ErrCannotCreateItem: A pointer to the new error.
-func NewErrCannotCreateItem() *ErrCannotCreateItem {
-	return &ErrCannotCreateItem{}
-}
-
 // ErrHelpersConflictingSize is an error that is returned when helpers have conflicting sizes.
 type ErrHelpersConflictingSize struct{}
 
-// Error returns the error message: "helpers have conflicting sizes".
+// Error implements the error interface.
 //
-// Returns:
-//   - string: The error message.
+// Message: "helpers have conflicting sizes".
 func (e *ErrHelpersConflictingSize) Error() string {
 	return "helpers have conflicting sizes"
 }
@@ -75,35 +17,16 @@ func (e *ErrHelpersConflictingSize) Error() string {
 // Returns:
 //   - *ErrHelpersConflictingSize: A pointer to the new error.
 func NewErrHelpersConflictingSize() *ErrHelpersConflictingSize {
-	return &ErrHelpersConflictingSize{}
-}
-
-// ErrNoActionProvided is an error that is returned when no action is provided.
-type ErrNoActionProvided struct{}
-
-// Error returns the error message: "no action provided".
-//
-// Returns:
-//   - string: The error message.
-func (e *ErrNoActionProvided) Error() string {
-	return "no action provided"
-}
-
-// NewErrNoActionProvided creates a new error of type *ErrNoActionProvided.
-//
-// Returns:
-//   - *ErrNoActionProvided: A pointer to the new error.
-func NewErrNoActionProvided() *ErrNoActionProvided {
-	return &ErrNoActionProvided{}
+	e := &ErrHelpersConflictingSize{}
+	return e
 }
 
 // Err0thRhsNotSet is an error that is returned when the 0th right-hand side is not set.
 type Err0thRhsNotSet struct{}
 
-// Error returns the error message: "0th RHS not set".
+// Error implements the error interface.
 //
-// Returns:
-//   - string: The error message.
+// Message: "0th RHS not set".
 func (e *Err0thRhsNotSet) Error() string {
 	return "0th RHS not set"
 }
@@ -113,57 +36,11 @@ func (e *Err0thRhsNotSet) Error() string {
 // Returns:
 //   - *Err0thRhsNotSet: A pointer to the new error.
 func NewErr0thRhsNotSet() *Err0thRhsNotSet {
-	return &Err0thRhsNotSet{}
-}
-
-// ErrAmbiguousGrammar is an error that is returned when a grammar is ambiguous.
-type ErrAmbiguousGrammar struct{}
-
-// Error returns the error message: "grammar is ambiguous".
-//
-// Returns:
-//   - string: The error message.
-func (e *ErrAmbiguousGrammar) Error() string {
-	return "grammar is ambiguous"
-}
-
-// NewErrAmbiguousGrammar creates a new error of type *ErrAmbiguousGrammar.
-//
-// Returns:
-//   - *ErrAmbiguousGrammar: A pointer to the new error.
-func NewErrAmbiguousGrammar() *ErrAmbiguousGrammar {
-	return &ErrAmbiguousGrammar{}
+	e := &Err0thRhsNotSet{}
+	return e
 }
 
 /////////////////////////////////////////////////////////////
-
-// ErrNoElementsFound is an error that is returned when no
-// elements are found for a symbol.
-type ErrNoElementsFound struct {
-	// Symbol is the symbol for which no elements were found.
-	Symbol string
-}
-
-// Error returns the error message: "no elements found for symbol (symbol)".
-//
-// Returns:
-//   - string: The error message.
-func (e *ErrNoElementsFound) Error() string {
-	return fmt.Sprintf("no elements found for symbol (%s)", e.Symbol)
-}
-
-// NewErrNoElementsFound creates a new error of type *ErrNoElementsFound.
-//
-// Parameters:
-//   - symbol: The symbol for which no elements were found.
-//
-// Returns:
-//   - *ErrNoElementsFound: A pointer to the new error.
-func NewErrNoElementsFound(symbol string) *ErrNoElementsFound {
-	return &ErrNoElementsFound{
-		Symbol: symbol,
-	}
-}
 
 // ErrHelper is an error that is returned when something goes wrong
 // with a helper.
@@ -175,10 +52,11 @@ type ErrHelper struct {
 	Reason error
 }
 
-// Error returns the error message: "helper (elem) error: (reason)".
+// Error implements the error interface.
 //
-// Returns:
-//   - string: The error message.
+// Messages:
+//   - "something went wrong with helper (no helper)" if Elem is nil.
+//   - "helper (Elem) error: Reason" if Reason is not nil.
 func (e *ErrHelper) Error() string {
 	var elem string
 

@@ -40,11 +40,12 @@ func NewHighlighter(lexer *lx.Lexer, defaultStyle tcell.Style) (*Highlighter, er
 		return nil, uc.NewErrNilParameter("lexer")
 	}
 
-	return &Highlighter{
+	h := &Highlighter{
 		rules:        make(map[string]tcell.Style),
 		defaultStyle: defaultStyle,
 		errorStyle:   defaultStyle,
-	}, nil
+	}
+	return h, nil
 }
 
 // SpecifyRule adds a rule to the highlighter.
@@ -84,13 +85,15 @@ func (h *Highlighter) extractErrorSection(data []byte, firstInvalid int) int {
 }
 
 func (h *Highlighter) makeData() *Data {
-	return &Data{
+	d := &Data{
 		elems:        make([]Texter, 0),
 		source:       h.source,
 		rules:        h.rules,
 		defaultStyle: h.defaultStyle,
 		errorStyle:   h.errorStyle,
 	}
+
+	return d
 }
 
 func (h *Highlighter) Apply(data []byte) {

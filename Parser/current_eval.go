@@ -26,11 +26,12 @@ type CurrentEval struct {
 // Returns:
 //   - uc.Copier: A copy of the current evaluation.
 func (ce *CurrentEval) Copy() uc.Copier {
-	return &CurrentEval{
+	ceCopy := &CurrentEval{
 		stack:        ce.stack.Copy().(*ud.History[lls.Stacker[gr.Token]]),
 		currentIndex: ce.currentIndex,
 		isDone:       ce.isDone,
 	}
+	return ceCopy
 }
 
 // Accept returns true if the current evaluation has accepted the input stream.
@@ -102,7 +103,7 @@ func (ce *CurrentEval) shift(source *cds.Stream[gr.Token]) error {
 		return NewErrNoAccept()
 	}
 
-	cmd := lls.NewPush[gr.Token](toks[0])
+	cmd := lls.NewPush(toks[0])
 	ce.stack.ExecuteCommand(cmd)
 
 	ce.currentIndex++
@@ -155,7 +156,7 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 
 	tok := gr.NewToken(lhs, popped, 0, lookahead)
 
-	cmd := lls.NewPush[gr.Token](tok)
+	cmd := lls.NewPush(tok)
 	ce.stack.ExecuteCommand(cmd)
 
 	return nil
@@ -180,8 +181,11 @@ func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *cds.Stream[
 		rule := decision.GetOriginal()
 
 		err = ce.reduce(rule)
-		if err == nil && decision.ShouldAccept() {
-			ce.isDone = true
+		if err == nil {
+			ok := decision.ShouldAccept()
+			if ok {
+				ce.isDone = true
+			}
 		}
 	default:
 		err = NewErrUnknownAction(decision)

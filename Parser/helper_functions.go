@@ -96,7 +96,8 @@ func extractResults(sols []*us.WeightedHelper[*CurrentEval]) ([]*CurrentEval, er
 	if !ok {
 		// Determine the most likely error.
 		// As of now, we will just return the first error.
-		return extracted, results[0].GetData().Second
+		data := results[0].GetData()
+		return extracted, data.Second
 	} else {
 		return extracted, nil
 	}

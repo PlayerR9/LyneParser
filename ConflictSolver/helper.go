@@ -72,10 +72,12 @@ func NewHelper(item *Item, action HelperElem) *Helper {
 		return nil
 	}
 
-	return &Helper{
+	h := &Helper{
 		Item:   item,
 		Action: action,
 	}
+
+	return h
 }
 
 // SetAction sets the action of the helper.
@@ -171,10 +173,11 @@ func (h *Helper) AppendRhs(symbol string) error {
 func (h *Helper) ReplaceRhsAt(index int, rhs string) *Helper {
 	itemCopy := h.Item.ReplaceRhsAt(index, rhs)
 
-	return &Helper{
+	hCopy := &Helper{
 		Item:   itemCopy,
 		Action: h.Action.Copy().(HelperElem),
 	}
+	return hCopy
 }
 
 // ReplaceRhsAt replaces the right-hand side of the item
@@ -195,15 +198,18 @@ func (h *Helper) ReplaceRhsAt(index int, rhs string) *Helper {
 //     right-hand side of the other item.
 func (h *Helper) SubstituteRhsAt(index int, otherH *Helper) *Helper {
 	if otherH == nil {
-		return h.Copy().(*Helper)
+		hCopy := h.Copy().(*Helper)
+		return hCopy
 	}
 
 	itemCopy := h.Item.SubstituteRhsAt(index, otherH.Item)
 
-	return &Helper{
+	hCopy := &Helper{
 		Item:   itemCopy,
 		Action: h.Action.Copy().(HelperElem),
 	}
+
+	return hCopy
 }
 
 // Match matches the top of the stack with the helper.
@@ -272,5 +278,3 @@ func (h *Helper) GetAction() HelperElem {
 func (h *Helper) ForceLookahead(lookahead string) {
 	h.Action.SetLookahead(&lookahead)
 }
-
-/////////////////////////////////////////////////////////////

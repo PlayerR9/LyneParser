@@ -104,7 +104,6 @@ func minimumUnique(bucket []*Helper, limit int) error {
 func solveSubgroup(bucket []*Helper) error {
 	// 1. Bucket sort the items by their position.
 
-	// TODO: Modify this once MyGoLib is updated.
 	buckets := make(map[int][]*Helper)
 
 	for _, h := range bucket {

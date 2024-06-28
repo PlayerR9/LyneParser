@@ -21,7 +21,7 @@ type Runer interface {
 // Returns:
 //   - []string: The lines of the string.
 func StringToLines(str string) []string {
-	lines := make([]string, 0)
+	var lines []string
 	var builder strings.Builder
 
 	for _, c := range str {
@@ -53,7 +53,9 @@ func AnyToLines[I Runer, O any](elem I, f func(rune) (O, error)) ([][]O, error) 
 	lines := [][]O{make([]O, 0)}
 	lastLine := 0
 
-	for _, c := range elem.Runes() {
+	chars := elem.Runes()
+
+	for _, c := range chars {
 		if c == '\n' {
 			lines = append(lines, make([]O, 0))
 			lastLine++

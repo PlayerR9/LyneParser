@@ -92,11 +92,12 @@ func NewItem(rule *gr.Production, pos int, ruleIndex int) (*Item, error) {
 		)
 	}
 
-	return &Item{
+	item := &Item{
 		Rule:      rule,
 		Pos:       pos,
 		ruleIndex: ruleIndex,
-	}, nil
+	}
+	return item, nil
 }
 
 // GetPos returns the position of the item in the production rule.
@@ -120,7 +121,8 @@ func (item *Item) GetPos() int {
 //   - *uc.ErrInvalidParameter: If the index is out of bounds or the item's rule
 //     is nil.
 func (item *Item) GetRhsAt(index int) (string, error) {
-	return item.Rule.GetRhsAt(index)
+	rhs, err := item.Rule.GetRhsAt(index)
+	return rhs, err
 }
 
 // GetRhs returns the right-hand side of the production rule at the current position.
@@ -162,7 +164,8 @@ func (item *Item) GetSymbolsUpToPos() []string {
 // Behaviors:
 //   - If the item's rule is nil, it returns false.
 func (item *Item) IsReduce() bool {
-	return item.Pos == item.Rule.Size()
+	size := item.Rule.Size()
+	return item.Pos == size
 }
 
 // ReplaceRhsAt replaces the right-hand side of the production rule at the given
@@ -184,11 +187,13 @@ func (item *Item) IsReduce() bool {
 func (item *Item) ReplaceRhsAt(index int, rhs string) *Item {
 	ruleCopy := item.Rule.ReplaceRhsAt(index, rhs)
 
-	return &Item{
+	itemCopy := &Item{
 		Rule:      ruleCopy,
 		Pos:       item.Pos,
 		ruleIndex: item.ruleIndex,
 	}
+
+	return itemCopy
 }
 
 // ReplaceRhsAt replaces the right-hand side of the production rule at the given
@@ -209,16 +214,18 @@ func (item *Item) ReplaceRhsAt(index int, rhs string) *Item {
 //     not match the right-hand side.
 func (item *Item) SubstituteRhsAt(index int, otherI *Item) *Item {
 	if otherI == nil {
-		return item.Copy().(*Item)
+		itemCopy := item.Copy().(*Item)
+		return itemCopy
 	}
 
 	ruleCopy := item.Rule.SubstituteRhsAt(index, otherI.Rule)
 
-	return &Item{
+	itemCopy := &Item{
 		Rule:      ruleCopy,
 		Pos:       item.Pos,
 		ruleIndex: item.ruleIndex,
 	}
+	return itemCopy
 }
 
 // GetRule returns the production rule that the item represents.
@@ -238,7 +245,8 @@ func (item *Item) GetRule() *gr.Production {
 // Returns:
 //   - bool: True if the left-hand side matches the right-hand side. Otherwise, false.
 func (item *Item) IsLhsRhs(rhs string) bool {
-	return item.Rule.GetLhs() == rhs
+	lhs := item.Rule.GetLhs()
+	return lhs == rhs
 }
 
 // IndicesOfRhs returns the indices of the right-hand side of the item
@@ -250,5 +258,6 @@ func (item *Item) IsLhsRhs(rhs string) bool {
 // Returns:
 //   - []int: The indices of the right-hand side.
 func (item *Item) IndicesOfRhs(rhs string) []int {
-	return item.Rule.IndicesOfRhs(rhs)
+	indices := item.Rule.IndicesOfRhs(rhs)
+	return indices
 }

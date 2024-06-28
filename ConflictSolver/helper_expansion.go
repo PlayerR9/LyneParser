@@ -135,10 +135,12 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 		return nil, err
 	}
 
-	return &ExpansionTree{
+	ext := &ExpansionTree{
 		tree: tree,
 		info: info,
-	}, nil
+	}
+
+	return ext, nil
 }
 
 // PruneNonTerminalLeaves prunes the non-terminal leaves of the expansion tree.
@@ -163,7 +165,8 @@ func (et *ExpansionTree) PruneNonTerminalLeaves() {
 // Returns:
 //   - int: The size of the expansion tree.
 func (et *ExpansionTree) Size() int {
-	return et.tree.Size()
+	size := et.tree.Size()
+	return size
 }
 
 // Collapse collapses the expansion tree into a slice of strings that

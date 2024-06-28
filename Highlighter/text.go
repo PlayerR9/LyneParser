@@ -1,6 +1,8 @@
 package Highlighter
 
 import (
+	"unicode/utf8"
+
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	"github.com/gdamore/tcell"
@@ -30,14 +32,19 @@ type NormalText struct {
 func NewNormalText(data []byte, style tcell.Style) *NormalText {
 	runes := make([]rune, 0, len(data))
 
-	for _, b := range data {
-		runes = append(runes, rune(b))
+	for len(data) > 0 {
+		r, size := utf8.DecodeRune(data)
+		data = data[size:]
+
+		runes = append(runes, r)
 	}
 
-	return &NormalText{
+	nt := &NormalText{
 		data:  runes,
 		style: style,
 	}
+
+	return nt
 }
 
 // Runes returns the runes of the text.
@@ -70,9 +77,11 @@ func NewValidText(tokens []gr.Token) (*ValidText, error) {
 		)
 	}
 
-	return &ValidText{
+	vt := &ValidText{
 		data: tokens,
-	}, nil
+	}
+
+	return vt, nil
 }
 
 /*

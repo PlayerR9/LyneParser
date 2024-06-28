@@ -18,10 +18,8 @@ import (
 //   - string: The extracted string.
 //   - error: The error if the extraction fails.
 func ExtractString(root gr.Token, id string) (string, error) {
-	ok, err := IsToken(root, id)
-	if err != nil {
-		return "", err
-	} else if !ok {
+	ok := IsToken(root, id)
+	if !ok {
 		return "", uc.NewErrUnexpected(root.GoString(), id)
 	}
 
@@ -89,11 +87,12 @@ type Extractor[O any] struct {
 // provided in the roots parameter. The structure and syntax is handled by the
 // checker parameter.
 func NewExtractor[O any](lhs string, checker *SyntaxChecker, core CoreFunc[O]) Extractor[O] {
-	return Extractor[O]{
+	extr := Extractor[O]{
 		lhs:     lhs,
 		checker: checker,
 		core:    core,
 	}
+	return extr
 }
 
 // Apply applies the extractor to the root.
@@ -114,11 +113,7 @@ func (e *Extractor[O]) Apply(root gr.Token) (O, error) {
 	}
 
 	for pos := 0; ; pos++ {
-		ok, err := IsToken(root, e.lhs)
-		if err != nil {
-			return result, fmt.Errorf("could not extract %q: %w", e.lhs, err)
-		}
-
+		ok := IsToken(root, e.lhs)
 		if !ok {
 			rootID := root.GetID()
 
@@ -130,17 +125,14 @@ func (e *Extractor[O]) Apply(root gr.Token) (O, error) {
 
 		data := root.Data.([]gr.Token)
 
-		err = e.checker.Check(data)
+		err := e.checker.Check(data)
 		if err != nil {
 			return result, fmt.Errorf("%q does not match the grammar: %w", e.lhs, err)
 		}
 
 		lastToken := data[len(data)-1]
 
-		isNotBaseCase, err := IsToken(lastToken, e.lhs)
-		if err != nil {
-			return result, fmt.Errorf("could not check if %q is not the base case: %w", e.lhs, err)
-		}
+		isNotBaseCase := IsToken(lastToken, e.lhs)
 
 		var todo []gr.Token
 

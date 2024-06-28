@@ -71,10 +71,11 @@ func NewGrammar(rules string) (*Grammar, error) {
 	parsed := strings.Split(rules, "\n")
 	parsed = us.RemoveEmpty(parsed)
 	if len(parsed) == 0 {
-		return &Grammar{
+		g := &Grammar{
 			productions: make([]*gr.Production, 0),
 			symbols:     make([]string, 0),
-		}, nil
+		}
+		return g, nil
 	}
 
 	// Parse production rules
@@ -92,10 +93,11 @@ func NewGrammar(rules string) (*Grammar, error) {
 	productions = us.UniquefyEquals(productions, true)
 
 	if productions == nil {
-		return &Grammar{
+		g := &Grammar{
 			productions: make([]*gr.Production, 0),
 			symbols:     make([]string, 0),
-		}, nil
+		}
+		return g, nil
 	}
 
 	var symbols []string
@@ -139,12 +141,13 @@ func (g *Grammar) GetSymbols() []string {
 // Returns:
 //   - []MatchedResult: A slice of MatchedResult that match the input token.
 func (g *Grammar) ProductionMatch(at int, stack *ud.History[lls.Stacker[gr.Token]]) []*gr.MatchedResult[gr.Token] {
-	matches := make([]*gr.MatchedResult[gr.Token], 0)
+	var matches []*gr.MatchedResult[gr.Token]
 
 	for i, p := range g.productions {
 		matched, err := p.Match(at, stack)
 		if err != nil {
-			matches = append(matches, gr.NewMatchResult(matched, i))
+			mr := gr.NewMatchResult(matched, i)
+			matches = append(matches, mr)
 		}
 	}
 

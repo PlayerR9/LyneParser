@@ -95,10 +95,11 @@ func (cs *ConflictSolver) FString(trav *ffs.Traversor, opts ...ffs.Option) error
 func NewConflictSolver(symbols []string, rules []*gr.Production) *ConflictSolver {
 	rt := NewRuleTable(symbols, rules)
 
-	return &ConflictSolver{
+	cs := &ConflictSolver{
 		rt:    rt,
 		table: rt.GetBucketsCopy(),
 	}
+	return cs
 }
 
 // getHelpers is a helper function that returns all helpers in the decision table.
@@ -124,7 +125,8 @@ func (cs *ConflictSolver) getHelpers() []*Helper {
 //   - []*Helper: The elements with the specified LHS.
 func (cs *ConflictSolver) GetElemsWithLhs(rhs string) []*Helper {
 	filter := func(h *Helper) bool {
-		return h.IsLhsRhs(rhs)
+		ok := h.IsLhsRhs(rhs)
+		return ok
 	}
 
 	helpers := cs.getHelpers()
@@ -294,6 +296,15 @@ func (cs *ConflictSolver) MakeExpansionForests(index int, nextRhs map[*Helper]st
 	return possibleLookaheads, nil
 }
 
+// SolveAmbiguous is a method that solves ambiguous conflicts in a decision table.
+//
+// Parameters:
+//   - index: The index of the conflicting rules.
+//   - conflicts: The conflicting rules.
+//
+// Returns:
+//   - bool: A boolean value indicating if the operation was successful.
+//   - error: An error if the operation failed.
 func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, error) {
 	// 1. Take the next symbol of each conflicting rule
 	nextRhs := make(map[*Helper]string)
@@ -351,6 +362,9 @@ func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, 
 /////////////////////////////////////////////////////////////
 
 // SolveConflicts is a method that solves conflicts in a decision table.
+//
+// Returns:
+//   - error: An error if the operation failed.
 func (cs *ConflictSolver) Solve() error {
 	for {
 		conflictMap := cs.FindConflicts()
@@ -396,7 +410,7 @@ func (cs *ConflictSolver) Solve() error {
 //   - stack: The stack to match the elements with.
 //
 // Returns:
-//   - []Actioner: The actions to take.
+//   - []HelperElem: The elements that match the top of the stack.
 //   - error: An error if the operation failed.
 func (cs *ConflictSolver) Match(stack *ud.History[lls.Stacker[gr.Token]]) ([]HelperElem, error) {
 	var top gr.Token
@@ -439,7 +453,8 @@ func (cs *ConflictSolver) Match(stack *ud.History[lls.Stacker[gr.Token]]) ([]Hel
 	if !ok {
 		// Return the most likely error
 		// As of now, we will return the first error
-		err := successOrFail[0].GetData().Second
+		data := successOrFail[0].GetData()
+		err := data.Second
 
 		return nil, err
 	}

@@ -7,52 +7,10 @@ import (
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
-// IsToken checks if a root is a token with a specific ID.
-//
-// This works regardless of whether the root is a leaf or non-leaf token.
-//
-// Parameters:
-//   - root: The root to check.
-//   - id: The ID to check.
-//
-// Returns:
-//   - bool: True if the root is a token with the ID, false otherwise.
-//   - error: The error if the root is not a token or the ID does not match.
-//
-// Errors:
-//   - *ers.ErrInvalidParameter: If the root is nil.
-//   - ErrInvalidParsing: If the root is not a token.
-func IsToken(root gr.Token, id string) (bool, error) {
-	rootID := root.GetID()
-	if rootID != id {
-		return false, nil
-	}
-
-	isTerminal := gr.IsTerminal(id)
-
-	return isTerminal, nil
-}
-
 // SyntaxChecker is a helper struct for AST checks.
 type SyntaxChecker struct {
 	// table is the table of ASTs.
 	table [][]string
-}
-
-// Copy implements the common.Copier interface.
-func (ast *SyntaxChecker) Copy() uc.Copier {
-	table := make([][]string, 0, len(ast.table))
-
-	for _, row := range ast.table {
-		rowCopy := make([]string, len(row))
-		copy(rowCopy, row)
-
-		table = append(table, rowCopy)
-	}
-
-	return &SyntaxChecker{
-		table: table,
-	}
 }
 
 // NewSyntaxChecker creates a new ASTer. The ASTer is used to check if a list of
@@ -88,7 +46,7 @@ func (ast *SyntaxChecker) Copy() uc.Copier {
 //	if err != nil {
 //		// Handle error.
 //	}
-func NewSyntaxChecker(rules []string) *SyntaxChecker {
+func NewSyntaxChecker(rules []string) SyntaxChecker {
 	table := make([][]string, 0, len(rules))
 
 	for _, rule := range rules {
@@ -96,9 +54,10 @@ func NewSyntaxChecker(rules []string) *SyntaxChecker {
 		table = append(table, rows)
 	}
 
-	return &SyntaxChecker{
+	sc := SyntaxChecker{
 		table: table,
 	}
+	return sc
 }
 
 // isLastOfTable is a helper function to check if the last element
@@ -124,7 +83,7 @@ func (ast *SyntaxChecker) isLastOfTable(top, i int) bool {
 //
 //   - error: The error if a field is missing.
 func (ast *SyntaxChecker) filterMissingFields(i int) error {
-	top := 0
+	var top int
 
 	allMissing := make([]string, 0, len(ast.table))
 
@@ -132,12 +91,13 @@ func (ast *SyntaxChecker) filterMissingFields(i int) error {
 		if i < len(row) {
 			ast.table[top] = row
 			top++
-		} else if ast.isLastOfTable(top, j) {
-			allMissing = append(allMissing, row[i])
-
-			return NewErrMissingFields(allMissing...)
 		} else {
 			allMissing = append(allMissing, row[i])
+
+			ok := ast.isLastOfTable(top, j)
+			if ok {
+				return NewErrMissingFields(allMissing...)
+			}
 		}
 	}
 
@@ -157,23 +117,21 @@ func (ast *SyntaxChecker) filterMissingFields(i int) error {
 //
 //   - error: The error if a field does not match the expected ID.
 func (ast *SyntaxChecker) filterWrongFields(child gr.Token, i int) error {
-	top := 0
+	var top int
 
 	allExpected := make([]string, 0, len(ast.table))
 
 	for j, row := range ast.table {
-		ok, err := IsToken(child, row[i])
-		if err == nil && ok {
+		ok := IsToken(child, row[i])
+		if ok {
 			ast.table[top] = row
 			top++
 		} else {
+			allExpected = append(allExpected, row[i])
+
 			ok := ast.isLastOfTable(top, j)
 			if ok {
-				allExpected = append(allExpected, row[i])
-
 				return uc.NewErrUnexpected(child.GoString(), allExpected...)
-			} else {
-				allExpected = append(allExpected, row[i])
 			}
 		}
 	}
@@ -200,14 +158,17 @@ func (ast *SyntaxChecker) filterTooManyFields(size int) error {
 		if size == len(ast.table[j]) {
 			ast.table[top] = ast.table[j]
 			top++
-		} else if ast.isLastOfTable(top, j) {
-			// DEBUG: Print the table
-			// for _, row := range ast.table {
-			// 	fmt.Println(row)
-			// }
-			// fmt.Println()
+		} else {
+			ok := ast.isLastOfTable(top, j)
+			if ok {
+				// DEBUG: Print the table
+				// for _, row := range ast.table {
+				// 	fmt.Println(row)
+				// }
+				// fmt.Println()
 
-			return NewErrTooManyFields(size, len(ast.table[j]))
+				return NewErrTooManyFields(size, len(ast.table[j]))
+			}
 		}
 	}
 
@@ -233,7 +194,7 @@ func (ast *SyntaxChecker) filterTooManyFields(size int) error {
 //   - error: The error if the check fails.
 func (ast *SyntaxChecker) Check(children []gr.Token) error {
 	// 1. Create a copy of the table.
-	astCopy := ast.Copy().(*SyntaxChecker)
+	astCopy := ast.Copy()
 
 	// DEBUG: Print the table
 	// for _, row := range astCopy.table {
@@ -273,4 +234,25 @@ func (ast *SyntaxChecker) Check(children []gr.Token) error {
 	}
 
 	return nil
+}
+
+// Copy creates a copy of the SyntaxChecker.
+//
+// Returns:
+//   - SyntaxChecker: A copy of the SyntaxChecker.
+func (ast *SyntaxChecker) Copy() SyntaxChecker {
+	table := make([][]string, 0, len(ast.table))
+
+	for _, row := range ast.table {
+		rowCopy := make([]string, len(row))
+		copy(rowCopy, row)
+
+		table = append(table, rowCopy)
+	}
+
+	scCopy := SyntaxChecker{
+		table: table,
+	}
+
+	return scCopy
 }

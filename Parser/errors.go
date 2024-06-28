@@ -2,26 +2,6 @@ package Parser
 
 import "fmt"
 
-// ErrNothingWasParsed is an error that is returned when the parser does not parse
-// anything.
-type ErrNothingWasParsed struct{}
-
-// Error returns the error message: "nothing was parsed".
-//
-// Returns:
-//  - string: The error message.
-func (e *ErrNothingWasParsed) Error() string {
-	return "nothing was parsed"
-}
-
-// NewErrNothingWasParsed creates a new ErrNothingWasParsed error.
-//
-// Returns:
-//  - *ErrNothingWasParsed: A pointer to the new ErrNothingWasParsed error.
-func NewErrNothingWasParsed() *ErrNothingWasParsed {
-	return &ErrNothingWasParsed{}
-}
-
 // ErrNoAccept is an error that is returned when the parser reaches the end of the
 // input stream without accepting the input stream.
 type ErrNoAccept struct{}
@@ -73,5 +53,3 @@ func NewErrUnknownAction(action any) *ErrUnknownAction {
 		Action: action,
 	}
 }
-
-/////////////////////////////////////////////////////////////

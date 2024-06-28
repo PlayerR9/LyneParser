@@ -105,10 +105,10 @@ func TestConflictSolver(t *testing.T) {
 	t.Fatalf("TestConflictSolver() is not implemented")
 }
 
-var LexedContent *cds.Stream[*gr.LeafToken]
+var LexedContent *cds.Stream[gr.Token]
 
 func init() {
-	tokens := []*gr.LeafToken{
+	tokens := []gr.Token{
 		{
 			ID:   "OP_SQUARE",
 			Data: "[",
@@ -207,7 +207,8 @@ func init() {
 	}
 
 	for i := 0; i < len(tokens)-1; i++ {
-		tokens[i].SetLookahead(tokens[i+1])
+		elem := tokens[i]
+		elem.SetLookahead(&tokens[i+1])
 	}
 
 	LexedContent = cds.NewStream(tokens)

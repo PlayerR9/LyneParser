@@ -1,7 +1,7 @@
 package Grammar
 
 import (
-	"fmt"
+	"strings"
 )
 
 // ErrMissingArrow is an error that is returned when an arrow is missing in a rule.
@@ -19,7 +19,8 @@ func (e *ErrMissingArrow) Error() string {
 // Returns:
 //   - *ErrMissingArrow: The new error.
 func NewErrMissingArrow() *ErrMissingArrow {
-	return &ErrMissingArrow{}
+	e := &ErrMissingArrow{}
+	return e
 }
 
 // ErrNoLHSFound is an error that is returned when no left-hand side is found in a rule.
@@ -37,7 +38,8 @@ func (e *ErrNoLHSFound) Error() string {
 // Returns:
 //   - *ErrNoLHSFound: The new error.
 func NewErrNoLHSFound() *ErrNoLHSFound {
-	return &ErrNoLHSFound{}
+	e := &ErrNoLHSFound{}
+	return e
 }
 
 // ErrNoRHSFound is an error that is returned when no right-hand side is found in a rule.
@@ -55,17 +57,17 @@ func (e *ErrNoRHSFound) Error() string {
 // Returns:
 //   - *ErrNoRHSFound: The new error.
 func NewErrNoRHSFound() *ErrNoRHSFound {
-	return &ErrNoRHSFound{}
+	e := &ErrNoRHSFound{}
+	return e
 }
 
 // ErrNoProductionRulesFound is an error that is returned when no production rules
 // are found in a grammar.
 type ErrNoProductionRulesFound struct{}
 
-// Error returns the error message: "no production rules found".
+// Error implements the error interface.
 //
-// Returns:
-//   - string: The error message.
+// Message: "no production rules found".
 func (e *ErrNoProductionRulesFound) Error() string {
 	return "no production rules found"
 }
@@ -75,7 +77,8 @@ func (e *ErrNoProductionRulesFound) Error() string {
 // Returns:
 //   - *ErrNoProductionRulesFound: The new error.
 func NewErrNoProductionRulesFound() *ErrNoProductionRulesFound {
-	return &ErrNoProductionRulesFound{}
+	e := &ErrNoProductionRulesFound{}
+	return e
 }
 
 // ErrLhsRhsMismatch is an error that is returned when the lhs of a production rule
@@ -88,12 +91,19 @@ type ErrLhsRhsMismatch struct {
 	Rhs string
 }
 
-// Error returns the error message: "lhs of production rule (lhs) does not match rhs (rhs)".
+// Error implements the error interface.
 //
-// Returns:
-//   - string: The error message.
+// Message: "lhs of production rule (lhs) does not match rhs (rhs)".
 func (e *ErrLhsRhsMismatch) Error() string {
-	return fmt.Sprintf("lhs of production rule (%s) does not match rhs (%s)", e.Lhs, e.Rhs)
+	var builder strings.Builder
+
+	builder.WriteString("lhs of production rule (")
+	builder.WriteString(e.Lhs)
+	builder.WriteString(") does not match rhs (")
+	builder.WriteString(e.Rhs)
+	builder.WriteRune(')')
+
+	return builder.String()
 }
 
 // NewErrLhsRhsMismatch creates a new error of type *ErrLhsRhsMismatch.
@@ -105,53 +115,19 @@ func (e *ErrLhsRhsMismatch) Error() string {
 // Returns:
 //   - *ErrLhsRhsMismatch: The new error.
 func NewErrLhsRhsMismatch(lhs, rhs string) *ErrLhsRhsMismatch {
-	return &ErrLhsRhsMismatch{
+	e := &ErrLhsRhsMismatch{
 		Lhs: lhs,
 		Rhs: rhs,
 	}
-}
-
-// ErrUnknownToken is an error that is returned when an unknown token is found.
-type ErrUnknowToken struct {
-	// Token is the unknown token.
-	Token Tokener
-}
-
-// Error returns the error message: "unknown token type: (type)".
-//
-// Returns:
-//   - string: The error message.
-//
-// Behaviors:
-//   - If the token is nil, the error message is "token is nil".
-func (e *ErrUnknowToken) Error() string {
-	if e.Token == nil {
-		return "token is nil"
-	} else {
-		return fmt.Sprintf("unknown token type: %T", e.Token)
-	}
-}
-
-// NewErrUnknowToken creates a new error of type *ErrUnknowToken.
-//
-// Parameters:
-//   - token: The unknown token.
-//
-// Returns:
-//   - *ErrUnknowToken: The new error.
-func NewErrUnknowToken(token Tokener) *ErrUnknowToken {
-	return &ErrUnknowToken{
-		Token: token,
-	}
+	return e
 }
 
 // ErrCycleDetected is an error that is returned when a cycle is detected.
 type ErrCycleDetected struct{}
 
-// Error returns the error message: "cycle detected".
+// Error implements the error interface.
 //
-// Returns:
-//   - string: The error message.
+// Message: "cycle detected".
 func (e *ErrCycleDetected) Error() string {
 	return "cycle detected"
 }
@@ -161,5 +137,6 @@ func (e *ErrCycleDetected) Error() string {
 // Returns:
 //   - *ErrCycleDetected: The new error.
 func NewErrCycleDetected() *ErrCycleDetected {
-	return &ErrCycleDetected{}
+	e := &ErrCycleDetected{}
+	return e
 }

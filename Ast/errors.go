@@ -74,7 +74,7 @@ func NewErrExpectedNonNil(expected string) *ErrExpectedNonNil {
 // ErrInvalidParsing is an error for when a parsing is invalid.
 type ErrInvalidParsing struct {
 	// Root is the root of the parsing where the error occurred.
-	Root gr.Tokener
+	Root gr.Token
 }
 
 // Error is a method of error interface.
@@ -91,7 +91,7 @@ func (e *ErrInvalidParsing) Error() string {
 //
 // Returns:
 //   - *ErrInvalidParsing: A pointer to the new error.
-func NewErrInvalidParsing(root gr.Tokener) *ErrInvalidParsing {
+func NewErrInvalidParsing(root gr.Token) *ErrInvalidParsing {
 	return &ErrInvalidParsing{Root: root}
 }
 

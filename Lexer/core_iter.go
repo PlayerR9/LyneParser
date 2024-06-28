@@ -32,7 +32,7 @@ func (it *CoreIter) canContinue() bool {
 	return status != EvalComplete
 }
 
-func (it *CoreIter) Consume() ([][]*gr.LeafToken, error) {
+func (it *CoreIter) Consume() ([][]gr.Token, error) {
 	var errs uc.ErrOrSol[any]
 
 	for {
@@ -68,7 +68,7 @@ func (it *CoreIter) Consume() ([][]*gr.LeafToken, error) {
 
 		leavesDone := us.SliceFilter(leaves, f)
 
-		var results [][]*gr.LeafToken
+		var results [][]gr.Token
 
 		for _, leaf := range leavesDone {
 			// Extract the branch.
@@ -88,7 +88,7 @@ func (it *CoreIter) Consume() ([][]*gr.LeafToken, error) {
 		}
 
 		if len(results) > 0 {
-			f := func(a, b []*gr.LeafToken) int {
+			f := func(a, b []gr.Token) int {
 				return len(a) - len(b)
 			}
 
@@ -100,7 +100,8 @@ func (it *CoreIter) Consume() ([][]*gr.LeafToken, error) {
 }
 
 func (it *CoreIter) Restart() {
-	root := gr.NewRootToken()
+	root := gr.RootToken()
+
 	tn := newTreeNode(root)
 
 	tree := tr.NewTree(tn)
@@ -108,7 +109,7 @@ func (it *CoreIter) Restart() {
 }
 
 func newCoreIter(doFunc uc.EvalManyFunc[*TreeNode, *TreeNode]) *CoreIter {
-	root := gr.NewRootToken()
+	root := gr.RootToken()
 
 	tn := newTreeNode(root)
 

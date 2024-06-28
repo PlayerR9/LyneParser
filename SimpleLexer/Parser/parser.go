@@ -1,17 +1,17 @@
 package Parser
 
 import (
-	stm "Ssalc/Parser/Stream"
 	"fmt"
 
-	com "Ssalc/common"
+	util "github.com/PlayerR9/LyneParser/Util"
 
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 )
 
 type Parser struct {
-	input []*stm.LeafToken
-	stack *lls.ArrayStack[stm.Tokener]
+	input []gr.Token
+	stack *lls.ArrayStack[gr.Token]
 }
 
 func NewParser() *Parser {
@@ -19,7 +19,7 @@ func NewParser() *Parser {
 	return p
 }
 
-func (p *Parser) getDecision(top stm.Tokener) (Actioner, error) {
+func (p *Parser) getDecision(top gr.Token) (Actioner, error) {
 	var act Actioner
 
 	id := top.GetID()
@@ -97,7 +97,7 @@ func (p *Parser) getDecision(top stm.Tokener) (Actioner, error) {
 }
 
 func (p *Parser) shift() {
-	com.Assert(len(p.input) > 0, "input is empty")
+	util.Assert(len(p.input) > 0, "input is empty")
 
 	first := p.input[0]
 	p.input = p.input[1:]
@@ -107,7 +107,7 @@ func (p *Parser) shift() {
 
 func (p *Parser) reduce() error {
 	top1, ok := p.stack.Pop()
-	com.Assert(ok, "stack is empty")
+	util.Assert(ok, "stack is empty")
 
 	id := top1.GetID()
 
@@ -127,7 +127,7 @@ func (p *Parser) reduce() error {
 
 		la := top2.GetLookahead()
 
-		tok := stm.NewNonLeafToken("Source", []stm.Tokener{top2, top1}, 0, la)
+		tok := gr.NewToken("Source", []gr.Token{top2, top1}, 0, la)
 
 		p.stack.Push(tok)
 	case "Source1":
@@ -156,14 +156,14 @@ func (p *Parser) reduce() error {
 
 		la := top3.GetLookahead()
 
-		tok := stm.NewNonLeafToken("Source1", []stm.Tokener{top3, top1}, 0, la)
+		tok := gr.NewToken("Source1", []gr.Token{top3, top1}, 0, la)
 
 		p.stack.Push(tok)
 	case "Statement":
 		// [Statement] -> Source1 : Reduce
 		la := top1.GetLookahead()
 
-		tok := stm.NewNonLeafToken("Source1", []stm.Tokener{top1}, 0, la)
+		tok := gr.NewToken("Source1", []gr.Token{top1}, 0, la)
 
 		p.stack.Push(tok)
 	case "register":
@@ -172,7 +172,7 @@ func (p *Parser) reduce() error {
 			// [register] -> Operand : Reduce
 			la := top1.GetLookahead()
 
-			tok := stm.NewNonLeafToken("Operand", []stm.Tokener{top1}, 0, la)
+			tok := gr.NewToken("Operand", []gr.Token{top1}, 0, la)
 
 			p.stack.Push(tok)
 
@@ -187,7 +187,7 @@ func (p *Parser) reduce() error {
 			// [register] -> Operand : Reduce
 			la := top1.GetLookahead()
 
-			tok := stm.NewNonLeafToken("Operand", []stm.Tokener{top1}, 0, la)
+			tok := gr.NewToken("Operand", []gr.Token{top1}, 0, la)
 
 			p.stack.Push(tok)
 
@@ -207,7 +207,7 @@ func (p *Parser) reduce() error {
 
 			la := top3.GetLookahead()
 
-			tok := stm.NewNonLeafToken("Statement", []stm.Tokener{top3, top1}, 0, la)
+			tok := gr.NewToken("Statement", []gr.Token{top3, top1}, 0, la)
 
 			p.stack.Push(tok)
 		case "BinaryInstruction":
@@ -215,7 +215,7 @@ func (p *Parser) reduce() error {
 
 			la := top3.GetLookahead()
 
-			tok := stm.NewNonLeafToken("Statement", []stm.Tokener{top3, top1}, 0, la)
+			tok := gr.NewToken("Statement", []gr.Token{top3, top1}, 0, la)
 
 			p.stack.Push(tok)
 		case "LoadImmediate":
@@ -223,7 +223,7 @@ func (p *Parser) reduce() error {
 
 			la := top3.GetLookahead()
 
-			tok := stm.NewNonLeafToken("Statement", []stm.Tokener{top3, top1}, 0, la)
+			tok := gr.NewToken("Statement", []gr.Token{top3, top1}, 0, la)
 
 			p.stack.Push(tok)
 		default:
@@ -234,7 +234,7 @@ func (p *Parser) reduce() error {
 
 		la := top1.GetLookahead()
 
-		tok := stm.NewNonLeafToken("Operand", []stm.Tokener{top1}, 0, la)
+		tok := gr.NewToken("Operand", []gr.Token{top1}, 0, la)
 
 		p.stack.Push(tok)
 	case "unary_operator":
@@ -253,7 +253,7 @@ func (p *Parser) reduce() error {
 
 		la := top2.GetLookahead()
 
-		tok := stm.NewNonLeafToken("UnaryInstruction", []stm.Tokener{top2, top1}, 0, la)
+		tok := gr.NewToken("UnaryInstruction", []gr.Token{top2, top1}, 0, la)
 
 		p.stack.Push(tok)
 	case "binary_operator":
@@ -283,7 +283,7 @@ func (p *Parser) reduce() error {
 
 		la := top3.GetLookahead()
 
-		tok := stm.NewNonLeafToken("BinaryInstruction", []stm.Tokener{top3, top2, top1}, 0, la)
+		tok := gr.NewToken("BinaryInstruction", []gr.Token{top3, top2, top1}, 0, la)
 
 		p.stack.Push(tok)
 	case "cl_paren":
@@ -313,7 +313,7 @@ func (p *Parser) reduce() error {
 
 		la := top3.GetLookahead()
 
-		tok := stm.NewNonLeafToken("LoadImmediate", []stm.Tokener{top2}, 0, la)
+		tok := gr.NewToken("LoadImmediate", []gr.Token{top2}, 0, la)
 
 		p.stack.Push(tok)
 	default:
@@ -323,35 +323,33 @@ func (p *Parser) reduce() error {
 	return nil
 }
 
-func (p *Parser) Parse(tokens []*stm.LeafToken) (*stm.NonLeafToken, error) {
+func (p *Parser) Parse(tokens []gr.Token) (gr.Token, error) {
 	if len(tokens) == 0 {
-		return nil, fmt.Errorf("no tokens to parse")
+		return gr.Token{}, fmt.Errorf("no tokens to parse")
 	}
-
-	stm.SetLookaheads(tokens)
 
 	p.input = tokens
 
-	p.stack = lls.NewArrayStack[stm.Tokener]()
+	p.stack = lls.NewArrayStack[gr.Token]()
 
 	p.shift()
 
 	err := p.parse()
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse: %w", err)
+		return gr.Token{}, fmt.Errorf("failed to parse: %w", err)
 	}
 
 	top, ok := p.stack.Pop()
 	if !ok {
-		return nil, fmt.Errorf("no result found")
+		return gr.Token{}, fmt.Errorf("no result found")
 	}
 
-	token, ok := top.(*stm.NonLeafToken)
+	ok = top.IsNonLeaf()
 	if !ok {
-		return nil, fmt.Errorf("expected non-leaf token, got %T instead", top)
+		return gr.Token{}, fmt.Errorf("expected non-leaf token, got %T instead", top)
 	}
 
-	return token, nil
+	return top, nil
 }
 
 func (p *Parser) parse() error {

@@ -138,8 +138,8 @@ func (g *Grammar) GetSymbols() []string {
 //
 // Returns:
 //   - []MatchedResult: A slice of MatchedResult that match the input token.
-func (g *Grammar) ProductionMatch(at int, stack *ud.History[lls.Stacker[gr.Tokener]]) []*gr.MatchedResult[*gr.NonLeafToken] {
-	matches := make([]*gr.MatchedResult[*gr.NonLeafToken], 0)
+func (g *Grammar) ProductionMatch(at int, stack *ud.History[lls.Stacker[gr.Token]]) []*gr.MatchedResult[gr.Token] {
+	matches := make([]*gr.MatchedResult[gr.Token], 0)
 
 	for i, p := range g.productions {
 		matched, err := p.Match(at, stack)

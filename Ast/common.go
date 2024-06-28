@@ -15,7 +15,7 @@ type Aster interface {
 	//
 	// Returns:
 	//   - error: The error if the conversion fails.
-	AstOf(children []gr.Tokener) error
+	AstOf(children []gr.Token) error
 }
 
 // AstOf constructs the AST of a source.
@@ -39,7 +39,7 @@ func AstOf[T Aster](tree *gr.TokenTree, source T) (T, error) {
 		return *new(T), fmt.Errorf("the root is not a source token")
 	}
 
-	children := root.(*gr.NonLeafToken).Data
+	children := root.Data.([]gr.Token)
 
 	err = source.AstOf(children)
 	if err != nil {

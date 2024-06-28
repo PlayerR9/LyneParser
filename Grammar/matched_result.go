@@ -1,7 +1,7 @@
 package Grammar
 
 // MatchedResult represents the result of a match operation.
-type MatchedResult[T Tokener] struct {
+type MatchedResult[T Token] struct {
 	// Matched is the matched token.
 	Matched T
 
@@ -25,6 +25,6 @@ func (mr *MatchedResult[T]) GetMatch() T {
 //
 // Returns:
 //   - *MatchedResult: A new MatchedResult.
-func NewMatchResult[T Tokener](matched T, ruleIndex int) *MatchedResult[T] {
+func NewMatchResult[T Token](matched T, ruleIndex int) *MatchedResult[T] {
 	return &MatchedResult[T]{Matched: matched, RuleIndex: ruleIndex}
 }

@@ -22,11 +22,7 @@ import (
 // Errors:
 //   - *ers.ErrInvalidParameter: If the root is nil.
 //   - ErrInvalidParsing: If the root is not a token.
-func IsToken(root gr.Tokener, id string) (bool, error) {
-	if root == nil {
-		return false, NewErrExpectedNonNil("root")
-	}
-
+func IsToken(root gr.Token, id string) (bool, error) {
 	rootID := root.GetID()
 	if rootID != id {
 		return false, nil
@@ -34,22 +30,7 @@ func IsToken(root gr.Tokener, id string) (bool, error) {
 
 	isTerminal := gr.IsTerminal(id)
 
-	switch root := root.(type) {
-	case *gr.LeafToken:
-		if isTerminal {
-			return true, nil
-		}
-
-		return false, nil
-	case *gr.NonLeafToken:
-		if !isTerminal {
-			return true, nil
-		}
-
-		return false, nil
-	default:
-		return false, NewErrInvalidParsing(root)
-	}
+	return isTerminal, nil
 }
 
 // SyntaxChecker is a helper struct for AST checks.
@@ -92,10 +73,10 @@ func (ast *SyntaxChecker) Copy() uc.Copier {
 //		"rhs2",
 //	})
 //
-//	err := ast.Check([]gr.Tokener{
+//	err := ast.Check([]gr.Token{
 //		&gr.NonLeafToken{
 //			ID:   "lhs",
-//			Data: []gr.Tokener{
+//			Data: []gr.Token{
 //				&gr.LeafToken{
 //					ID:   "rhs1",
 //					Data: "data1",
@@ -175,7 +156,7 @@ func (ast *SyntaxChecker) filterMissingFields(i int) error {
 // Returns:
 //
 //   - error: The error if a field does not match the expected ID.
-func (ast *SyntaxChecker) filterWrongFields(child gr.Tokener, i int) error {
+func (ast *SyntaxChecker) filterWrongFields(child gr.Token, i int) error {
 	top := 0
 
 	allExpected := make([]string, 0, len(ast.table))
@@ -250,7 +231,7 @@ func (ast *SyntaxChecker) filterTooManyFields(size int) error {
 // Returns:
 //
 //   - error: The error if the check fails.
-func (ast *SyntaxChecker) Check(children []gr.Tokener) error {
+func (ast *SyntaxChecker) Check(children []gr.Token) error {
 	// 1. Create a copy of the table.
 	astCopy := ast.Copy().(*SyntaxChecker)
 

@@ -19,11 +19,7 @@ type Production struct {
 	rhs []string
 }
 
-// String is a method of Production that returns a string representation
-// of a Production.
-//
-// Returns:
-//   - string: A string representation of a Production.
+// String implements the fmt.Stringer interface.
 func (p *Production) String() string {
 	var builder strings.Builder
 
@@ -40,18 +36,15 @@ func (p *Production) String() string {
 		builder.WriteString(str)
 	}
 
-	return builder.String()
+	str := builder.String()
+
+	return str
 }
 
-// Equals is a method of Production that returns whether the production
-// is equal to another production. Two productions are equal if their
-// left-hand sides are equal and their right-hand sides are equal.
+// Equals implements the common.Equaler interface.
 //
-// Parameters:
-//   - other: The other production to compare to.
-//
-// Returns:
-//   - bool: Whether the production is equal to the other production.
+// Two productions are equal if their left-hand sides are equal and their
+// right-hand sides are equal.
 func (p *Production) Equals(other uc.Equaler) bool {
 	if other == nil {
 		return false
@@ -75,114 +68,15 @@ func (p *Production) Equals(other uc.Equaler) bool {
 	return true
 }
 
-// GetLhs is a method of Production that returns the left-hand side of
-// the production.
+// Iterator implements the common.Iterater interface.
 //
-// Returns:
-//   - string: The left-hand side of the production.
-func (p *Production) GetLhs() string {
-	return p.lhs
-}
-
-// Iterator is a method of Production that returns an iterator for the
-// production that iterates over the right-hand side of the production.
-//
-// Returns:
-//   - uc.Iterater[string]: An iterator for the production.
+// It scans the right-hand side of the production from left to right.
 func (p *Production) Iterator() uc.Iterater[string] {
-	return uc.NewSimpleIterator(p.rhs)
+	si := uc.NewSimpleIterator(p.rhs)
+	return si
 }
 
-// ReverseIterator is a method of Production that returns a reverse
-// iterator for the production that iterates over the right-hand side of
-// the production in reverse.
-//
-// Returns:
-//   - uc.Iterater[string]: A reverse iterator for the production.
-func (p *Production) ReverseIterator() uc.Iterater[string] {
-	slice := make([]string, len(p.rhs))
-	copy(slice, p.rhs)
-	slices.Reverse(slice)
-
-	return uc.NewSimpleIterator(slice)
-}
-
-// GetSymbols is a method of Production that returns a slice of symbols
-// in the production. The slice contains the left-hand side of the
-// production and the right-hand side of the production, with no
-// duplicates.
-//
-// Returns:
-//   - []string: A slice of symbols in the production.
-func (p *Production) GetSymbols() []string {
-	symbols := make([]string, len(p.rhs)+1)
-	copy(symbols, p.rhs)
-
-	symbols[len(symbols)-1] = p.lhs
-
-	return us.Uniquefy(symbols, true)
-}
-
-// Match is a method of Production that returns a token that matches the
-// production in the given stack. The token is a non-leaf token if the
-// production is a non-terminal production, and a leaf token if the
-// production is a terminal production.
-//
-// Parameters:
-//   - at: The current index in the input stack.
-//   - stack: The stack to match the production against.
-//
-// Returns:
-//   - Tokener: A token that matches the production in the stack.
-//
-// Information:
-//   - 'at' is the current index where the match is being attempted. It is
-//     used by the lexer to specify the position of the token in the input
-//     string. In parsers, however, it is not really used (at = 0). Despite
-//     that, it can be used to provide additional information to the parser
-//     for error reporting or debugging.
-func (p *Production) Match(at int, stack *ud.History[lls.Stacker[Tokener]]) (*NonLeafToken, error) {
-	solutions := make([]Tokener, 0)
-
-	var reason error = nil
-
-	for i := len(p.rhs) - 1; i >= 0; i-- {
-		rhs := p.rhs[i]
-
-		cmd := lls.NewPop[Tokener]()
-		err := stack.ExecuteCommand(cmd)
-		if err != nil {
-			reason = uc.NewErrUnexpected("", rhs)
-			break
-		}
-		top := cmd.Value()
-
-		id := top.GetID()
-		if id != rhs {
-			reason = uc.NewErrUnexpected(top.GoString(), rhs)
-			break
-		}
-
-		solutions = append(solutions, top)
-	}
-
-	stack.Reject()
-
-	if reason != nil {
-		return nil, reason
-	}
-
-	slices.Reverse(solutions)
-
-	tok := NewNonLeafToken(p.lhs, at, solutions...)
-
-	return tok, nil
-}
-
-// Copy is a method of Production that returns a copy of the production.
-//
-// Returns:
-//   - uc.Copier: A copy of the production.
+// Copy implements the common.Copier interface.
 func (p *Production) Copy() uc.Copier {
 	pCopy := &Production{
 		lhs: p.lhs,
@@ -204,7 +98,117 @@ func (p *Production) Copy() uc.Copier {
 //   - *Production: A new Production with the given left-hand side and
 //     right-hand side.
 func NewProduction(lhs string, rhs string) *Production {
-	return &Production{lhs: lhs, rhs: strings.Fields(rhs)}
+	fields := strings.Fields(rhs)
+	p := &Production{
+		lhs: lhs,
+		rhs: fields,
+	}
+	return p
+}
+
+// GetLhs is a method of Production that returns the left-hand side of
+// the production.
+//
+// Returns:
+//   - string: The left-hand side of the production.
+func (p *Production) GetLhs() string {
+	return p.lhs
+}
+
+// ReverseIterator is a method of Production that returns a reverse
+// iterator for the production that iterates over the right-hand side of
+// the production in reverse.
+//
+// Returns:
+//   - uc.Iterater[string]: A reverse iterator for the production.
+func (p *Production) ReverseIterator() uc.Iterater[string] {
+	slice := make([]string, len(p.rhs))
+	copy(slice, p.rhs)
+	slices.Reverse(slice)
+
+	si := uc.NewSimpleIterator(slice)
+	return si
+}
+
+// GetSymbols is a method of Production that returns a slice of symbols
+// in the production. The slice contains the left-hand side of the
+// production and the right-hand side of the production, with no
+// duplicates.
+//
+// Returns:
+//   - []string: A slice of symbols in the production.
+func (p *Production) GetSymbols() []string {
+	symbols := make([]string, len(p.rhs)+1)
+	copy(symbols, p.rhs)
+
+	symbols[len(symbols)-1] = p.lhs
+
+	slice := us.Uniquefy(symbols, true)
+
+	return slice
+}
+
+// Match is a method of Production that returns a token that matches the
+// production in the given stack. The token is a non-leaf token if the
+// production is a non-terminal production, and a leaf token if the
+// production is a terminal production.
+//
+// Parameters:
+//   - at: The current index in the input stack.
+//   - stack: The stack to match the production against.
+//
+// Returns:
+//   - Token: A token that matches the production in the stack.
+//
+// Information:
+//   - 'at' is the current index where the match is being attempted. It is
+//     used by the lexer to specify the position of the token in the input
+//     string. In parsers, however, it is not really used (at = 0). Despite
+//     that, it can be used to provide additional information to the parser
+//     for error reporting or debugging.
+func (p *Production) Match(at int, stack *ud.History[lls.Stacker[Token]]) (Token, error) {
+	if stack == nil {
+		return Token{}, uc.NewErrNilParameter("stack")
+	}
+
+	var solutions []Token
+	var reason error
+
+	for i := len(p.rhs) - 1; i >= 0; i-- {
+		rhs := p.rhs[i]
+
+		cmd := lls.NewPop[Token]()
+		err := stack.ExecuteCommand(cmd)
+		if err != nil {
+			reason = uc.NewErrUnexpected("", rhs)
+			break
+		}
+		top := cmd.Value()
+
+		id := top.GetID()
+		if id != rhs {
+			str := top.GoString()
+			reason = uc.NewErrUnexpected(str, rhs)
+			break
+		}
+
+		solutions = append(solutions, top)
+	}
+
+	stack.Reject()
+
+	if reason != nil {
+		return Token{}, reason
+	}
+
+	slices.Reverse(solutions)
+
+	lastElem := solutions[len(solutions)-1]
+	lookahead := lastElem.GetLookahead()
+
+	tok := NewToken(p.lhs, solutions, at, lookahead)
+
+	return tok, nil
 }
 
 // Size is a method of Production that returns the number of symbols in
@@ -236,7 +240,9 @@ func (p *Production) GetRhsAt(index int) (string, error) {
 		)
 	}
 
-	return p.rhs[index], nil
+	elem := p.rhs[index]
+
+	return elem, nil
 }
 
 // IndicesOfRhs is a method of Production that returns the indices of the
@@ -249,7 +255,7 @@ func (p *Production) GetRhsAt(index int) (string, error) {
 //   - []int: The indices of the symbol in the right-hand side of the
 //     production.
 func (p *Production) IndicesOfRhs(rhs string) []int {
-	results := make([]int, 0)
+	var results []int
 
 	for i, symbol := range p.rhs {
 		if symbol == rhs {

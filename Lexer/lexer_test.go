@@ -46,7 +46,7 @@ func TestLex(t *testing.T) {
 
 	iter := lexer.Lex([]byte(Source), v)
 
-	var branch *cds.Stream[*gr.LeafToken]
+	var branch *cds.Stream[gr.Token]
 	var err error
 
 	for i := 0; ; i++ {

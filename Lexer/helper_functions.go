@@ -17,7 +17,7 @@ var (
 	// Returns:
 	//   - float64: The weight of the match.
 	//   - bool: True if the weight is valid, false otherwise.
-	matchWeightFunc us.WeightFunc[*gr.MatchedResult[*gr.LeafToken]]
+	matchWeightFunc us.WeightFunc[*gr.MatchedResult[gr.Token]]
 
 	// filterErrorLeaves is a filter that filters out leaves that are in error.
 	//
@@ -26,7 +26,7 @@ var (
 	//
 	// Returns:
 	//   - bool: True if the leaf is in error, false otherwise.
-	filterErrorLeaves us.PredicateFilter[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
+	filterErrorLeaves us.PredicateFilter[*tr.StatusInfo[EvalStatus, gr.Token]]
 
 	// selectBestMatches selects the best matches from the list of matches.
 	// Usually, the best matches' euristic is the longest match.
@@ -36,21 +36,21 @@ var (
 	//   - logger: A verbose logger.
 	//
 	// Returns:
-	//   - []*gr.MatchedResult[*gr.LeafToken]: The best matches.
-	selectBestMatches func(matches []*gr.MatchedResult[*gr.LeafToken], logger *Verbose) []*gr.MatchedResult[*gr.LeafToken]
+	//   - []*gr.MatchedResult[gr.Token]: The best matches.
+	selectBestMatches func(matches []*gr.MatchedResult[gr.Token], logger *Verbose) []*gr.MatchedResult[gr.Token]
 )
 
 func init() {
-	matchWeightFunc = func(elem *gr.MatchedResult[*gr.LeafToken]) (float64, bool) {
-		return float64(len(elem.Matched.Data)), true
+	matchWeightFunc = func(elem *gr.MatchedResult[gr.Token]) (float64, bool) {
+		return float64(len(elem.Matched.Data.(string))), true
 	}
 
-	filterErrorLeaves = func(h *tr.StatusInfo[EvalStatus, *gr.LeafToken]) bool {
+	filterErrorLeaves = func(h *tr.StatusInfo[EvalStatus, gr.Token]) bool {
 		status := h.GetStatus()
 		return status == EvalError
 	}
 
-	selectBestMatches = func(matches []*gr.MatchedResult[*gr.LeafToken], logger *Verbose) []*gr.MatchedResult[*gr.LeafToken] {
+	selectBestMatches = func(matches []*gr.MatchedResult[gr.Token], logger *Verbose) []*gr.MatchedResult[gr.Token] {
 		logger.DoIf(func(p *Printer) {
 			p.Print("Selecting best matches...")
 		})
@@ -76,21 +76,21 @@ func init() {
 // SetEOFToken sets the end-of-file token in the token stream.
 //
 // If the end-of-file token is already present, it will not be added again.
-func setEOFToken(tokens []*gr.LeafToken) []*gr.LeafToken {
+func setEOFToken(tokens []gr.Token) []gr.Token {
 	if len(tokens) != 0 && tokens[len(tokens)-1].ID == gr.EOFTokenID {
 		// EOF token is already present
 		return tokens
 	}
 
-	tok := gr.NewEOFToken()
+	tok := gr.EofToken()
 
 	return append(tokens, tok)
 }
 
 // SetLookahead sets the lookahead token for all the tokens in the stream.
-func setLookahead(tokens []*gr.LeafToken) {
+func setLookahead(tokens []gr.Token) {
 	for i := 0; i < len(tokens)-1; i++ {
-		tokens[i].SetLookahead(tokens[i+1])
+		tokens[i].SetLookahead(&tokens[i+1])
 	}
 }
 
@@ -102,11 +102,11 @@ func setLookahead(tokens []*gr.LeafToken) {
 //
 // Returns:
 //   - *cds.Stream[*LeafToken]: The token stream.
-func convertBranchToTokenStream(branch []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], toSkip []string) *cds.Stream[*gr.LeafToken] {
+func convertBranchToTokenStream(branch []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]], toSkip []string) *cds.Stream[gr.Token] {
 	branch = branch[1:]
 
 	for _, elem := range toSkip {
-		filterTokenDifferentID := func(h *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) bool {
+		filterTokenDifferentID := func(h *tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]) bool {
 			data := h.Data.GetData()
 			return data.ID != elem
 		}
@@ -114,7 +114,7 @@ func convertBranchToTokenStream(branch []*tr.TreeNode[*tr.StatusInfo[EvalStatus,
 		branch = us.SliceFilter(branch, filterTokenDifferentID)
 	}
 
-	var ts []*gr.LeafToken
+	var ts []gr.Token
 
 	for _, elem := range branch {
 		data := elem.Data.GetData()
@@ -144,7 +144,7 @@ func convertBranchToTokenStream(branch []*tr.TreeNode[*tr.StatusInfo[EvalStatus,
 // Errors:
 //   - *uc.ErrInvalidParameter: The from index is out of bounds.
 //   - *ErrNoMatches: No matches are found.
-func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) ([]*gr.MatchedResult[*gr.LeafToken], error) {
+func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) ([]*gr.MatchedResult[gr.Token], error) {
 	size := s.Size()
 
 	if from < 0 || from >= size {
@@ -156,7 +156,7 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) ([]*gr.Mat
 
 	type Result struct {
 		subset  []byte
-		matches []*gr.MatchedResult[*gr.LeafToken]
+		matches []*gr.MatchedResult[gr.Token]
 	}
 
 	var prevResult *Result
@@ -164,11 +164,11 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) ([]*gr.Mat
 	for i := 1; i <= size; i++ {
 		subset, _ := s.Get(from, i)
 
-		var matches []*gr.MatchedResult[*gr.LeafToken]
+		var matches []*gr.MatchedResult[gr.Token]
 
 		for i, p := range ps {
-			matched := p.Match(from, subset)
-			if matched != nil {
+			matched, ok := p.Match(from, subset)
+			if ok {
 				res := gr.NewMatchResult(matched, i)
 				matches = append(matches, res)
 			}
@@ -201,8 +201,8 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) ([]*gr.Mat
 // Returns:
 //   - bool: True if all leaves are complete, false otherwise.
 //   - error: An error of type *ErrAllMatchesFailed if all matches failed.
-func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction, logger *Verbose) uc.EvalManyFunc[*tr.StatusInfo[EvalStatus, *gr.LeafToken], *tr.StatusInfo[EvalStatus, *gr.LeafToken]] {
-	filterFunc := func(ld *tr.StatusInfo[EvalStatus, *gr.LeafToken]) ([]*tr.StatusInfo[EvalStatus, *gr.LeafToken], error) {
+func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction, logger *Verbose) uc.EvalManyFunc[*tr.StatusInfo[EvalStatus, gr.Token], *tr.StatusInfo[EvalStatus, gr.Token]] {
+	filterFunc := func(ld *tr.StatusInfo[EvalStatus, gr.Token]) ([]*tr.StatusInfo[EvalStatus, gr.Token], error) {
 		data := ld.GetData()
 
 		var nextAt int
@@ -210,7 +210,7 @@ func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction, log
 		if data.ID == gr.RootTokenID {
 			nextAt = 0
 		} else {
-			nextAt = data.GetPos() + len(data.Data)
+			nextAt = data.GetPos() + len(data.Data.(string))
 		}
 
 		if nextAt >= source.Size() {
@@ -239,7 +239,7 @@ func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction, log
 // Returns:
 //   - result: The tokens that have been lexed.
 //   - reason: An error if the lexer has not been run yet.
-func getTokens(tree *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], toSkip []string) ([]*cds.Stream[*gr.LeafToken], error) {
+func getTokens(tree *tr.Tree[*tr.StatusInfo[EvalStatus, gr.Token]], toSkip []string) ([]*cds.Stream[gr.Token], error) {
 	branches := tree.SnakeTraversal()
 
 	branches = removeToSkipTokens(toSkip, branches)
@@ -253,7 +253,7 @@ func getTokens(tree *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], toSkip 
 	slices.SortStableFunc(branches, sortFunc)
 
 	if ok {
-		result := make([]*cds.Stream[*gr.LeafToken], 0, len(branches))
+		result := make([]*cds.Stream[gr.Token], 0, len(branches))
 
 		for _, branch := range branches {
 			conv := convertBranchToTokenStream(branch)
@@ -270,7 +270,7 @@ func getTokens(tree *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], toSkip 
 
 	lastToken := firstBranch[size-1].Second
 
-	result := make([]*cds.Stream[*gr.LeafToken], 0, len(branches))
+	result := make([]*cds.Stream[gr.Token], 0, len(branches))
 
 	for _, branch := range branches {
 		conv := convertBranchToTokenStream(branch)

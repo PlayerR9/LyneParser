@@ -235,7 +235,7 @@ func (a *ActReduce) ShouldAccept() bool {
 //
 // Returns:
 //   - error: An error if the action does not match the top of the stack.
-func MatchAction(a Actioner, top gr.Tokener, stack *ud.History[lls.Stacker[gr.Tokener]]) error {
+func MatchAction(a Actioner, top gr.Token, stack *ud.History[lls.Stacker[gr.Token]]) error {
 	ela := a.GetLookahead()
 	tla := top.GetLookahead()
 
@@ -255,7 +255,7 @@ func MatchAction(a Actioner, top gr.Tokener, stack *ud.History[lls.Stacker[gr.To
 			break
 		}
 
-		cmd := lls.NewPop[gr.Tokener]()
+		cmd := lls.NewPop[gr.Token]()
 		err = stack.ExecuteCommand(cmd)
 		if err != nil {
 			return uc.NewErrUnexpected("", rhs)

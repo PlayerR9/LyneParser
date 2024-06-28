@@ -63,7 +63,7 @@ func NewParser(grammar *Grammar) (*Parser, error) {
 //
 // Returns:
 //   - error: An error if the input stream could not be parsed.
-func Parse(p *Parser, source *cds.Stream[*gr.LeafToken]) error {
+func Parse(p *Parser, source *cds.Stream[gr.Token]) error {
 	if p == nil {
 		return uc.NewErrNilParameter("parser")
 	}

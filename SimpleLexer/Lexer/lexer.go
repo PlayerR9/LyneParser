@@ -6,13 +6,14 @@ import (
 	"strings"
 	"unicode"
 
-	stm "Ssalc/Parser/Stream"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
+	stm "github.com/PlayerR9/LyneParser/SimpleLexer/Stream"
 )
 
 type Lexer struct {
 	is *stm.InputStream
 
-	tokens []*stm.LeafToken
+	tokens []gr.Token
 }
 
 func (l *Lexer) peekNext() (*rune, error) {
@@ -29,16 +30,16 @@ func (l *Lexer) peekNext() (*rune, error) {
 	return nil, fmt.Errorf("failed to peek next character: %w", err)
 }
 
-func (l *Lexer) lexNRepeat(leading rune, label1, label2 string, tails ...rune) (*stm.LeafToken, error) {
+func (l *Lexer) lexNRepeat(leading rune, label1, label2 string, tails ...rune) (gr.Token, error) {
 	next, err := l.peekNext()
 	if err != nil {
-		return nil, fmt.Errorf("after %c: %w", leading, err)
+		return gr.Token{}, fmt.Errorf("after %c: %w", leading, err)
 	}
 
 	if next == nil {
 		// leading -> label1
 		pos := l.is.Pos()
-		lt := stm.NewLeafToken(label1, string(leading), pos)
+		lt := gr.NewToken(label1, string(leading), pos, nil)
 
 		return lt, nil
 	}
@@ -47,7 +48,7 @@ func (l *Lexer) lexNRepeat(leading rune, label1, label2 string, tails ...rune) (
 	if index == -1 {
 		// leading -> label1
 		pos := l.is.Pos()
-		lt := stm.NewLeafToken(label1, string(leading), pos)
+		lt := gr.NewToken(label1, string(leading), pos, nil)
 
 		return lt, nil
 	}
@@ -56,38 +57,38 @@ func (l *Lexer) lexNRepeat(leading rune, label1, label2 string, tails ...rune) (
 
 	// leading tail -> label2
 	pos := l.is.Pos()
-	lt := stm.NewLeafToken(label2, string(leading)+string(tail), pos)
+	lt := gr.NewToken(label2, string(leading)+string(tail), pos, nil)
 
 	l.is.Accept()
 
 	return lt, nil
 }
 
-func (l *Lexer) lex2Repeat(leading rune, label string, fn func(rune) error) (*stm.LeafToken, error) {
+func (l *Lexer) lex2Repeat(leading rune, label string, fn func(rune) error) (gr.Token, error) {
 	next, err := l.peekNext()
 	if err != nil {
-		return nil, fmt.Errorf("after %c: %w", leading, err)
+		return gr.Token{}, fmt.Errorf("after %c: %w", leading, err)
 	}
 
 	if next == nil {
-		return nil, fmt.Errorf("after %c: expected tail, got EOF", leading)
+		return gr.Token{}, fmt.Errorf("after %c: expected tail, got EOF", leading)
 	}
 
 	err = fn(*next)
 	if err != nil {
-		return nil, fmt.Errorf("after %c: %w", leading, err)
+		return gr.Token{}, fmt.Errorf("after %c: %w", leading, err)
 	}
 
 	// leading tail -> label
 	pos := l.is.Pos()
-	lt := stm.NewLeafToken(label, string(leading)+string(*next), pos)
+	lt := gr.NewToken(label, string(leading)+string(*next), pos, nil)
 
 	l.is.Accept()
 
 	return lt, nil
 }
 
-func (l *Lexer) lexRepeated(leading rune, label string, fn func(rune) (bool, error)) (*stm.LeafToken, error) {
+func (l *Lexer) lexRepeated(leading rune, label string, fn func(rune) (bool, error)) (gr.Token, error) {
 	var builder strings.Builder
 
 	builder.WriteRune(leading)
@@ -95,7 +96,7 @@ func (l *Lexer) lexRepeated(leading rune, label string, fn func(rune) (bool, err
 	for {
 		next, err := l.peekNext()
 		if err != nil {
-			return nil, fmt.Errorf("after %c: %w", leading, err)
+			return gr.Token{}, fmt.Errorf("after %c: %w", leading, err)
 		}
 
 		if next == nil {
@@ -104,7 +105,7 @@ func (l *Lexer) lexRepeated(leading rune, label string, fn func(rune) (bool, err
 
 		ok, err := fn(*next)
 		if err != nil {
-			return nil, fmt.Errorf("after %c: %w", leading, err)
+			return gr.Token{}, fmt.Errorf("after %c: %w", leading, err)
 		}
 
 		if !ok {
@@ -116,31 +117,26 @@ func (l *Lexer) lexRepeated(leading rune, label string, fn func(rune) (bool, err
 	}
 
 	pos := l.is.Pos()
-	lt := stm.NewLeafToken(label, builder.String(), pos)
+	lt := gr.NewToken(label, builder.String(), pos, nil)
 
 	return lt, nil
 }
 
-func (l *Lexer) lexOne() (*stm.LeafToken, error) {
+func (l *Lexer) lexOne() (gr.Token, error) {
 	char, err := l.is.Next()
 	if err != nil {
-		ok := stm.IsExhausted(err)
-		if ok {
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("failed to read next character: %w", err)
+		return gr.Token{}, err
 	}
 
 	id, ok := singleTokens[char]
 	if ok {
 		pos := l.is.Pos()
-		lt := stm.NewLeafToken(id, string(char), pos)
+		lt := gr.NewToken(id, string(char), pos, nil)
 
 		return lt, nil
 	}
 
-	var lt *stm.LeafToken
+	var lt gr.Token
 
 	switch char {
 	case '+':
@@ -177,7 +173,7 @@ func (l *Lexer) lexOne() (*stm.LeafToken, error) {
 		ok := unicode.IsDigit(char)
 		if !ok {
 			pos := l.is.Pos()
-			return nil, fmt.Errorf("invalid character %c at index %d", char, pos)
+			return gr.Token{}, fmt.Errorf("invalid character %c at index %d", char, pos)
 		}
 
 		// digit | number
@@ -191,28 +187,25 @@ func (l *Lexer) lexOne() (*stm.LeafToken, error) {
 		lt, err = l.lexRepeated(char, "immediate", f)
 	}
 	if err != nil {
-		return nil, err
+		return gr.Token{}, err
 	}
 
 	return lt, nil
 }
 
-func Lex(data []byte) ([]*stm.LeafToken, error) {
+func Lex(data []byte) ([]gr.Token, error) {
 	is := stm.NewInputStream(data)
 
 	l := &Lexer{
 		is: is,
 	}
 
+	var lt gr.Token
+	var err error
+
 	for {
-		lt, err := l.lexOne()
+		lt, err = l.lexOne()
 		if err != nil {
-			tokens := addEOF(l.tokens)
-
-			return tokens, fmt.Errorf("failed to lex one: %w", err)
-		}
-
-		if lt == nil {
 			break
 		}
 
@@ -223,13 +216,23 @@ func Lex(data []byte) ([]*stm.LeafToken, error) {
 
 	l.tokens = addEOF(l.tokens)
 
+	ok := stm.IsExhausted(err)
+	if !ok {
+		return l.tokens, fmt.Errorf("failed to lex one: %w", err)
+	}
+
 	return l.tokens, nil
 }
 
-func addEOF(tokens []*stm.LeafToken) []*stm.LeafToken {
-	lt := stm.NewLeafToken("EOF", "", -1)
+func addEOF(tokens []gr.Token) []gr.Token {
+	lt := gr.EofToken()
 
 	tokens = append(tokens, lt)
+
+	for i := 0; i < len(tokens)-1; i++ {
+		token := tokens[i]
+		token.SetLookahead(&tokens[i+1])
+	}
 
 	return tokens
 }

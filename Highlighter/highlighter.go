@@ -130,7 +130,7 @@ func (h *Highlighter) Apply(data []byte) {
 		tokenItems = branch.GetItems()
 		lastItem := tokenItems[len(tokenItems)-1]
 
-		firstInvalid := lastItem.At + len(lastItem.Data)
+		firstInvalid := lastItem.At + len(lastItem.Data.(string))
 
 		// go until the first whitespace character
 		indexOfWS := h.extractErrorSection(data, firstInvalid)
@@ -159,7 +159,7 @@ func (h *Highlighter) Apply(data []byte) {
 //
 // Returns:
 //   - error: An error if the rules could not be applied.
-func (h *Highlighter) apply(stream *cds.Stream[*gr.LeafToken], source []byte) error {
+func (h *Highlighter) apply(stream *cds.Stream[gr.Token], source []byte) error {
 	atSource := 0
 
 	for at := 0; ; at++ {
@@ -180,8 +180,8 @@ func (h *Highlighter) apply(stream *cds.Stream[*gr.LeafToken], source []byte) er
 			style = h.defaultStyle
 		}
 
-		h.data.Add(NewNormalText([]byte(token.Data), style))
-		atSource += len(token.Data)
+		h.data.Add(NewNormalText([]byte(token.Data.(string)), style))
+		atSource += len(token.Data.(string))
 	}
 
 	return nil

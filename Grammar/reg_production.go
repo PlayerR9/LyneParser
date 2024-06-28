@@ -1,8 +1,8 @@
 package Grammar
 
 import (
+	"fmt"
 	"regexp"
-	"strings"
 
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
@@ -20,45 +20,17 @@ type RegProduction struct {
 	rxp *regexp.Regexp
 }
 
-// String is a method of fmt.Stringer that returns a string representation
-// of a RegProduction.
-//
-// It should only be used for debugging and logging purposes.
-//
-// Returns:
-//   - string: A string representation of a RegProduction.
+// GoString implements the fmt.GoStringer interface.
 func (r *RegProduction) GoString() string {
-	var builder strings.Builder
+	str := fmt.Sprintf("%+v", *r)
 
-	builder.WriteString("RegProduction{")
-	builder.WriteString("lhs=")
-	builder.WriteString(r.lhs)
-	builder.WriteString(", rhs=")
-	builder.WriteString(r.rhs)
-	builder.WriteString(", rxp=")
-
-	if r.rxp == nil {
-		builder.WriteString("N/A")
-	} else {
-		str := r.rxp.String()
-
-		builder.WriteString(str)
-	}
-
-	builder.WriteRune('}')
-
-	return builder.String()
+	return str
 }
 
-// Equals is a method of RegProduction that returns whether the production
-// is equal to another production. Two productions are equal if their
-// left-hand sides are equal and their right-hand sides are equal.
+// Equals implements the common.Equaler interface.
 //
-// Parameters:
-//   - other: The other production to compare to.
-//
-// Returns:
-//   - bool: Whether the production is equal to the other production.
+// Two productions are equal if their left-hand sides are equal and their
+// right-hand sides are equal.
 func (p *RegProduction) Equals(other uc.Equaler) bool {
 	if other == nil {
 		return false
@@ -70,6 +42,42 @@ func (p *RegProduction) Equals(other uc.Equaler) bool {
 	}
 
 	return val.lhs == p.lhs && val.rhs == p.rhs
+}
+
+// Copy implements the common.Copier interface.
+func (p *RegProduction) Copy() uc.Copier {
+	pCopy := &RegProduction{
+		lhs: p.lhs,
+		rhs: p.rhs,
+		rxp: p.rxp,
+	}
+	return pCopy
+}
+
+// NewRegProduction is a function that returns a new RegProduction with the
+// given left-hand side and regular expression.
+//
+// It adds the '^' character to the beginning of the regular expression to
+// match the beginning of the input string.
+//
+// Parameters:
+//   - lhs: The left-hand side of the production.
+//   - regex: The regular expression to match the right-hand side of the
+//     production.
+//
+// Returns:
+//   - *RegProduction: A new RegProduction with the given left-hand side
+//     and regular expression.
+//
+// Information:
+//   - Must call Compile() on the returned RegProduction to compile the
+//     regular expression.
+func NewRegProduction(lhs string, regex string) *RegProduction {
+	p := &RegProduction{
+		lhs: lhs,
+		rhs: "^" + regex,
+	}
+	return p
 }
 
 // GetLhs is a method of RegProduction that returns the left-hand side of
@@ -101,59 +109,23 @@ func (p *RegProduction) GetSymbols() []string {
 //   - b: The slice of bytes to match the production against.
 //
 // Returns:
-//   - Tokener: A token that matches the production in the stack. nil if
-//     there is no match.
-func (p *RegProduction) Match(at int, b []byte) *LeafToken {
+//   - Token: A token that matches the production in the stack.
+//   - bool: True if the production matches the input stack, false
+//     otherwise.
+func (p *RegProduction) Match(at int, b []byte) (Token, bool) {
 	data := p.rxp.Find(b)
 	if data == nil {
-		return nil
+		return Token{}, false
 	}
 
 	// Must be an exact match.
 	if len(data) != len(b) {
-		return nil
+		return Token{}, false
 	}
 
-	lt := NewLeafToken(p.lhs, string(data), at)
+	lt := NewToken(p.lhs, string(data), at, nil)
 
-	return lt
-}
-
-// Copy is a method of RegProduction that returns a copy of the production.
-//
-// Returns:
-//   - uc.Copier: A copy of the production.
-func (p *RegProduction) Copy() uc.Copier {
-	return &RegProduction{
-		lhs: p.lhs,
-		rhs: p.rhs,
-		rxp: p.rxp,
-	}
-}
-
-// NewRegProduction is a function that returns a new RegProduction with the
-// given left-hand side and regular expression.
-//
-// It adds the '^' character to the beginning of the regular expression to
-// match the beginning of the input string.
-//
-// Parameters:
-//   - lhs: The left-hand side of the production.
-//   - regex: The regular expression to match the right-hand side of the
-//     production.
-//
-// Returns:
-//   - *RegProduction: A new RegProduction with the given left-hand side
-//     and regular expression.
-//
-// Information:
-//   - Must call Compile() on the returned RegProduction to compile the
-//     regular expression.
-func NewRegProduction(lhs string, regex string) *RegProduction {
-	return &RegProduction{
-		lhs: lhs,
-		rhs: "^" + regex,
-	}
+	return lt, true
 }
 
 // Compile is a method of RegProduction that compiles the regular

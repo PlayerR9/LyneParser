@@ -23,7 +23,7 @@ import (
 //
 //   - []gr.NonLeafToken: The parse tree.
 //   - error: An error if the input stream could not be parsed.
-func FullParse(grammar *Grammar, source *cds.Stream[*gr.LeafToken], dt *cs.ConflictSolver) ([]*gr.TokenTree, error) {
+func FullParse(grammar *Grammar, source *cds.Stream[gr.Token], dt *cs.ConflictSolver) ([]*gr.TokenTree, error) {
 	parser, err := NewParser(grammar)
 	if err != nil {
 		return nil, fmt.Errorf("could not create parser: %s", err.Error())
@@ -110,7 +110,7 @@ func findInvalidTokenIndex(branch []gr.LeafToken, data []byte) int {
 //
 //	Hello, word!
 //	       ^
-func FormatSyntaxError(root gr.Tokener, data []byte) string {
+func FormatSyntaxError(root gr.Token, data []byte) string {
 	return TokenerString(root)
 
 	/*

@@ -13,7 +13,7 @@ import (
 
 type ErrLexerError struct {
 	At   int
-	Prev []*gr.LeafToken
+	Prev []gr.Token
 }
 
 func (e *ErrLexerError) Error() string {
@@ -25,7 +25,7 @@ func (e *ErrLexerError) Error() string {
 	return builder.String()
 }
 
-func NewErrLexerError(at int, prev []*gr.LeafToken) *ErrLexerError {
+func NewErrLexerError(at int, prev []gr.Token) *ErrLexerError {
 	e := &ErrLexerError{
 		At:   at,
 		Prev: prev,
@@ -34,10 +34,10 @@ func NewErrLexerError(at int, prev []*gr.LeafToken) *ErrLexerError {
 }
 
 type TreeNode struct {
-	*tr.StatusInfo[EvalStatus, *gr.LeafToken]
+	*tr.StatusInfo[EvalStatus, gr.Token]
 }
 
-func newTreeNode(value *gr.LeafToken) *TreeNode {
+func newTreeNode(value gr.Token) *TreeNode {
 	si := tr.NewStatusInfo(value, EvalIncomplete)
 
 	tn := &TreeNode{
@@ -47,11 +47,11 @@ func newTreeNode(value *gr.LeafToken) *TreeNode {
 	return tn
 }
 
-func convBranch(branch *tr.Branch[*TreeNode]) []*gr.LeafToken {
+func convBranch(branch *tr.Branch[*TreeNode]) []gr.Token {
 	slice := branch.Slice()
 	slice = slice[1:] // Skip the root.
 
-	result := make([]*gr.LeafToken, 0, len(slice))
+	result := make([]gr.Token, 0, len(slice))
 
 	for _, tn := range slice {
 		token := tn.GetData()
@@ -62,7 +62,7 @@ func convBranch(branch *tr.Branch[*TreeNode]) []*gr.LeafToken {
 	return result
 }
 
-func lastOfBranch(branch []*gr.LeafToken) int {
+func lastOfBranch(branch []gr.Token) int {
 	len := len(branch)
 
 	if len == 0 {
@@ -83,7 +83,7 @@ func Lex(s *cds.Stream[byte], productions []*gr.RegProduction, v *Verbose) error
 		if data.ID == gr.RootTokenID {
 			nextAt = 0
 		} else {
-			nextAt = data.At + len(data.Data)
+			nextAt = data.At + len(data.Data.(string))
 		}
 
 		results, err := matchFrom(s, nextAt, productions)

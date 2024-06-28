@@ -12,14 +12,14 @@ import (
 )
 
 type leavesResult struct {
-	leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
+	leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]
 }
 
 func (lr *leavesResult) Size() int {
 	return len(lr.leaves)
 }
 
-func (lr *leavesResult) getFirst() *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]] {
+func (lr *leavesResult) getFirst() *tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]] {
 	if len(lr.leaves) == 0 {
 		return nil
 	}
@@ -36,7 +36,7 @@ type SourceIterator struct {
 	source *cds.Stream[byte]
 
 	// tree is the tree to use.
-	tree *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
+	tree *tr.Tree[*tr.StatusInfo[EvalStatus, gr.Token]]
 
 	// productions are the production rules to use.
 	productions []*gr.RegProduction
@@ -45,7 +45,7 @@ type SourceIterator struct {
 	canContinue bool
 
 	// errBranches are the branches that have errors.
-	errBranches []*tr.Branch[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
+	errBranches []*tr.Branch[*tr.StatusInfo[EvalStatus, gr.Token]]
 
 	// logger is a flag that indicates if the lexer should be verbose.
 	logger *Verbose
@@ -67,7 +67,7 @@ func (si *SourceIterator) Size() (count int) {
 // Parameters:
 //   - matches: The matches to add to the tree evaluator.
 //   - logger: A verbose logger.
-func generateEvalTrees(matches []*gr.MatchedResult[*gr.LeafToken], logger *Verbose) []*tr.StatusInfo[EvalStatus, *gr.LeafToken] {
+func generateEvalTrees(matches []*gr.MatchedResult[gr.Token], logger *Verbose) []*tr.StatusInfo[EvalStatus, gr.Token] {
 	logger.DoIf(func(p *Printer) {
 		// DEBUG: Display the matches
 		p.Print("Matches:")
@@ -80,7 +80,7 @@ func generateEvalTrees(matches []*gr.MatchedResult[*gr.LeafToken], logger *Verbo
 	// Get the longest match.
 	matches = selectBestMatches(matches, logger)
 
-	children := make([]*tr.StatusInfo[EvalStatus, *gr.LeafToken], 0, len(matches))
+	children := make([]*tr.StatusInfo[EvalStatus, gr.Token], 0, len(matches))
 
 	for _, match := range matches {
 		currMatch := match.GetMatch()
@@ -128,8 +128,8 @@ func (si *SourceIterator) lexOne(logger *Verbose) error {
 
 	leaves := si.tree.GetLeaves()
 
-	var success []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
-	var failed []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
+	var success []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]
+	var failed []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]
 
 	for _, leaf := range leaves {
 		ld := leaf.Data
@@ -173,7 +173,7 @@ func (si *SourceIterator) Consume() (*leavesResult, error) {
 			return nil, uc.NewErrExhaustedIter()
 		}
 
-		var leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
+		var leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]
 
 		err := si.lexOne(si.logger)
 		if err != nil {
@@ -185,7 +185,7 @@ func (si *SourceIterator) Consume() (*leavesResult, error) {
 		}
 
 		// Ignore error leaves.
-		f := func(leaf *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) bool {
+		f := func(leaf *tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]) bool {
 			ld := leaf.Data
 			status := ld.GetStatus()
 
@@ -210,7 +210,7 @@ func (si *SourceIterator) Consume() (*leavesResult, error) {
 func (si *SourceIterator) Restart() {
 	si.canContinue = true
 
-	rootNode := gr.NewRootToken()
+	rootNode := gr.RootToken()
 
 	p := tr.NewStatusInfo(rootNode, EvalIncomplete)
 
@@ -227,7 +227,7 @@ func (si *SourceIterator) Restart() {
 // Returns:
 //   - *SourceIterator: The new source iterator.
 func newSourceIterator(source *cds.Stream[byte], productions []*gr.RegProduction, logger *Verbose) *SourceIterator {
-	rootNode := gr.NewRootToken()
+	rootNode := gr.RootToken()
 
 	p := tr.NewStatusInfo(rootNode, EvalIncomplete)
 
@@ -247,14 +247,14 @@ func newSourceIterator(source *cds.Stream[byte], productions []*gr.RegProduction
 // getCompletedBranch gets the completed branch of the tree.
 //
 // Returns:
-//   - []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]: The completed branch.
+//   - []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]: The completed branch.
 //   - bool: True if the branch can continue, false otherwise.
-func (si *SourceIterator) getCompletedBranch() ([]*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], bool) {
+func (si *SourceIterator) getCompletedBranch() ([]*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]], bool) {
 	leaves := si.tree.GetLeaves()
 
 	canContinue := false
 
-	var completedLeaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
+	var completedLeaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]
 
 	for _, leaf := range leaves {
 		ld := leaf.Data
@@ -274,7 +274,7 @@ func (si *SourceIterator) getCompletedBranch() ([]*tr.TreeNode[*tr.StatusInfo[Ev
 //
 // Parameters:
 //   - leaf: The leaf to delete.
-func (si *SourceIterator) deleteBranch(leaf *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
+func (si *SourceIterator) deleteBranch(leaf *tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]) {
 	si.tree.DeleteBranchContaining(leaf)
 }
 
@@ -303,8 +303,8 @@ func (li *LexerIterator) Size() (count int) {
 }
 
 // Consume implements the Iterater interface.
-func (li *LexerIterator) Consume() (*cds.Stream[*gr.LeafToken], error) {
-	var branch *cds.Stream[*gr.LeafToken]
+func (li *LexerIterator) Consume() (*cds.Stream[gr.Token], error) {
+	var branch *cds.Stream[gr.Token]
 
 	for {
 		if li.completedLeaves.Size() == 0 {
@@ -354,7 +354,7 @@ func (li *LexerIterator) Restart() {
 //   - *ErrEmptyInput: The source is empty.
 //   - *uc.ErrAt: An error occurred at a specific index.
 //   - *ErrAllMatchesFailed: All matches failed.
-func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]], error) {
+func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*tr.Tree[*tr.StatusInfo[EvalStatus, gr.Token]], error) {
 	rootNode := gr.NewRootToken()
 
 	tree := tr.NewTreeWithHistory(EvalIncomplete, rootNode)
@@ -371,7 +371,7 @@ func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*
 	cmd := tr.NewSetChildrenCmd(children)
 	tree.ExecuteCommand(cmd)
 
-	tree.ReadData(func(data *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
+	tree.ReadData(func(data *tr.Tree[*tr.StatusInfo[EvalStatus, gr.Token]]) {
 		root := data.Root()
 		root.ChangeStatus(EvalComplete)
 	})
@@ -405,9 +405,9 @@ func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*
 
 		tree.Accept()
 
-		var completedLeaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]
+		var completedLeaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]
 
-		tree.ReadData(func(data *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.LeafToken]]) {
+		tree.ReadData(func(data *tr.Tree[*tr.StatusInfo[EvalStatus, gr.Token]]) {
 			completedLeaves = data.GetLeaves()
 		})
 

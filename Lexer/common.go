@@ -34,7 +34,7 @@ type Lexer struct {
 //
 //	iter := lexer.Lex([]byte("1 + 2"))
 //
-//	var branch *cds.Stream[*gr.LeafToken]
+//	var branch *cds.Stream[gr.Token]
 //	var err error
 //
 //	for {
@@ -188,7 +188,7 @@ func splitBytesFromEnd(data []byte) [][]byte {
 //
 //	Hello, word!
 //	       ^
-func FormatSyntaxError(branch *cds.Stream[*gr.LeafToken], data []byte) string {
+func FormatSyntaxError(branch *cds.Stream[gr.Token], data []byte) string {
 	if branch == nil {
 		return string(data)
 	}
@@ -196,7 +196,7 @@ func FormatSyntaxError(branch *cds.Stream[*gr.LeafToken], data []byte) string {
 	items := branch.GetItems()
 	lastToken := items[len(items)-2]
 
-	firstInvalid := lastToken.At + len(lastToken.Data)
+	firstInvalid := lastToken.At + len(lastToken.Data.(string))
 	if firstInvalid == len(data) {
 		return string(data)
 	}

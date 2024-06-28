@@ -398,11 +398,11 @@ func (cs *ConflictSolver) Solve() error {
 // Returns:
 //   - []Actioner: The actions to take.
 //   - error: An error if the operation failed.
-func (cs *ConflictSolver) Match(stack *ud.History[lls.Stacker[gr.Tokener]]) ([]HelperElem, error) {
-	var top gr.Tokener
+func (cs *ConflictSolver) Match(stack *ud.History[lls.Stacker[gr.Token]]) ([]HelperElem, error) {
+	var top gr.Token
 	var ok bool
 
-	stack.ReadData(func(data lls.Stacker[gr.Tokener]) {
+	stack.ReadData(func(data lls.Stacker[gr.Token]) {
 		top, ok = data.Peek()
 	})
 	if !ok {
@@ -417,7 +417,7 @@ func (cs *ConflictSolver) Match(stack *ud.History[lls.Stacker[gr.Tokener]]) ([]H
 	}
 
 	f := func(h *Helper) (*Helper, error) {
-		cmd := lls.NewPop[gr.Tokener]()
+		cmd := lls.NewPop[gr.Token]()
 		err := stack.ExecuteCommand(cmd)
 		if err != nil {
 			return nil, errors.New("no top token found")

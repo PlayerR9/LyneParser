@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	util "github.com/PlayerR9/LyneParser/Util"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
@@ -16,7 +17,7 @@ import (
 // Returns:
 //   - string: The extracted string.
 //   - error: The error if the extraction fails.
-func ExtractString(root gr.Tokener, id string) (string, error) {
+func ExtractString(root gr.Token, id string) (string, error) {
 	ok, err := IsToken(root, id)
 	if err != nil {
 		return "", err
@@ -24,7 +25,7 @@ func ExtractString(root gr.Tokener, id string) (string, error) {
 		return "", uc.NewErrUnexpected(root.GoString(), id)
 	}
 
-	return root.(*gr.LeafToken).Data, nil
+	return root.Data.(string), nil
 }
 
 // CoreFunc is a function type for the core function of an extractor.
@@ -37,7 +38,7 @@ func ExtractString(root gr.Tokener, id string) (string, error) {
 // Returns:
 //   - O: The result with the extracted strings.
 //   - error: The error if the extraction fails.
-type CoreFunc[O any] func(roots []gr.Tokener, result O, pos int) (O, error)
+type CoreFunc[O any] func(roots []gr.Token, result O, pos int) (O, error)
 
 // Extractor extracts strings from a rule.
 type Extractor[O any] struct {
@@ -103,7 +104,7 @@ func NewExtractor[O any](lhs string, checker *SyntaxChecker, core CoreFunc[O]) E
 // Returns:
 //   - O: The result with the extracted strings.
 //   - error: The error if the extraction fails.
-func (e *Extractor[O]) Apply(root gr.Tokener) (O, error) {
+func (e *Extractor[O]) Apply(root gr.Token) (O, error) {
 	var result O
 
 	if e.core == nil {
@@ -125,31 +126,28 @@ func (e *Extractor[O]) Apply(root gr.Tokener) (O, error) {
 		}
 
 		// ASSUMPTION: 1st RHS is a non-terminal symbol.
-		rootToken, ok := root.(*gr.NonLeafToken)
-		if !ok {
-			return result, NewErrAssumptionViolated(
-				fmt.Errorf("token must be a non-leaf token: %T", root),
-			)
-		}
+		util.Assert(root.IsNonLeaf(), "token must be a non-leaf token")
 
-		err = e.checker.Check(rootToken.Data)
+		data := root.Data.([]gr.Token)
+
+		err = e.checker.Check(data)
 		if err != nil {
 			return result, fmt.Errorf("%q does not match the grammar: %w", e.lhs, err)
 		}
 
-		lastToken := rootToken.Data[len(rootToken.Data)-1]
+		lastToken := data[len(data)-1]
 
 		isNotBaseCase, err := IsToken(lastToken, e.lhs)
 		if err != nil {
 			return result, fmt.Errorf("could not check if %q is not the base case: %w", e.lhs, err)
 		}
 
-		var todo []gr.Tokener
+		var todo []gr.Token
 
 		if isNotBaseCase {
-			todo = rootToken.Data[:len(rootToken.Data)-1]
+			todo = data[:len(data)-1]
 		} else {
-			todo = rootToken.Data
+			todo = data
 		}
 
 		result, err = e.core(todo, result, pos)

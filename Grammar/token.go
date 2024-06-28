@@ -3,6 +3,8 @@ package Grammar
 import (
 	"fmt"
 	"unicode"
+
+	util "github.com/PlayerR9/LyneParser/Util"
 )
 
 const (
@@ -13,31 +15,27 @@ const (
 	RootTokenID string = "ROOT"
 )
 
-// NewEOFToken creates a new end-of-file token.
+// EofToken creates the end-of-file token.
 //
 // Returns:
-//   - *LeafToken: A pointer to the new end-of-file token.
-func NewEOFToken() *LeafToken {
-	tok := &LeafToken{
-		ID:   EOFTokenID,
-		Data: "",
-		At:   -1,
+//   - Token: The end-of-file token.
+func EofToken() Token {
+	tok := Token{
+		ID: EOFTokenID,
+		At: -1,
 	}
-
 	return tok
 }
 
-// NewRootToken creates a new root token.
+// RootToken creates the root token.
 //
 // Returns:
-//   - *LeafToken: A pointer to the new root token.
-func NewRootToken() *LeafToken {
-	tok := &LeafToken{
-		ID:   RootTokenID,
-		Data: "",
-		At:   -1,
+//   - Token: The root token.
+func RootToken() Token {
+	tok := Token{
+		ID: RootTokenID,
+		At: -1,
 	}
-
 	return tok
 }
 
@@ -49,206 +47,167 @@ func NewRootToken() *LeafToken {
 //
 // Returns:
 //   - bool: True if the identifier is a terminal, false otherwise.
+//
+// Asserts:
+//   - The identifier is not empty.
 func IsTerminal(identifier string) bool {
+	util.Assert(identifier != "", "In IsTerminal: identifier is empty")
+
 	firstLetter := []rune(identifier)[0]
 
-	return unicode.IsUpper(firstLetter)
+	ok := unicode.IsUpper(firstLetter)
+	return ok
 }
 
-// Tokener is an interface that defines the methods that a token must implement.
-type Tokener interface {
-	// GetID returns the identifier of the token.
-	//
-	// Returns:
-	//
-	//   - string: The identifier of the token.
-	GetID() string
-
-	// GetData returns the data of the token.
-	//
-	// Returns:
-	//
-	//   - any: The data of the token.
-	GetData() any
-
-	// GetPos returns the position of the token in the input string.
-	//
-	// Returns:
-	//
-	//   - int: The position of the token in the input string.
-	GetPos() int
-
-	// GetLookahead returns the next token in the input string.
-	//
-	// Returns:
-	//
-	//   - LeafToken: The next token in the input string.
-	GetLookahead() *LeafToken
-
-	// SetLookahead sets the next token in the input string.
-	//
-	// Parameters:
-	//
-	//   - lookahead: The next token in the input string.
-	SetLookahead(lookahead *LeafToken)
-
-	fmt.GoStringer
-}
-
-// LeafToken represents a token that contains a single piece of data.
-type LeafToken struct {
+// Token is the information about a token.
+type Token struct {
 	// ID is the identifier of the token.
 	ID string
-
-	// Data is the data of the token.
-	Data string
 
 	// At is the position of the token in the input string.
 	At int
 
 	// Lookahead is the next token in the input string.
-	Lookahead *LeafToken
+	Lookahead *Token
+
+	// Data is the data of the token.
+	// If data is a string, it is the data of a leaf token.
+	// If data is a slice of Token, it is the data of a non-leaf token.
+	// any other type of data is not supported.
+	//
+	// Only EofToken and RootToken have nil data.
+	Data any
 }
 
 // GoString is a method of fmt.GoStringer interface.
-func (t *LeafToken) GoString() string {
-	return fmt.Sprintf("%+v", *t)
+func (tok *Token) GoString() string {
+	str := fmt.Sprintf("%+v", *tok)
+	return str
+}
+
+// NewToken creates a new token info with the given identifier, data, position,
+// and lookahead token.
+//
+// Parameters:
+//   - id: The identifier of the token.
+//   - data: The data of the token.
+//   - at: The position of the token in the input string.
+//   - lookahead: The next token in the input string.
+//
+// Returns:
+//   - *Token: A pointer to the new token info. Nil if the data is nil
+//     or not a string or a slice of Token.
+func NewToken(id string, data any, at int, lookahead *Token) Token {
+	if data == nil {
+		panic("In NewToken: data is nil")
+	}
+
+	switch data.(type) {
+	case string, []Token:
+		tok := Token{
+			ID:        id,
+			Data:      data,
+			At:        at,
+			Lookahead: lookahead,
+		}
+		return tok
+	default:
+		panic("In NewToken: data is not a string or a slice of Token")
+	}
 }
 
 // GetID returns the identifier of the token.
 //
 // Returns:
 //   - string: The identifier of the token.
-func (t *LeafToken) GetID() string {
-	return t.ID
-}
-
-// GetData returns the data of the token.
-//
-// Returns:
-//   - any: The data of the token.
-func (t *LeafToken) GetData() any {
-	return t.Data
-}
-
-// GetPos returns the position of the token in the input string.
-//
-// Returns:
-//
-//   - int: The position of the token in the input string.
-func (t *LeafToken) GetPos() int {
-	return t.At
-}
-
-// GetLookahead returns the next token in the input string.
-//
-// Returns:
-//   - LeafToken: The next token in the input string.
-func (t *LeafToken) GetLookahead() *LeafToken {
-	return t.Lookahead
-}
-
-// SetLookahead sets the next token in the input string.
-//
-// Parameters:
-//   - lookahead: The next token in the input string.
-func (t *LeafToken) SetLookahead(lookahead *LeafToken) {
-	t.Lookahead = lookahead
-}
-
-// NewLeafToken creates a new leaf token with the given identifier, data, and position.
-//
-// Parameters:
-//   - id: The identifier of the token.
-//   - data: The data of the token.
-//   - at: The position of the token in the input string.
-//
-// Returns:
-//   - *LeafToken: A pointer to the new leaf token.
-func NewLeafToken(id string, data string, at int) *LeafToken {
-	return &LeafToken{
-		ID:        id,
-		Data:      data,
-		At:        at,
-		Lookahead: nil,
-	}
-}
-
-// NonLeafToken represents a token that contains multiple pieces of data.
-type NonLeafToken struct {
-	// ID is the identifier of the token.
-	ID string
-
-	// Data is the data of the token.
-	Data []Tokener
-
-	// At is the position of the token in the input string.
-	At int
-
-	// Lookahead is the next token in the input string.
-	Lookahead *LeafToken
-}
-
-// GoString is a method of fmt.GoStringer interface.
-func (t *NonLeafToken) GoString() string {
-	return fmt.Sprintf("%+v", *t)
-}
-
-// GetID returns the identifier of the token.
-//
-// Returns:
-//   - string: The identifier of the token.
-func (t *NonLeafToken) GetID() string {
-	return t.ID
-}
-
-// GetData returns the data of the token.
-//
-// Returns:
-//   - any: The data of the token.
-func (t *NonLeafToken) GetData() any {
-	return t.Data
+func (tok *Token) GetID() string {
+	return tok.ID
 }
 
 // GetPos returns the position of the token in the input string.
 //
 // Returns:
 //   - int: The position of the token in the input string.
-func (t *NonLeafToken) GetPos() int {
-	return t.At
+func (tok *Token) GetPos() int {
+	return tok.At
 }
 
 // GetLookahead returns the next token in the input string.
 //
 // Returns:
-//   - LeafToken: The next token in the input string.
-func (t *NonLeafToken) GetLookahead() *LeafToken {
-	return t.Lookahead
+//   - *Token: The next token in the input string.
+func (tok *Token) GetLookahead() *Token {
+	return tok.Lookahead
 }
 
 // SetLookahead sets the next token in the input string.
 //
 // Parameters:
-//
 //   - lookahead: The next token in the input string.
-func (t *NonLeafToken) SetLookahead(lookahead *LeafToken) {
-	t.Lookahead = lookahead
+func (tok *Token) SetLookahead(lookahead *Token) {
+	tok.Lookahead = lookahead
 }
 
-// NewNonLeafToken creates a new non-leaf token with the given identifier, data, and position.
-//
-// Parameters:
-//   - id: The identifier of the token.
-//   - data: The data of the token.
-//   - at: The position of the token in the input string.
+// IsLeaf checks if the token is a leaf token.
 //
 // Returns:
-//   - *NonLeafToken: A pointer to the new non-leaf token.
-func NewNonLeafToken(id string, at int, data ...Tokener) *NonLeafToken {
-	return &NonLeafToken{
-		ID:        id,
-		At:        at,
-		Data:      data,
-		Lookahead: nil,
+//   - bool: True if the token is a leaf token, false otherwise.
+func (tok *Token) IsLeaf() bool {
+	_, ok := tok.Data.(string)
+	return ok
+}
+
+// IsNonLeaf checks if the token is a non-leaf token.
+//
+// Returns:
+//   - bool: True if the token is a non-leaf token, false otherwise.
+func (tok *Token) IsNonLeaf() bool {
+	_, ok := tok.Data.([]Token)
+	return ok
+}
+
+// GetData returns the data of the token.
+//
+// Data can only be a string or a slice of Token. Unless
+// the token is the EofToken or the RootToken, the data
+// should not be nil.
+//
+// Returns:
+//   - any: The data of the token.
+func (tok *Token) GetData() any {
+	return tok.Data
+}
+
+// Copy creates a copy of the token.
+//
+// It does not copy the lookahead token.
+//
+// Returns:
+//   - Token: A copy of the token.
+func (tok *Token) Copy() Token {
+	lt := Token{
+		ID: tok.ID,
+		At: tok.At,
 	}
+
+	if tok.Data == nil {
+		return lt
+	}
+
+	switch data := tok.Data.(type) {
+	case string:
+		lt.Data = data
+	case []Token:
+		sliceCopy := make([]Token, 0, len(data))
+		for _, elem := range data {
+			elemCopy := elem.Copy()
+			sliceCopy = append(sliceCopy, elemCopy)
+		}
+
+		lt.Data = sliceCopy
+	default:
+		panic("In Token.Copy: unsupported data type")
+	}
+
+	return lt
 }

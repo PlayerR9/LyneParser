@@ -217,7 +217,7 @@ func (h *Helper) SubstituteRhsAt(index int, otherH *Helper) *Helper {
 //
 // Behaviors:
 //   - The stack is refused.
-func (h *Helper) Match(top gr.Tokener, stack *ud.History[lls.Stacker[gr.Tokener]]) error {
+func (h *Helper) Match(top gr.Token, stack *ud.History[lls.Stacker[gr.Token]]) error {
 	var err error
 
 	switch act := h.Action.(type) {

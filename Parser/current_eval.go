@@ -12,7 +12,7 @@ import (
 // CurrentEval is a struct that represents the current evaluation of the parser.
 type CurrentEval struct {
 	// stack represents the stack that the parser will use.
-	stack *ud.History[lls.Stacker[gr.Tokener]]
+	stack *ud.History[lls.Stacker[gr.Token]]
 
 	// currentIndex is the current index of the input stream.
 	currentIndex int
@@ -27,7 +27,7 @@ type CurrentEval struct {
 //   - uc.Copier: A copy of the current evaluation.
 func (ce *CurrentEval) Copy() uc.Copier {
 	return &CurrentEval{
-		stack:        ce.stack.Copy().(*ud.History[lls.Stacker[gr.Tokener]]),
+		stack:        ce.stack.Copy().(*ud.History[lls.Stacker[gr.Token]]),
 		currentIndex: ce.currentIndex,
 		isDone:       ce.isDone,
 	}
@@ -51,7 +51,7 @@ func NewCurrentEval() *CurrentEval {
 		isDone:       false,
 	}
 
-	ce.stack = lls.NewStackWithHistory(lls.NewLinkedStack[gr.Tokener]())
+	ce.stack = lls.NewStackWithHistory(lls.NewLinkedStack[gr.Token]())
 
 	return ce
 }
@@ -74,7 +74,7 @@ func (ce *CurrentEval) GetParseTree() ([]*gr.TokenTree, error) {
 	var forest []*gr.TokenTree
 
 	for {
-		cmd := lls.NewPop[gr.Tokener]()
+		cmd := lls.NewPop[gr.Token]()
 		err := ce.stack.ExecuteCommand(cmd)
 		if err != nil {
 			break
@@ -96,13 +96,13 @@ func (ce *CurrentEval) GetParseTree() ([]*gr.TokenTree, error) {
 //
 // Returns:
 //   - error: An error of type *ErrNoAccept if the input stream is done.
-func (ce *CurrentEval) shift(source *cds.Stream[*gr.LeafToken]) error {
+func (ce *CurrentEval) shift(source *cds.Stream[gr.Token]) error {
 	toks, err := source.Get(ce.currentIndex, 1)
 	if err != nil || len(toks) == 0 {
 		return NewErrNoAccept()
 	}
 
-	cmd := lls.NewPush[gr.Tokener](toks[0])
+	cmd := lls.NewPush[gr.Token](toks[0])
 	ce.stack.ExecuteCommand(cmd)
 
 	ce.currentIndex++
@@ -121,8 +121,8 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 	lhs := rule.GetLhs()
 	rhss := rule.ReverseIterator()
 
-	var lookahead *gr.LeafToken = nil
-	var popped []gr.Tokener
+	var lookahead *gr.Token
+	var popped []gr.Token
 
 	for {
 		value, err := rhss.Consume()
@@ -130,7 +130,7 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 			break
 		}
 
-		cmd := lls.NewPop[gr.Tokener]()
+		cmd := lls.NewPop[gr.Token]()
 		err = ce.stack.ExecuteCommand(cmd)
 		if err != nil {
 			ce.stack.Reject()
@@ -153,10 +153,9 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 
 	ce.stack.Accept()
 
-	tok := gr.NewNonLeafToken(lhs, 0, popped...)
-	tok.Lookahead = lookahead
+	tok := gr.NewToken(lhs, popped, 0, lookahead)
 
-	cmd := lls.NewPush[gr.Tokener](tok)
+	cmd := lls.NewPush[gr.Token](tok)
 	ce.stack.ExecuteCommand(cmd)
 
 	return nil
@@ -171,7 +170,7 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 // Returns:
 //   - bool: True if the parser has accepted the input stream.
 //   - error: An error if the parser could not act on the decision.
-func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *cds.Stream[*gr.LeafToken]) error {
+func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *cds.Stream[gr.Token]) error {
 	var err error
 
 	switch decision := decision.(type) {
@@ -204,7 +203,7 @@ func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *cds.Stream[
 // Returns:
 //   - []*CurrentEval: A slice of current evaluations.
 //   - error: An error if the input stream could not be parsed.
-func (ce *CurrentEval) Parse(source *cds.Stream[*gr.LeafToken], dt *cs.ConflictSolver) ([]*CurrentEval, error) {
+func (ce *CurrentEval) Parse(source *cds.Stream[gr.Token], dt *cs.ConflictSolver) ([]*CurrentEval, error) {
 	decisions, err := dt.Match(ce.stack)
 	ce.stack.Reject()
 

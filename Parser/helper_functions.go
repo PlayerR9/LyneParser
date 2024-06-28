@@ -22,7 +22,7 @@ import (
 //   - If the matcher returns an error, the solutions will be set to the error.
 //   - The evaluations assume that, the more the element is elaborated, the more the weight increases.
 //     Thus, it is assumed to be the most likely solution as it is the most elaborated. Euristic: Depth.
-func evaluate(dt *cs.ConflictSolver, source *cds.Stream[*gr.LeafToken], elem *CurrentEval) []*us.WeightedHelper[*CurrentEval] {
+func evaluate(dt *cs.ConflictSolver, source *cds.Stream[gr.Token], elem *CurrentEval) []*us.WeightedHelper[*CurrentEval] {
 	ok := elem.Accept()
 	if ok {
 		h := us.NewWeightedHelper(elem, nil, 0.0)
@@ -116,7 +116,7 @@ func extractResults(sols []*us.WeightedHelper[*CurrentEval]) ([]*CurrentEval, er
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branch cannot be parsed.
-func ParseBranch(parser *Parser, source *cds.Stream[*gr.LeafToken]) ([]*gr.TokenTree, error) {
+func ParseBranch(parser *Parser, source *cds.Stream[gr.Token]) ([]*gr.TokenTree, error) {
 	err := Parse(parser, source)
 	if err != nil {
 		return nil, err

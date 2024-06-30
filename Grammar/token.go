@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"unicode"
 
-	util "github.com/PlayerR9/LyneParser/Util"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
 const (
@@ -51,7 +51,7 @@ func RootToken() Token {
 // Asserts:
 //   - The identifier is not empty.
 func IsTerminal(identifier string) bool {
-	util.Assert(identifier != "", "In IsTerminal: identifier is empty")
+	uc.Assert(identifier != "", "In IsTerminal: identifier is empty")
 
 	firstLetter := []rune(identifier)[0]
 

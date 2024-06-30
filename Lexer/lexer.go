@@ -121,7 +121,7 @@ func (si *SourceIterator) lexOne(logger *Verbose) error {
 			panic(err)
 		}
 
-		pages := ffs.Stringfy(printer.GetPages())
+		pages := ffs.Stringfy(printer.GetPages(), 1)
 
 		p.Print(pages[0])
 	})

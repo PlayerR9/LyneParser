@@ -3,7 +3,7 @@ package Parser
 import (
 	"fmt"
 
-	util "github.com/PlayerR9/LyneParser/Util"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
@@ -97,7 +97,7 @@ func (p *Parser) getDecision(top gr.Token) (Actioner, error) {
 }
 
 func (p *Parser) shift() {
-	util.Assert(len(p.input) > 0, "input is empty")
+	uc.Assert(len(p.input) > 0, "input is empty")
 
 	first := p.input[0]
 	p.input = p.input[1:]
@@ -107,7 +107,7 @@ func (p *Parser) shift() {
 
 func (p *Parser) reduce() error {
 	top1, ok := p.stack.Pop()
-	util.Assert(ok, "stack is empty")
+	uc.Assert(ok, "stack is empty")
 
 	id := top1.GetID()
 

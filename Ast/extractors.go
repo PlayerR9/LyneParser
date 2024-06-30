@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	util "github.com/PlayerR9/LyneParser/Util"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
@@ -121,7 +120,7 @@ func (e *Extractor[O]) Apply(root gr.Token) (O, error) {
 		}
 
 		// ASSUMPTION: 1st RHS is a non-terminal symbol.
-		util.Assert(root.IsNonLeaf(), "token must be a non-leaf token")
+		uc.Assert(root.IsNonLeaf(), "token must be a non-leaf token")
 
 		data := root.Data.([]gr.Token)
 

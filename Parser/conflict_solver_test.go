@@ -47,7 +47,7 @@ func TestAmbiguousShifts(t *testing.T) {
 		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages := strings.Join(ffs.Stringfy(doc), "\f")
+	pages := strings.Join(ffs.Stringfy(doc, 1), "\f")
 
 	t.Log(pages)
 
@@ -62,7 +62,7 @@ func TestAmbiguousShifts(t *testing.T) {
 		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages = strings.Join(ffs.Stringfy(doc), "\f")
+	pages = strings.Join(ffs.Stringfy(doc, 1), "\f")
 
 	t.Log(pages)
 }
@@ -83,7 +83,7 @@ func TestConflictSolver(t *testing.T) {
 		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages := strings.Join(ffs.Stringfy(doc), "\f")
+	pages := strings.Join(ffs.Stringfy(doc, 1), "\f")
 
 	t.Log(pages)
 
@@ -98,7 +98,7 @@ func TestConflictSolver(t *testing.T) {
 		t.Fatalf("ffs.SprintFString() returned an error: %s", err.Error())
 	}
 
-	pages = strings.Join(ffs.Stringfy(doc), "\n")
+	pages = strings.Join(ffs.Stringfy(doc, 1), "\n")
 
 	t.Log(pages)
 

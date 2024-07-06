@@ -2,15 +2,16 @@ package ConflictSolver
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
 // RuleTable represents a table of items.
-type RuleTable struct {
+type RuleTable[T uc.Enumer] struct {
 	// items is the items of the rule table.
-	items []*Item
+	items []*Item[T]
 
 	// buckets is the buckets of the rule table.
-	buckets map[string][]*Helper
+	buckets map[T][]*Helper[T]
 }
 
 // NewRuleTable is a constructor of RuleTable.
@@ -21,9 +22,9 @@ type RuleTable struct {
 //
 // Returns:
 //   - *RuleTable: The new rule table.
-func NewRuleTable(symbols []string, rules []*gr.Production) *RuleTable {
-	rt := &RuleTable{
-		items: make([]*Item, 0),
+func NewRuleTable[T uc.Enumer](symbols []T, rules []*gr.Production[T]) *RuleTable[T] {
+	rt := &RuleTable[T]{
+		items: make([]*Item[T], 0),
 	}
 
 	for _, s := range symbols {
@@ -49,9 +50,9 @@ func NewRuleTable(symbols []string, rules []*gr.Production) *RuleTable {
 // getItemBuckets gets the item buckets of the rule table.
 //
 // Returns:
-//   - map[string]*uts.Bucket[*Helper]: The item buckets.
-func (rt *RuleTable) getItemBuckets() map[string][]*Helper {
-	buckets := make(map[string][]*Helper)
+//   - map[T]*uts.Bucket[*Helper]: The item buckets.
+func (rt *RuleTable[T]) getItemBuckets() map[T][]*Helper[T] {
+	buckets := make(map[T][]*Helper[T])
 
 	for _, item := range rt.items {
 		symbol, err := item.Rule.GetRhsAt(item.Pos)
@@ -61,19 +62,19 @@ func (rt *RuleTable) getItemBuckets() map[string][]*Helper {
 
 		lastIndex := item.Rule.Size() - 1
 
-		var act HelperElem
+		var act HelperElem[T]
 
 		if item.Pos == lastIndex {
-			act = NewActReduce(item.Rule, symbol == gr.EOFTokenID)
+			act = NewActReduce(item.Rule, symbol.String() == gr.EOFTokenID)
 		} else {
-			act = NewActShift()
+			act = NewActShift[T]()
 		}
 
 		h := NewHelper(item, act)
 
 		prev, ok := buckets[symbol]
 		if !ok {
-			prev = []*Helper{h}
+			prev = []*Helper[T]{h}
 		} else {
 			prev = append(prev, h)
 		}
@@ -87,12 +88,12 @@ func (rt *RuleTable) getItemBuckets() map[string][]*Helper {
 // GetBucketsCopy gets a copy of the buckets of the rule table.
 //
 // Returns:
-//   - map[string]*uts.Bucket[*Helper]: The copy of the buckets.
-func (rt *RuleTable) GetBucketsCopy() map[string][]*Helper {
-	buckets := make(map[string][]*Helper)
+//   - map[T]*uts.Bucket[*Helper]: The copy of the buckets.
+func (rt *RuleTable[T]) GetBucketsCopy() map[T][]*Helper[T] {
+	buckets := make(map[T][]*Helper[T])
 
 	for k, v := range rt.buckets {
-		vCopy := make([]*Helper, len(v))
+		vCopy := make([]*Helper[T], len(v))
 		copy(vCopy, v)
 
 		buckets[k] = vCopy

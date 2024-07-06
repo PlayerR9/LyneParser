@@ -7,13 +7,32 @@ import (
 	"unicode"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	com "github.com/PlayerR9/LyneParser/SimpleLexer/Common"
 	stm "github.com/PlayerR9/LyneParser/SimpleLexer/Stream"
 )
+
+var (
+	singleTokens map[rune]com.TestTkType
+)
+
+func init() {
+	singleTokens = map[rune]com.TestTkType{
+		'|':  com.TkBinOp,
+		'!':  com.TkBinOp,
+		'&':  com.TkBinOp,
+		'^':  com.TkBinOp,
+		'(':  com.TkOpParen,
+		')':  com.TkClParen,
+		' ':  com.TkWs,
+		'\t': com.TkWs,
+		'0':  com.TkImmediate,
+	}
+}
 
 type Lexer struct {
 	is stm.Stream
 
-	tokens []gr.Token
+	tokens []*gr.Token[com.TestTkType]
 }
 
 func (l *Lexer) peekNext() (*rune, error) {
@@ -30,10 +49,10 @@ func (l *Lexer) peekNext() (*rune, error) {
 	return nil, fmt.Errorf("failed to peek next character: %w", err)
 }
 
-func (l *Lexer) lexNRepeat(leading rune, label1, label2 string, tails ...rune) (gr.Token, error) {
+func (l *Lexer) lexNRepeat(leading rune, label1, label2 com.TestTkType, tails ...rune) (*gr.Token[com.TestTkType], error) {
 	next, err := l.peekNext()
 	if err != nil {
-		return gr.Token{}, fmt.Errorf("after %c: %w", leading, err)
+		return nil, fmt.Errorf("after %c: %w", leading, err)
 	}
 
 	if next == nil {
@@ -64,19 +83,19 @@ func (l *Lexer) lexNRepeat(leading rune, label1, label2 string, tails ...rune) (
 	return lt, nil
 }
 
-func (l *Lexer) lex2Repeat(leading rune, label string, fn func(rune) error) (gr.Token, error) {
+func (l *Lexer) lex2Repeat(leading rune, label com.TestTkType, fn func(rune) error) (*gr.Token[com.TestTkType], error) {
 	next, err := l.peekNext()
 	if err != nil {
-		return gr.Token{}, fmt.Errorf("after %c: %w", leading, err)
+		return nil, fmt.Errorf("after %c: %w", leading, err)
 	}
 
 	if next == nil {
-		return gr.Token{}, fmt.Errorf("after %c: expected tail, got EOF", leading)
+		return nil, fmt.Errorf("after %c: expected tail, got EOF", leading)
 	}
 
 	err = fn(*next)
 	if err != nil {
-		return gr.Token{}, fmt.Errorf("after %c: %w", leading, err)
+		return nil, fmt.Errorf("after %c: %w", leading, err)
 	}
 
 	// leading tail -> label
@@ -88,7 +107,7 @@ func (l *Lexer) lex2Repeat(leading rune, label string, fn func(rune) error) (gr.
 	return lt, nil
 }
 
-func (l *Lexer) lexRepeated(leading rune, label string, fn func(rune) (bool, error)) (gr.Token, error) {
+func (l *Lexer) lexRepeated(leading rune, label com.TestTkType, fn func(rune) (bool, error)) (*gr.Token[com.TestTkType], error) {
 	var builder strings.Builder
 
 	builder.WriteRune(leading)
@@ -96,7 +115,7 @@ func (l *Lexer) lexRepeated(leading rune, label string, fn func(rune) (bool, err
 	for {
 		next, err := l.peekNext()
 		if err != nil {
-			return gr.Token{}, fmt.Errorf("after %c: %w", leading, err)
+			return nil, fmt.Errorf("after %c: %w", leading, err)
 		}
 
 		if next == nil {
@@ -105,7 +124,7 @@ func (l *Lexer) lexRepeated(leading rune, label string, fn func(rune) (bool, err
 
 		ok, err := fn(*next)
 		if err != nil {
-			return gr.Token{}, fmt.Errorf("after %c: %w", leading, err)
+			return nil, fmt.Errorf("after %c: %w", leading, err)
 		}
 
 		if !ok {
@@ -122,10 +141,10 @@ func (l *Lexer) lexRepeated(leading rune, label string, fn func(rune) (bool, err
 	return lt, nil
 }
 
-func (l *Lexer) lexOne() (gr.Token, error) {
+func (l *Lexer) lexOne() (*gr.Token[com.TestTkType], error) {
 	char, err := l.is.Next()
 	if err != nil {
-		return gr.Token{}, err
+		return nil, err
 	}
 
 	id, ok := singleTokens[char]
@@ -136,15 +155,15 @@ func (l *Lexer) lexOne() (gr.Token, error) {
 		return lt, nil
 	}
 
-	var lt gr.Token
+	var lt *gr.Token[com.TestTkType]
 
 	switch char {
 	case '+':
-		lt, err = l.lexNRepeat(char, "binary_operator", "unary_operator", '+')
+		lt, err = l.lexNRepeat(char, com.TkBinOp, com.TkUnaryOp, '+')
 	case '-':
-		lt, err = l.lexNRepeat(char, "binary_operator", "unary_operator", '-')
+		lt, err = l.lexNRepeat(char, com.TkBinOp, com.TkUnaryOp, '-')
 	case '>':
-		lt, err = l.lexNRepeat(char, "right_arrow", "unary_operator", '>')
+		lt, err = l.lexNRepeat(char, com.TkRightArrow, com.TkUnaryOp, '>')
 	case '$':
 		// register
 		// "$" "a".."z"
@@ -162,18 +181,18 @@ func (l *Lexer) lexOne() (gr.Token, error) {
 			return nil
 		}
 
-		lt, err = l.lex2Repeat(char, "register", f)
+		lt, err = l.lex2Repeat(char, com.TkRegister, f)
 	case '\n':
 		f := func(r rune) (bool, error) {
 			return r == '\n', nil
 		}
 
-		lt, err = l.lexRepeated(char, "newline", f)
+		lt, err = l.lexRepeated(char, com.TkNewline, f)
 	default:
 		ok := unicode.IsDigit(char)
 		if !ok {
 			pos := l.is.Pos()
-			return gr.Token{}, fmt.Errorf("invalid character %c at index %d", char, pos)
+			return nil, fmt.Errorf("invalid character %c at index %d", char, pos)
 		}
 
 		// digit | number
@@ -184,23 +203,23 @@ func (l *Lexer) lexOne() (gr.Token, error) {
 			return ok, nil
 		}
 
-		lt, err = l.lexRepeated(char, "immediate", f)
+		lt, err = l.lexRepeated(char, com.TkImmediate, f)
 	}
 	if err != nil {
-		return gr.Token{}, err
+		return nil, err
 	}
 
 	return lt, nil
 }
 
-func Lex(data []byte) ([]gr.Token, error) {
+func Lex(data []byte) ([]*gr.Token[com.TestTkType], error) {
 	is := stm.NewStream(data)
 
 	l := &Lexer{
 		is: is,
 	}
 
-	var lt gr.Token
+	var lt *gr.Token[com.TestTkType]
 	var err error
 
 	for {
@@ -209,7 +228,7 @@ func Lex(data []byte) ([]gr.Token, error) {
 			break
 		}
 
-		if lt.ID != "ws" {
+		if lt.ID != com.TkWs {
 			l.tokens = append(l.tokens, lt)
 		}
 	}
@@ -224,14 +243,14 @@ func Lex(data []byte) ([]gr.Token, error) {
 	return l.tokens, nil
 }
 
-func addEOF(tokens []gr.Token) []gr.Token {
-	lt := gr.EofToken()
+func addEOF(tokens []*gr.Token[com.TestTkType]) []*gr.Token[com.TestTkType] {
+	lt := gr.NewToken(com.TkEof, nil, 0, nil)
 
 	tokens = append(tokens, lt)
 
 	for i := 0; i < len(tokens)-1; i++ {
 		token := tokens[i]
-		token.SetLookahead(&tokens[i+1])
+		token.SetLookahead(tokens[i+1])
 	}
 
 	return tokens

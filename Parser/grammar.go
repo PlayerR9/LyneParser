@@ -2,56 +2,20 @@ package Parser
 
 import (
 	"slices"
-	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
-// parseProductionRule is a helper function that parses a production rule.
-//
-// Parameters:
-//   - str: The production rule to parse.
-//
-// Returns:
-//   - []*Production: A slice of productions.
-//   - error: An error if there was a problem parsing the production rule.
-func parseProductionRule(str string) ([]*gr.Production, error) {
-	sides, err := gr.SplitByArrow(str)
-	if err != nil {
-		return nil, uc.NewErrWhile("parsing production rules", err)
-	}
-
-	lhs := sides[0]
-	rhs := sides[1]
-
-	rhss := strings.Split(rhs, "|")
-
-	for i := 0; i < len(rhss); i++ {
-		rhss[i] = strings.TrimSpace(rhss[i])
-	}
-
-	var productions []*gr.Production
-
-	for _, r := range rhss {
-		prod := gr.NewProduction(lhs, r)
-
-		productions = append(productions, prod)
-	}
-
-	return productions, nil
-}
-
 // Grammar represents a context-free grammar.
-type Grammar struct {
+type Grammar[T uc.Enumer] struct {
 	// productions is a slice of productions in the grammar.
-	productions []*gr.Production
+	productions []*gr.Production[T]
 
 	// symbols is a slice of symbols in the grammar.
-	symbols []string
+	symbols []T
 }
 
 // NewGrammar is a constructor of an empty ParserGrammar.
@@ -67,66 +31,46 @@ type Grammar struct {
 //
 // Returns:
 //   - *ParserGrammar: A new empty ParserGrammar.
-func NewGrammar(rules string) (*Grammar, error) {
-	parsed := strings.Split(rules, "\n")
-	parsed = us.RemoveEmpty(parsed)
-	if len(parsed) == 0 {
-		g := &Grammar{
-			productions: make([]*gr.Production, 0),
-			symbols:     make([]string, 0),
-		}
-		return g, nil
+func NewGrammar[T uc.Enumer]() (*Grammar[T], error) {
+	g := &Grammar[T]{
+		productions: make([]*gr.Production[T], 0),
+		symbols:     make([]T, 0),
 	}
+	return g, nil
 
-	// Parse production rules
-	var productions []*gr.Production
+}
 
-	for _, rule := range parsed {
-		tmp, err := parseProductionRule(rule)
-		if err != nil {
-			return nil, uc.NewErrWhile("parsing production rules", err)
-		}
+// AddRule adds a new rule to the grammar.
+//
+// Parameters:
+//   - lhs: The left-hand side of the production.
+//   - rhss: The right-hand side of the production.
+//
+// Returns:
+//   - error: An error if there was a problem adding the rule.
+func (g *Grammar[T]) AddRule(lhs T, rhss []T) error {
+	production := gr.NewProduction(lhs, rhss)
 
-		productions = append(productions, tmp...)
-	}
+	g.productions = append(g.productions, production)
 
-	productions = us.UniquefyEquals(productions, true)
+	tmp := production.GetSymbols()
 
-	if productions == nil {
-		g := &Grammar{
-			productions: make([]*gr.Production, 0),
-			symbols:     make([]string, 0),
-		}
-		return g, nil
-	}
-
-	var symbols []string
-
-	for _, p := range productions {
-		tmp := p.GetSymbols()
-
-		for _, s := range tmp {
-			pos, ok := slices.BinarySearch(symbols, s)
-			if !ok {
-				symbols = slices.Insert(symbols, pos, s)
-			}
+	for _, t := range tmp {
+		pos, found := slices.BinarySearch(g.symbols, t)
+		if !found {
+			g.symbols = slices.Insert(g.symbols, pos, t)
 		}
 	}
 
-	grammar := &Grammar{
-		productions: productions,
-		symbols:     symbols,
-	}
-
-	return grammar, nil
+	return nil
 }
 
 // GetSymbols returns a slice of symbols in the grammar.
 //
 // Returns:
-//   - []string: A slice of symbols in the grammar.
-func (g *Grammar) GetSymbols() []string {
-	symbols := make([]string, len(g.symbols))
+//   - []T: A slice of symbols in the grammar.
+func (g *Grammar[T]) GetSymbols() []T {
+	symbols := make([]T, len(g.symbols))
 	copy(symbols, g.symbols)
 
 	return symbols
@@ -140,8 +84,8 @@ func (g *Grammar) GetSymbols() []string {
 //
 // Returns:
 //   - []MatchedResult: A slice of MatchedResult that match the input token.
-func (g *Grammar) ProductionMatch(at int, stack *ud.History[lls.Stacker[gr.Token]]) []*gr.MatchedResult[gr.Token] {
-	var matches []*gr.MatchedResult[gr.Token]
+func (g *Grammar[T]) ProductionMatch(at int, stack *ud.History[lls.Stacker[*gr.Token[T]]]) []*gr.MatchedResult[T] {
+	var matches []*gr.MatchedResult[T]
 
 	for i, p := range g.productions {
 		matched, err := p.Match(at, stack)
@@ -158,8 +102,8 @@ func (g *Grammar) ProductionMatch(at int, stack *ud.History[lls.Stacker[gr.Token
 //
 // Returns:
 //   - []*Production: A slice of Production in the grammar.
-func (g *Grammar) GetProductions() []*gr.Production {
-	prods := make([]*gr.Production, len(g.productions))
+func (g *Grammar[T]) GetProductions() []*gr.Production[T] {
+	prods := make([]*gr.Production[T], len(g.productions))
 	copy(prods, g.productions)
 
 	return prods

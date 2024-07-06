@@ -8,89 +8,79 @@ import (
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
-var (
-	// matchWeightFunc is a weight function that returns the length of the match.
-	//
-	// Parameters:
-	//   - match: The match to weigh.
-	//
-	// Returns:
-	//   - float64: The weight of the match.
-	//   - bool: True if the weight is valid, false otherwise.
-	matchWeightFunc us.WeightFunc[*gr.MatchedResult[gr.Token]]
+// matchWeightFunc is a weight function that returns the length of the match.
+//
+// Parameters:
+//   - match: The match to weigh.
+//
+// Returns:
+//   - float64: The weight of the match.
+//   - bool: True if the weight is valid, false otherwise.
+func matchWeightFunc[T uc.Enumer](elem *gr.MatchedResult[T]) (float64, bool) {
+	return float64(len(elem.Matched.Data.(string))), true
+}
 
-	// filterErrorLeaves is a filter that filters out leaves that are in error.
-	//
-	// Parameters:
-	//   - leaf: The leaf to filter.
-	//
-	// Returns:
-	//   - bool: True if the leaf is in error, false otherwise.
-	filterErrorLeaves us.PredicateFilter[*tr.StatusInfo[EvalStatus, gr.Token]]
+// filterErrorLeaves is a filter that filters out leaves that are in error.
+//
+// Parameters:
+//   - leaf: The leaf to filter.
+//
+// Returns:
+//   - bool: True if the leaf is in error, false otherwise.
+func filterErrorLeaves[T uc.Enumer](h *tr.StatusInfo[EvalStatus, *gr.Token[T]]) bool {
+	status := h.GetStatus()
+	return status == EvalError
+}
 
-	// selectBestMatches selects the best matches from the list of matches.
-	// Usually, the best matches' euristic is the longest match.
-	//
-	// Parameters:
-	//   - matches: The list of matches.
-	//   - logger: A verbose logger.
-	//
-	// Returns:
-	//   - []*gr.MatchedResult[gr.Token]: The best matches.
-	selectBestMatches func(matches []*gr.MatchedResult[gr.Token], logger *Verbose) []*gr.MatchedResult[gr.Token]
-)
+// selectBestMatches selects the best matches from the list of matches.
+// Usually, the best matches' euristic is the longest match.
+//
+// Parameters:
+//   - matches: The list of matches.
+//   - logger: A verbose logger.
+//
+// Returns:
+//   - []*gr.MatchedResult: The best matches.
+func selectBestMatches[T uc.Enumer](matches []*gr.MatchedResult[T], logger *Verbose) []*gr.MatchedResult[T] {
+	logger.DoIf(func(p *Printer) {
+		p.Print("Selecting best matches...")
+	})
 
-func init() {
-	matchWeightFunc = func(elem *gr.MatchedResult[gr.Token]) (float64, bool) {
-		return float64(len(elem.Matched.Data.(string))), true
-	}
+	weights := us.ApplyWeightFunc(matches, matchWeightFunc)
+	pairs := us.FilterByPositiveWeight(weights)
 
-	filterErrorLeaves = func(h *tr.StatusInfo[EvalStatus, gr.Token]) bool {
-		status := h.GetStatus()
-		return status == EvalError
-	}
+	results := us.ExtractResults(pairs)
 
-	selectBestMatches = func(matches []*gr.MatchedResult[gr.Token], logger *Verbose) []*gr.MatchedResult[gr.Token] {
-		logger.DoIf(func(p *Printer) {
-			p.Print("Selecting best matches...")
-		})
+	logger.DoIf(func(p *Printer) {
+		p.Print("The best matches are:")
 
-		weights := us.ApplyWeightFunc(matches, matchWeightFunc)
-		pairs := us.FilterByPositiveWeight(weights)
+		for _, elem := range results {
+			p.Printf("\t%+v", elem.Matched.Data)
+		}
+	})
 
-		results := us.ExtractResults(pairs)
-
-		logger.DoIf(func(p *Printer) {
-			p.Print("The best matches are:")
-
-			for _, elem := range results {
-				p.Printf("\t%+v", elem.Matched.Data)
-			}
-		})
-
-		return results
-	}
-
+	return results
 }
 
 // SetEOFToken sets the end-of-file token in the token stream.
 //
 // If the end-of-file token is already present, it will not be added again.
-func setEOFToken(tokens []gr.Token) []gr.Token {
-	if len(tokens) != 0 && tokens[len(tokens)-1].ID == gr.EOFTokenID {
+func setEOFToken[T uc.Enumer](tokens []*gr.Token[T]) []*gr.Token[T] {
+	if len(tokens) != 0 && tokens[len(tokens)-1].ID.String() == gr.EOFTokenID {
 		// EOF token is already present
 		return tokens
 	}
 
-	tok := gr.EofToken()
-
-	return append(tokens, tok)
+	// tok := gr.EofToken()
+	//
+	// return append(tokens, tok)
+	panic("FIXME: EOF token is not implemented")
 }
 
 // SetLookahead sets the lookahead token for all the tokens in the stream.
-func setLookahead(tokens []gr.Token) {
+func setLookahead[T uc.Enumer](tokens []*gr.Token[T]) {
 	for i := 0; i < len(tokens)-1; i++ {
-		tokens[i].SetLookahead(&tokens[i+1])
+		tokens[i].SetLookahead(tokens[i+1])
 	}
 }
 
@@ -102,11 +92,11 @@ func setLookahead(tokens []gr.Token) {
 //
 // Returns:
 //   - *cds.Stream[*LeafToken]: The token stream.
-func convertBranchToTokenStream(branch []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]], toSkip []string) *cds.Stream[gr.Token] {
+func convertBranchToTokenStream[T uc.Enumer](branch []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]], toSkip []T) *cds.Stream[*gr.Token[T]] {
 	branch = branch[1:]
 
 	for _, elem := range toSkip {
-		filterTokenDifferentID := func(h *tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]) bool {
+		filterTokenDifferentID := func(h *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]) bool {
 			data := h.Data.GetData()
 			return data.ID != elem
 		}
@@ -114,7 +104,7 @@ func convertBranchToTokenStream(branch []*tr.TreeNode[*tr.StatusInfo[EvalStatus,
 		branch = us.SliceFilter(branch, filterTokenDifferentID)
 	}
 
-	var ts []gr.Token
+	var ts []*gr.Token[T]
 
 	for _, elem := range branch {
 		data := elem.Data.GetData()
@@ -144,7 +134,7 @@ func convertBranchToTokenStream(branch []*tr.TreeNode[*tr.StatusInfo[EvalStatus,
 // Errors:
 //   - *uc.ErrInvalidParameter: The from index is out of bounds.
 //   - *ErrNoMatches: No matches are found.
-func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) ([]*gr.MatchedResult[gr.Token], error) {
+func matchFrom[T uc.Enumer](s *cds.Stream[byte], from int, ps []*gr.RegProduction[T]) ([]*gr.MatchedResult[T], error) {
 	size := s.Size()
 
 	if from < 0 || from >= size {
@@ -156,7 +146,7 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) ([]*gr.Mat
 
 	type Result struct {
 		subset  []byte
-		matches []*gr.MatchedResult[gr.Token]
+		matches []*gr.MatchedResult[T]
 	}
 
 	var prevResult *Result
@@ -164,10 +154,10 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) ([]*gr.Mat
 	for i := 1; i <= size; i++ {
 		subset, _ := s.Get(from, i)
 
-		var matches []*gr.MatchedResult[gr.Token]
+		var matches []*gr.MatchedResult[T]
 
 		for i, p := range ps {
-			matched, ok := p.Match(from, subset)
+			matched, ok := p.MatchRegProd(from, subset)
 			if ok {
 				res := gr.NewMatchResult(matched, i)
 				matches = append(matches, res)
@@ -201,13 +191,13 @@ func matchFrom(s *cds.Stream[byte], from int, ps []*gr.RegProduction) ([]*gr.Mat
 // Returns:
 //   - bool: True if all leaves are complete, false otherwise.
 //   - error: An error of type *ErrAllMatchesFailed if all matches failed.
-func filterLeaves(source *cds.Stream[byte], productions []*gr.RegProduction, logger *Verbose) uc.EvalManyFunc[*tr.StatusInfo[EvalStatus, gr.Token], *tr.StatusInfo[EvalStatus, gr.Token]] {
-	filterFunc := func(ld *tr.StatusInfo[EvalStatus, gr.Token]) ([]*tr.StatusInfo[EvalStatus, gr.Token], error) {
+func filterLeaves[T uc.Enumer](source *cds.Stream[byte], productions []*gr.RegProduction[T], logger *Verbose) uc.EvalManyFunc[*tr.StatusInfo[EvalStatus, *gr.Token[T]], *tr.StatusInfo[EvalStatus, *gr.Token[T]]] {
+	filterFunc := func(ld *tr.StatusInfo[EvalStatus, *gr.Token[T]]) ([]*tr.StatusInfo[EvalStatus, *gr.Token[T]], error) {
 		data := ld.GetData()
 
 		var nextAt int
 
-		if data.ID == gr.RootTokenID {
+		if data.ID.String() == gr.RootTokenID {
 			nextAt = 0
 		} else {
 			nextAt = data.GetPos() + len(data.Data.(string))

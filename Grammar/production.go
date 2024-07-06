@@ -11,19 +11,19 @@ import (
 )
 
 // Production represents a production in a grammar.
-type Production struct {
+type Production[T uc.Enumer] struct {
 	// Left-hand side of the production.
-	lhs string
+	lhs T
 
 	// Right-hand side of the production.
-	rhs []string
+	rhs []T
 }
 
 // String implements the fmt.Stringer interface.
-func (p *Production) String() string {
+func (p *Production[T]) String() string {
 	var builder strings.Builder
 
-	builder.WriteString(p.lhs)
+	builder.WriteString(p.lhs.String())
 	builder.WriteRune(' ')
 	builder.WriteString(LeftToRight)
 	builder.WriteRune(' ')
@@ -31,7 +31,12 @@ func (p *Production) String() string {
 	if len(p.rhs) == 0 {
 		builder.WriteString(EpsilonSymbolID)
 	} else {
-		str := strings.Join(p.rhs, " ")
+		values := make([]string, 0, len(p.rhs))
+		for _, symbol := range p.rhs {
+			values = append(values, symbol.String())
+		}
+
+		str := strings.Join(values, " ")
 
 		builder.WriteString(str)
 	}
@@ -45,12 +50,12 @@ func (p *Production) String() string {
 //
 // Two productions are equal if their left-hand sides are equal and their
 // right-hand sides are equal.
-func (p *Production) Equals(other uc.Equaler) bool {
+func (p *Production[T]) Equals(other uc.Equaler) bool {
 	if other == nil {
 		return false
 	}
 
-	val, ok := other.(*Production)
+	val, ok := other.(*Production[T])
 	if !ok {
 		return false
 	}
@@ -71,16 +76,16 @@ func (p *Production) Equals(other uc.Equaler) bool {
 // Iterator implements the common.Iterater interface.
 //
 // It scans the right-hand side of the production from left to right.
-func (p *Production) Iterator() uc.Iterater[string] {
+func (p *Production[T]) Iterator() uc.Iterater[T] {
 	si := uc.NewSimpleIterator(p.rhs)
 	return si
 }
 
 // Copy implements the common.Copier interface.
-func (p *Production) Copy() uc.Copier {
-	pCopy := &Production{
+func (p *Production[T]) Copy() uc.Copier {
+	pCopy := &Production[T]{
 		lhs: p.lhs,
-		rhs: make([]string, len(p.rhs)),
+		rhs: make([]T, len(p.rhs)),
 	}
 	copy(pCopy.rhs, p.rhs)
 
@@ -92,16 +97,15 @@ func (p *Production) Copy() uc.Copier {
 //
 // Parameters:
 //   - lhs: The left-hand side of the production.
-//   - rhs: The right-hand side of the production.
+//   - rhss: The right-hand side of the production.
 //
 // Returns:
 //   - *Production: A new Production with the given left-hand side and
 //     right-hand side.
-func NewProduction(lhs string, rhs string) *Production {
-	fields := strings.Fields(rhs)
-	p := &Production{
+func NewProduction[T uc.Enumer](lhs T, rhss []T) *Production[T] {
+	p := &Production[T]{
 		lhs: lhs,
-		rhs: fields,
+		rhs: rhss,
 	}
 	return p
 }
@@ -110,8 +114,8 @@ func NewProduction(lhs string, rhs string) *Production {
 // the production.
 //
 // Returns:
-//   - string: The left-hand side of the production.
-func (p *Production) GetLhs() string {
+//   - T: The left-hand side of the production.
+func (p *Production[T]) GetLhs() T {
 	return p.lhs
 }
 
@@ -120,9 +124,9 @@ func (p *Production) GetLhs() string {
 // the production in reverse.
 //
 // Returns:
-//   - uc.Iterater[string]: A reverse iterator for the production.
-func (p *Production) ReverseIterator() uc.Iterater[string] {
-	slice := make([]string, len(p.rhs))
+//   - uc.Iterater[T]: A reverse iterator for the production.
+func (p *Production[T]) ReverseIterator() uc.Iterater[T] {
+	slice := make([]T, len(p.rhs))
 	copy(slice, p.rhs)
 	slices.Reverse(slice)
 
@@ -137,8 +141,8 @@ func (p *Production) ReverseIterator() uc.Iterater[string] {
 //
 // Returns:
 //   - []string: A slice of symbols in the production.
-func (p *Production) GetSymbols() []string {
-	symbols := make([]string, len(p.rhs)+1)
+func (p *Production[T]) GetSymbols() []T {
+	symbols := make([]T, len(p.rhs)+1)
 	copy(symbols, p.rhs)
 
 	symbols[len(symbols)-1] = p.lhs
@@ -166,21 +170,21 @@ func (p *Production) GetSymbols() []string {
 //     string. In parsers, however, it is not really used (at = 0). Despite
 //     that, it can be used to provide additional information to the parser
 //     for error reporting or debugging.
-func (p *Production) Match(at int, stack *ud.History[lls.Stacker[Token]]) (Token, error) {
+func (p *Production[T]) Match(at int, stack *ud.History[lls.Stacker[*Token[T]]]) (*Token[T], error) {
 	if stack == nil {
-		return Token{}, uc.NewErrNilParameter("stack")
+		return nil, uc.NewErrNilParameter("stack")
 	}
 
-	var solutions []Token
+	var solutions []*Token[T]
 	var reason error
 
 	for i := len(p.rhs) - 1; i >= 0; i-- {
 		rhs := p.rhs[i]
 
-		cmd := lls.NewPop[Token]()
+		cmd := lls.NewPop[*Token[T]]()
 		err := stack.ExecuteCommand(cmd)
 		if err != nil {
-			reason = uc.NewErrUnexpected("", rhs)
+			reason = uc.NewErrUnexpected("", rhs.String())
 			break
 		}
 		top := cmd.Value()
@@ -188,7 +192,7 @@ func (p *Production) Match(at int, stack *ud.History[lls.Stacker[Token]]) (Token
 		id := top.GetID()
 		if id != rhs {
 			str := top.GoString()
-			reason = uc.NewErrUnexpected(str, rhs)
+			reason = uc.NewErrUnexpected(str, rhs.String())
 			break
 		}
 
@@ -198,7 +202,7 @@ func (p *Production) Match(at int, stack *ud.History[lls.Stacker[Token]]) (Token
 	stack.Reject()
 
 	if reason != nil {
-		return Token{}, reason
+		return nil, reason
 	}
 
 	slices.Reverse(solutions)
@@ -217,7 +221,7 @@ func (p *Production) Match(at int, stack *ud.History[lls.Stacker[Token]]) (Token
 // Returns:
 //   - int: The number of symbols in the right-hand side of the
 //     production.
-func (p *Production) Size() int {
+func (p *Production[T]) Size() int {
 	return len(p.rhs)
 }
 
@@ -228,13 +232,13 @@ func (p *Production) Size() int {
 //   - index: The index of the symbol to get.
 //
 // Returns:
-//   - string: The symbol at the given index in the right-hand side of
+//   - T: The symbol at the given index in the right-hand side of
 //     the production.
 //   - error: An error of type *ErrInvalidParameter if the index is
 //     invalid.
-func (p *Production) GetRhsAt(index int) (string, error) {
+func (p *Production[T]) GetRhsAt(index int) (T, error) {
 	if index < 0 || index >= len(p.rhs) {
-		return "", uc.NewErrInvalidParameter(
+		return 0, uc.NewErrInvalidParameter(
 			"index",
 			uc.NewErrOutOfBounds(index, 0, len(p.rhs)),
 		)
@@ -254,7 +258,7 @@ func (p *Production) GetRhsAt(index int) (string, error) {
 // Returns:
 //   - []int: The indices of the symbol in the right-hand side of the
 //     production.
-func (p *Production) IndicesOfRhs(rhs string) []int {
+func (p *Production[T]) IndicesOfRhs(rhs T) []int {
 	var results []int
 
 	for i, symbol := range p.rhs {
@@ -284,8 +288,8 @@ func (p *Production) IndicesOfRhs(rhs string) []int {
 //   - *ErrLhsRhsMismatch: If the left-hand side of the other production does
 //     not match the symbol at the given index in the right-hand side of the
 //     production.
-func (p *Production) ReplaceRhsAt(index int, rhs string) *Production {
-	newP := p.Copy().(*Production)
+func (p *Production[T]) ReplaceRhsAt(index int, rhs T) *Production[T] {
+	newP := p.Copy().(*Production[T])
 
 	if index >= 0 && index < len(p.rhs) {
 		newP.rhs[index] = rhs
@@ -312,8 +316,8 @@ func (p *Production) ReplaceRhsAt(index int, rhs string) *Production {
 //   - *ErrLhsRhsMismatch: If the left-hand side of the other production does
 //     not match the symbol at the given index in the right-hand side of the
 //     production.
-func (p *Production) SubstituteRhsAt(index int, otherP *Production) *Production {
-	newP := p.Copy().(*Production)
+func (p *Production[T]) SubstituteRhsAt(index int, otherP *Production[T]) *Production[T] {
+	newP := p.Copy().(*Production[T])
 
 	if index < 0 || index >= len(p.rhs) || otherP == nil {
 		return newP
@@ -340,7 +344,7 @@ func (p *Production) SubstituteRhsAt(index int, otherP *Production) *Production 
 // Returns:
 //   - bool: Whether the right-hand side of the production contains the
 //     given symbol.
-func (p *Production) HasRhs(rhs string) bool {
+func (p *Production[T]) HasRhs(rhs T) bool {
 	for _, symbol := range p.rhs {
 		if symbol == rhs {
 			return true

@@ -56,9 +56,9 @@ func (hd *NormalText) Runes() []rune {
 }
 
 // ValidText is a highlighted text.
-type ValidText struct {
+type ValidText[T uc.Enumer] struct {
 	// data is the data of the highlighted data.
-	data []gr.Token
+	data []*gr.Token[T]
 }
 
 // NewValidText creates a new highlighted data.
@@ -69,7 +69,7 @@ type ValidText struct {
 // Returns:
 //   - *ValidText: The new highlighted data.
 //   - error: An error of type *uc.ErrInvalidParameter if the tokens are empty.
-func NewValidText(tokens []gr.Token) (*ValidText, error) {
+func NewValidText[T uc.Enumer](tokens []*gr.Token[T]) (*ValidText[T], error) {
 	if len(tokens) == 0 {
 		return nil, uc.NewErrInvalidParameter(
 			"tokens",
@@ -77,7 +77,7 @@ func NewValidText(tokens []gr.Token) (*ValidText, error) {
 		)
 	}
 
-	vt := &ValidText{
+	vt := &ValidText[T]{
 		data: tokens,
 	}
 

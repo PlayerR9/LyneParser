@@ -1,6 +1,7 @@
 package Grammar
 
 import (
+	"errors"
 	"fmt"
 	"unicode"
 
@@ -14,30 +15,6 @@ const (
 	// RootTokenID is the identifier of the root token.
 	RootTokenID string = "ROOT"
 )
-
-// EofToken creates the end-of-file token.
-//
-// Returns:
-//   - Token: The end-of-file token.
-func EofToken() Token {
-	tok := Token{
-		ID: EOFTokenID,
-		At: -1,
-	}
-	return tok
-}
-
-// RootToken creates the root token.
-//
-// Returns:
-//   - Token: The root token.
-func RootToken() Token {
-	tok := Token{
-		ID: RootTokenID,
-		At: -1,
-	}
-	return tok
-}
 
 // IsTerminal checks if the given identifier is a terminal. Terminals are identifiers
 // that start with an uppercase letter.
@@ -60,15 +37,15 @@ func IsTerminal(identifier string) bool {
 }
 
 // Token is the information about a token.
-type Token struct {
+type Token[T uc.Enumer] struct {
 	// ID is the identifier of the token.
-	ID string
+	ID T
 
 	// At is the position of the token in the input string.
 	At int
 
 	// Lookahead is the next token in the input string.
-	Lookahead *Token
+	Lookahead *Token[T]
 
 	// Data is the data of the token.
 	// If data is a string, it is the data of a leaf token.
@@ -80,7 +57,7 @@ type Token struct {
 }
 
 // GoString is a method of fmt.GoStringer interface.
-func (tok *Token) GoString() string {
+func (tok *Token[T]) GoString() string {
 	str := fmt.Sprintf("%+v", *tok)
 	return str
 }
@@ -97,14 +74,12 @@ func (tok *Token) GoString() string {
 // Returns:
 //   - *Token: A pointer to the new token info. Nil if the data is nil
 //     or not a string or a slice of Token.
-func NewToken(id string, data any, at int, lookahead *Token) Token {
-	if data == nil {
-		panic("In NewToken: data is nil")
-	}
+func NewToken[T uc.Enumer](id T, data any, at int, lookahead *Token[T]) *Token[T] {
+	uc.AssertParam("data", data != nil, errors.New("in NewToken: data is nil"))
 
 	switch data.(type) {
-	case string, []Token:
-		tok := Token{
+	case string, []*Token[T]:
+		tok := &Token[T]{
 			ID:        id,
 			Data:      data,
 			At:        at,
@@ -119,8 +94,8 @@ func NewToken(id string, data any, at int, lookahead *Token) Token {
 // GetID returns the identifier of the token.
 //
 // Returns:
-//   - string: The identifier of the token.
-func (tok *Token) GetID() string {
+//   - T: The identifier of the token.
+func (tok *Token[T]) GetID() T {
 	return tok.ID
 }
 
@@ -128,7 +103,7 @@ func (tok *Token) GetID() string {
 //
 // Returns:
 //   - int: The position of the token in the input string.
-func (tok *Token) GetPos() int {
+func (tok *Token[T]) GetPos() int {
 	return tok.At
 }
 
@@ -136,7 +111,7 @@ func (tok *Token) GetPos() int {
 //
 // Returns:
 //   - *Token: The next token in the input string.
-func (tok *Token) GetLookahead() *Token {
+func (tok *Token[T]) GetLookahead() *Token[T] {
 	return tok.Lookahead
 }
 
@@ -144,7 +119,7 @@ func (tok *Token) GetLookahead() *Token {
 //
 // Parameters:
 //   - lookahead: The next token in the input string.
-func (tok *Token) SetLookahead(lookahead *Token) {
+func (tok *Token[T]) SetLookahead(lookahead *Token[T]) {
 	tok.Lookahead = lookahead
 }
 
@@ -152,7 +127,11 @@ func (tok *Token) SetLookahead(lookahead *Token) {
 //
 // Returns:
 //   - bool: True if the token is a leaf token, false otherwise.
-func (tok *Token) IsLeaf() bool {
+func (tok *Token[T]) IsLeaf() bool {
+	if tok.Data == nil {
+		return true
+	}
+
 	_, ok := tok.Data.(string)
 	return ok
 }
@@ -161,8 +140,12 @@ func (tok *Token) IsLeaf() bool {
 //
 // Returns:
 //   - bool: True if the token is a non-leaf token, false otherwise.
-func (tok *Token) IsNonLeaf() bool {
-	_, ok := tok.Data.([]Token)
+func (tok *Token[T]) IsNonLeaf() bool {
+	if tok.Data == nil {
+		return false
+	}
+
+	_, ok := tok.Data.([]*Token[T])
 	return ok
 }
 
@@ -174,33 +157,24 @@ func (tok *Token) IsNonLeaf() bool {
 //
 // Returns:
 //   - any: The data of the token.
-func (tok *Token) GetData() any {
+func (tok *Token[T]) GetData() any {
 	return tok.Data
 }
 
-// Copy creates a copy of the token.
-//
-// It does not copy the lookahead token.
-//
-// Returns:
-//   - Token: A copy of the token.
-func (tok *Token) Copy() Token {
-	lt := Token{
+// Copy implements common.Copier interface.
+func (tok *Token[T]) Copy() uc.Copier {
+	lt := &Token[T]{
 		ID: tok.ID,
 		At: tok.At,
-	}
-
-	if tok.Data == nil {
-		return lt
 	}
 
 	switch data := tok.Data.(type) {
 	case string:
 		lt.Data = data
-	case []Token:
-		sliceCopy := make([]Token, 0, len(data))
+	case []*Token[T]:
+		sliceCopy := make([]*Token[T], 0, len(data))
 		for _, elem := range data {
-			elemCopy := elem.Copy()
+			elemCopy := elem.Copy().(*Token[T])
 			sliceCopy = append(sliceCopy, elemCopy)
 		}
 

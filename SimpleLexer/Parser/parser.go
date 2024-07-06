@@ -3,15 +3,15 @@ package Parser
 import (
 	"fmt"
 
-	uc "github.com/PlayerR9/MyGoLib/Units/common"
-
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	com "github.com/PlayerR9/LyneParser/SimpleLexer/Common"
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
 type Parser struct {
-	input []gr.Token
-	stack *lls.ArrayStack[gr.Token]
+	input []*gr.Token[com.TestTkType]
+	stack *lls.ArrayStack[*gr.Token[com.TestTkType]]
 }
 
 func NewParser() *Parser {
@@ -19,19 +19,21 @@ func NewParser() *Parser {
 	return p
 }
 
-func (p *Parser) getDecision(top gr.Token) (Actioner, error) {
+func (p *Parser) getDecision(top *gr.Token[com.TestTkType]) (Actioner, error) {
 	var act Actioner
 
 	id := top.GetID()
 
 	switch id {
-	case "EOF":
+	case com.TkEof:
 		act = NewReduceAct(true)
-	case "register", "unary_operator", "binary_operator", "cl_paren":
+	case com.TkRegister, com.TkUnaryOp, com.TkBinOp, com.TkClParen:
 		act = NewReduceAct(false)
-	case "newline", "right_arrow", "UnaryInstruction", "LoadImmediate", "Operand", "immediate", "op_paren":
+	case com.TkNewline, com.TkRightArrow, com.TkUnaryInstruction,
+		com.TkLoadImmediate, com.TkOperand, com.TkImmediate,
+		com.TkOpParen:
 		act = NewShiftAct()
-	case "Source1":
+	case com.TkSource1:
 		la := top.GetLookahead()
 
 		if la == nil {
@@ -43,14 +45,14 @@ func (p *Parser) getDecision(top gr.Token) (Actioner, error) {
 
 		laID := la.GetID()
 
-		if laID == "EOF" {
+		if laID == com.TkEof {
 			// EOF [Source1] -> Source : Shift
 			act = NewShiftAct()
 		} else {
 			// [Source1] newline Statement -> Source1 : Reduce
 			act = NewReduceAct(false)
 		}
-	case "Statement":
+	case com.TkStatement:
 		la := top.GetLookahead()
 
 		if la == nil {
@@ -62,7 +64,7 @@ func (p *Parser) getDecision(top gr.Token) (Actioner, error) {
 
 		laID := la.GetID()
 
-		if laID == "newline" {
+		if laID == com.TkNewline {
 			// Source1 newline [Statement] -> Source1 : Shift
 			act = NewShiftAct()
 		} else {
@@ -70,7 +72,7 @@ func (p *Parser) getDecision(top gr.Token) (Actioner, error) {
 			act = NewReduceAct(false)
 		}
 
-	case "BinaryInstruction":
+	case com.TkBinInstruction:
 		la := top.GetLookahead()
 
 		if la == nil {
@@ -82,7 +84,7 @@ func (p *Parser) getDecision(top gr.Token) (Actioner, error) {
 
 		laID := la.GetID()
 
-		if laID == "right_arrow" {
+		if laID == com.TkRightArrow {
 			// register right_arrow [BinaryInstruction] -> Statement : Shift
 			act = NewShiftAct()
 		} else {
@@ -112,7 +114,7 @@ func (p *Parser) reduce() error {
 	id := top1.GetID()
 
 	switch id {
-	case "EOF":
+	case com.TkEof:
 		// [EOF] Source1 -> Source : Reduce
 		top2, ok := p.stack.Pop()
 		if !ok {
@@ -121,16 +123,16 @@ func (p *Parser) reduce() error {
 
 		id2 := top2.GetID()
 
-		if id2 != "Source1" {
+		if id2 != com.TkSource1 {
 			return fmt.Errorf("expected Source1, got %s instead", id2)
 		}
 
 		la := top2.GetLookahead()
 
-		tok := gr.NewToken("Source", []gr.Token{top2, top1}, 0, la)
+		tok := gr.NewToken(com.TkSource, []*gr.Token[com.TestTkType]{top2, top1}, 0, la)
 
 		p.stack.Push(tok)
-	case "Source1":
+	case com.TkSource1:
 		// [Source1] newline Statement -> Source1 : Reduce
 		top2, ok := p.stack.Pop()
 		if !ok {
@@ -139,7 +141,7 @@ func (p *Parser) reduce() error {
 
 		id2 := top2.GetID()
 
-		if id2 != "newline" {
+		if id2 != com.TkNewline {
 			return fmt.Errorf("expected newline, got %s instead", id2)
 		}
 
@@ -150,29 +152,29 @@ func (p *Parser) reduce() error {
 
 		id3 := top3.GetID()
 
-		if id3 != "Statement" {
+		if id3 != com.TkStatement {
 			return fmt.Errorf("expected Statement, got %s instead", id3)
 		}
 
 		la := top3.GetLookahead()
 
-		tok := gr.NewToken("Source1", []gr.Token{top3, top1}, 0, la)
+		tok := gr.NewToken(com.TkSource1, []*gr.Token[com.TestTkType]{top3, top1}, 0, la)
 
 		p.stack.Push(tok)
-	case "Statement":
+	case com.TkStatement:
 		// [Statement] -> Source1 : Reduce
 		la := top1.GetLookahead()
 
-		tok := gr.NewToken("Source1", []gr.Token{top1}, 0, la)
+		tok := gr.NewToken(com.TkSource1, []*gr.Token[com.TestTkType]{top1}, 0, la)
 
 		p.stack.Push(tok)
-	case "register":
+	case com.TkRegister:
 		top2, ok := p.stack.Pop()
 		if !ok {
 			// [register] -> Operand : Reduce
 			la := top1.GetLookahead()
 
-			tok := gr.NewToken("Operand", []gr.Token{top1}, 0, la)
+			tok := gr.NewToken(com.TkOperand, []*gr.Token[com.TestTkType]{top1}, 0, la)
 
 			p.stack.Push(tok)
 
@@ -181,13 +183,13 @@ func (p *Parser) reduce() error {
 
 		id2 := top2.GetID()
 
-		if id2 != "right_arrow" {
+		if id2 != com.TkRightArrow {
 			p.stack.Push(top2)
 
 			// [register] -> Operand : Reduce
 			la := top1.GetLookahead()
 
-			tok := gr.NewToken("Operand", []gr.Token{top1}, 0, la)
+			tok := gr.NewToken(com.TkOperand, []*gr.Token[com.TestTkType]{top1}, 0, la)
 
 			p.stack.Push(tok)
 
@@ -202,42 +204,42 @@ func (p *Parser) reduce() error {
 		id3 := top3.GetID()
 
 		switch id3 {
-		case "UnaryInstruction":
+		case com.TkUnaryInstruction:
 			// [register] right_arrow UnaryInstruction -> Statement : Reduce
 
 			la := top3.GetLookahead()
 
-			tok := gr.NewToken("Statement", []gr.Token{top3, top1}, 0, la)
+			tok := gr.NewToken(com.TkStatement, []*gr.Token[com.TestTkType]{top3, top1}, 0, la)
 
 			p.stack.Push(tok)
-		case "BinaryInstruction":
+		case com.TkBinInstruction:
 			// [register] right_arrow BinaryInstruction -> Statement : Reduce
 
 			la := top3.GetLookahead()
 
-			tok := gr.NewToken("Statement", []gr.Token{top3, top1}, 0, la)
+			tok := gr.NewToken(com.TkStatement, []*gr.Token[com.TestTkType]{top3, top1}, 0, la)
 
 			p.stack.Push(tok)
-		case "LoadImmediate":
+		case com.TkLoadImmediate:
 			// [register] right_arrow LoadImmediate -> Statement : Reduce
 
 			la := top3.GetLookahead()
 
-			tok := gr.NewToken("Statement", []gr.Token{top3, top1}, 0, la)
+			tok := gr.NewToken(com.TkStatement, []*gr.Token[com.TestTkType]{top3, top1}, 0, la)
 
 			p.stack.Push(tok)
 		default:
 			return fmt.Errorf("expected UnaryInstruction, BinaryInstruction, or LoadImmediate, got %s instead", id3)
 		}
-	case "BinaryInstruction":
+	case com.TkBinInstruction:
 		// [BinaryInstruction] -> Operand : Reduce
 
 		la := top1.GetLookahead()
 
-		tok := gr.NewToken("Operand", []gr.Token{top1}, 0, la)
+		tok := gr.NewToken(com.TkOperand, []*gr.Token[com.TestTkType]{top1}, 0, la)
 
 		p.stack.Push(tok)
-	case "unary_operator":
+	case com.TkUnaryInstruction:
 		// [unary_operator] Operand -> UnaryInstruction : Reduce
 
 		top2, ok := p.stack.Pop()
@@ -247,16 +249,16 @@ func (p *Parser) reduce() error {
 
 		id2 := top2.GetID()
 
-		if id2 != "Operand" {
+		if id2 != com.TkOperand {
 			return fmt.Errorf("expected Operand, got %s instead", id2)
 		}
 
 		la := top2.GetLookahead()
 
-		tok := gr.NewToken("UnaryInstruction", []gr.Token{top2, top1}, 0, la)
+		tok := gr.NewToken(com.TkUnaryInstruction, []*gr.Token[com.TestTkType]{top2, top1}, 0, la)
 
 		p.stack.Push(tok)
-	case "binary_operator":
+	case com.TkBinOp:
 		// [binary_operator] Operand Operand -> BinaryInstruction : Reduce
 
 		top2, ok := p.stack.Pop()
@@ -266,7 +268,7 @@ func (p *Parser) reduce() error {
 
 		id2 := top2.GetID()
 
-		if id2 != "Operand" {
+		if id2 != com.TkOperand {
 			return fmt.Errorf("expected Operand, got %s instead", id2)
 		}
 
@@ -277,16 +279,16 @@ func (p *Parser) reduce() error {
 
 		id3 := top3.GetID()
 
-		if id3 != "Operand" {
+		if id3 != com.TkOperand {
 			return fmt.Errorf("expected Operand, got %s instead", id3)
 		}
 
 		la := top3.GetLookahead()
 
-		tok := gr.NewToken("BinaryInstruction", []gr.Token{top3, top2, top1}, 0, la)
+		tok := gr.NewToken(com.TkBinInstruction, []*gr.Token[com.TestTkType]{top3, top2, top1}, 0, la)
 
 		p.stack.Push(tok)
-	case "cl_paren":
+	case com.TkClParen:
 		// [cl_paren] immediate op_paren -> LoadImmediate : Reduce
 
 		top2, ok := p.stack.Pop()
@@ -296,7 +298,7 @@ func (p *Parser) reduce() error {
 
 		id2 := top2.GetID()
 
-		if id2 != "immediate" {
+		if id2 != com.TkImmediate {
 			return fmt.Errorf("expected immediate, got %s instead", id2)
 		}
 
@@ -307,46 +309,46 @@ func (p *Parser) reduce() error {
 
 		id3 := top3.GetID()
 
-		if id3 != "op_paren" {
+		if id3 != com.TkOpParen {
 			return fmt.Errorf("expected op_paren, got %s instead", id3)
 		}
 
 		la := top3.GetLookahead()
 
-		tok := gr.NewToken("LoadImmediate", []gr.Token{top2}, 0, la)
+		tok := gr.NewToken(com.TkLoadImmediate, []*gr.Token[com.TestTkType]{top2}, 0, la)
 
 		p.stack.Push(tok)
 	default:
-		return fmt.Errorf("cannot reduce token %s", id)
+		return fmt.Errorf("cannot reduce token %s", id.String())
 	}
 
 	return nil
 }
 
-func (p *Parser) Parse(tokens []gr.Token) (gr.Token, error) {
+func (p *Parser) Parse(tokens []*gr.Token[com.TestTkType]) (*gr.Token[com.TestTkType], error) {
 	if len(tokens) == 0 {
-		return gr.Token{}, fmt.Errorf("no tokens to parse")
+		return nil, fmt.Errorf("no tokens to parse")
 	}
 
 	p.input = tokens
 
-	p.stack = lls.NewArrayStack[gr.Token]()
+	p.stack = lls.NewArrayStack[*gr.Token[com.TestTkType]]()
 
 	p.shift()
 
 	err := p.parse()
 	if err != nil {
-		return gr.Token{}, fmt.Errorf("failed to parse: %w", err)
+		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
 
 	top, ok := p.stack.Pop()
 	if !ok {
-		return gr.Token{}, fmt.Errorf("no result found")
+		return nil, fmt.Errorf("no result found")
 	}
 
 	ok = top.IsNonLeaf()
 	if !ok {
-		return gr.Token{}, fmt.Errorf("expected non-leaf token, got %T instead", top)
+		return nil, fmt.Errorf("expected non-leaf token, got %T instead", top)
 	}
 
 	return top, nil

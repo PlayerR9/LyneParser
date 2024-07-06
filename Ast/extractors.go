@@ -16,10 +16,10 @@ import (
 // Returns:
 //   - string: The extracted string.
 //   - error: The error if the extraction fails.
-func ExtractString(root gr.Token, id string) (string, error) {
+func ExtractString[T uc.Enumer](root *gr.Token[T], id T) (string, error) {
 	ok := IsToken(root, id)
 	if !ok {
-		return "", uc.NewErrUnexpected(root.GoString(), id)
+		return "", uc.NewErrUnexpected(root.GoString(), id.String())
 	}
 
 	return root.Data.(string), nil
@@ -35,18 +35,18 @@ func ExtractString(root gr.Token, id string) (string, error) {
 // Returns:
 //   - O: The result with the extracted strings.
 //   - error: The error if the extraction fails.
-type CoreFunc[O any] func(roots []gr.Token, result O, pos int) (O, error)
+type CoreFunc[O any, T uc.Enumer] func(roots []*gr.Token[T], result O, pos int) (O, error)
 
 // Extractor extracts strings from a rule.
-type Extractor[O any] struct {
+type Extractor[O any, T uc.Enumer] struct {
 	// lhs is the left-hand side of the rule.
-	lhs string
+	lhs T
 
 	// checker is the AST checker.
-	checker *SyntaxChecker
+	checker *SyntaxChecker[T]
 
 	// core is the core function.
-	core CoreFunc[O]
+	core CoreFunc[O, T]
 }
 
 // NewExtractor creates a new extractor.
@@ -85,8 +85,8 @@ type Extractor[O any] struct {
 // Inside the core function, you have to extract the strings from the children
 // provided in the roots parameter. The structure and syntax is handled by the
 // checker parameter.
-func NewExtractor[O any](lhs string, checker *SyntaxChecker, core CoreFunc[O]) Extractor[O] {
-	extr := Extractor[O]{
+func NewExtractor[O any, T uc.Enumer](lhs T, checker *SyntaxChecker[T], core CoreFunc[O, T]) Extractor[O, T] {
+	extr := Extractor[O, T]{
 		lhs:     lhs,
 		checker: checker,
 		core:    core,
@@ -102,7 +102,7 @@ func NewExtractor[O any](lhs string, checker *SyntaxChecker, core CoreFunc[O]) E
 // Returns:
 //   - O: The result with the extracted strings.
 //   - error: The error if the extraction fails.
-func (e *Extractor[O]) Apply(root gr.Token) (O, error) {
+func (e *Extractor[O, T]) Apply(root *gr.Token[T]) (O, error) {
 	var result O
 
 	if e.core == nil {
@@ -116,13 +116,13 @@ func (e *Extractor[O]) Apply(root gr.Token) (O, error) {
 		if !ok {
 			rootID := root.GetID()
 
-			return result, uc.NewErrUnexpected(rootID, e.lhs)
+			return result, uc.NewErrUnexpected(rootID.String(), e.lhs.String())
 		}
 
 		// ASSUMPTION: 1st RHS is a non-terminal symbol.
 		uc.Assert(root.IsNonLeaf(), "token must be a non-leaf token")
 
-		data := root.Data.([]gr.Token)
+		data := root.Data.([]*gr.Token[T])
 
 		err := e.checker.Check(data)
 		if err != nil {
@@ -133,7 +133,7 @@ func (e *Extractor[O]) Apply(root gr.Token) (O, error) {
 
 		isNotBaseCase := IsToken(lastToken, e.lhs)
 
-		var todo []gr.Token
+		var todo []*gr.Token[T]
 
 		if isNotBaseCase {
 			todo = data[:len(data)-1]

@@ -10,9 +10,9 @@ import (
 )
 
 // CurrentEval is a struct that represents the current evaluation of the parser.
-type CurrentEval struct {
+type CurrentEval[T uc.Enumer] struct {
 	// stack represents the stack that the parser will use.
-	stack *ud.History[lls.Stacker[gr.Token]]
+	stack *ud.History[lls.Stacker[*gr.Token[T]]]
 
 	// currentIndex is the current index of the input stream.
 	currentIndex int
@@ -25,9 +25,9 @@ type CurrentEval struct {
 //
 // Returns:
 //   - uc.Copier: A copy of the current evaluation.
-func (ce *CurrentEval) Copy() uc.Copier {
-	ceCopy := &CurrentEval{
-		stack:        ce.stack.Copy().(*ud.History[lls.Stacker[gr.Token]]),
+func (ce *CurrentEval[T]) Copy() uc.Copier {
+	ceCopy := &CurrentEval[T]{
+		stack:        ce.stack.Copy().(*ud.History[lls.Stacker[*gr.Token[T]]]),
 		currentIndex: ce.currentIndex,
 		isDone:       ce.isDone,
 	}
@@ -38,7 +38,7 @@ func (ce *CurrentEval) Copy() uc.Copier {
 //
 // Returns:
 //   - bool: True if the current evaluation has accepted the input stream.
-func (ce *CurrentEval) Accept() bool {
+func (ce *CurrentEval[T]) Accept() bool {
 	return ce.isDone
 }
 
@@ -46,13 +46,13 @@ func (ce *CurrentEval) Accept() bool {
 //
 // Returns:
 //   - *CurrentEval: A new current evaluation.
-func NewCurrentEval() *CurrentEval {
-	ce := &CurrentEval{
+func NewCurrentEval[T uc.Enumer]() *CurrentEval[T] {
+	ce := &CurrentEval[T]{
 		currentIndex: 0,
 		isDone:       false,
 	}
 
-	ce.stack = lls.NewStackWithHistory(lls.NewLinkedStack[gr.Token]())
+	ce.stack = lls.NewStackWithHistory(lls.NewLinkedStack[*gr.Token[T]]())
 
 	return ce
 }
@@ -71,11 +71,11 @@ func NewCurrentEval() *CurrentEval {
 //   - *gr.ErrCycleDetected: A cycle is detected in the token tree.
 //   - *uc.ErrInvalidParameter: The top of the stack is nil.
 //   - *gr.ErrUnknowToken: The root is not a known token.
-func (ce *CurrentEval) GetParseTree() ([]*gr.TokenTree, error) {
-	var forest []*gr.TokenTree
+func (ce *CurrentEval[T]) GetParseTree() ([]*gr.TokenTree[T], error) {
+	var forest []*gr.TokenTree[T]
 
 	for {
-		cmd := lls.NewPop[gr.Token]()
+		cmd := lls.NewPop[*gr.Token[T]]()
 		err := ce.stack.ExecuteCommand(cmd)
 		if err != nil {
 			break
@@ -97,7 +97,7 @@ func (ce *CurrentEval) GetParseTree() ([]*gr.TokenTree, error) {
 //
 // Returns:
 //   - error: An error of type *ErrNoAccept if the input stream is done.
-func (ce *CurrentEval) shift(source *cds.Stream[gr.Token]) error {
+func (ce *CurrentEval[T]) shift(source *cds.Stream[*gr.Token[T]]) error {
 	toks, err := source.Get(ce.currentIndex, 1)
 	if err != nil || len(toks) == 0 {
 		return NewErrNoAccept()
@@ -118,12 +118,12 @@ func (ce *CurrentEval) shift(source *cds.Stream[gr.Token]) error {
 //
 // Returns:
 //   - error: An error if the stack could not be reduced.
-func (ce *CurrentEval) reduce(rule *gr.Production) error {
+func (ce *CurrentEval[T]) reduce(rule *gr.Production[T]) error {
 	lhs := rule.GetLhs()
 	rhss := rule.ReverseIterator()
 
-	var lookahead *gr.Token
-	var popped []gr.Token
+	var lookahead *gr.Token[T]
+	var popped []*gr.Token[T]
 
 	for {
 		value, err := rhss.Consume()
@@ -131,11 +131,11 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 			break
 		}
 
-		cmd := lls.NewPop[gr.Token]()
+		cmd := lls.NewPop[*gr.Token[T]]()
 		err = ce.stack.ExecuteCommand(cmd)
 		if err != nil {
 			ce.stack.Reject()
-			return uc.NewErrAfter(lhs, uc.NewErrUnexpected("", value))
+			return uc.NewErrAfter(lhs.String(), uc.NewErrUnexpected("", value.String()))
 		}
 		top := cmd.Value()
 
@@ -148,7 +148,7 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 		id := top.GetID()
 		if id != value {
 			ce.stack.Reject()
-			return uc.NewErrAfter(lhs, uc.NewErrUnexpected(top.GoString(), value))
+			return uc.NewErrAfter(lhs.String(), uc.NewErrUnexpected(top.GoString(), value.String()))
 		}
 	}
 
@@ -171,13 +171,13 @@ func (ce *CurrentEval) reduce(rule *gr.Production) error {
 // Returns:
 //   - bool: True if the parser has accepted the input stream.
 //   - error: An error if the parser could not act on the decision.
-func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *cds.Stream[gr.Token]) error {
+func (ce *CurrentEval[T]) ActOnDecision(decision cs.HelperElem[T], source *cds.Stream[*gr.Token[T]]) error {
 	var err error
 
 	switch decision := decision.(type) {
-	case *cs.ActShift:
+	case *cs.ActShift[T]:
 		err = ce.shift(source)
-	case *cs.ActReduce:
+	case *cs.ActReduce[T]:
 		rule := decision.GetOriginal()
 
 		err = ce.reduce(rule)
@@ -207,7 +207,7 @@ func (ce *CurrentEval) ActOnDecision(decision cs.HelperElem, source *cds.Stream[
 // Returns:
 //   - []*CurrentEval: A slice of current evaluations.
 //   - error: An error if the input stream could not be parsed.
-func (ce *CurrentEval) Parse(source *cds.Stream[gr.Token], dt *cs.ConflictSolver) ([]*CurrentEval, error) {
+func (ce *CurrentEval[T]) Parse(source *cds.Stream[*gr.Token[T]], dt *cs.ConflictSolver[T]) ([]*CurrentEval[T], error) {
 	decisions, err := dt.Match(ce.stack)
 	ce.stack.Reject()
 
@@ -224,12 +224,12 @@ func (ce *CurrentEval) Parse(source *cds.Stream[gr.Token], dt *cs.ConflictSolver
 			return nil, err
 		}
 
-		return []*CurrentEval{ce}, nil
+		return []*CurrentEval[T]{ce}, nil
 	default:
-		ceCopies := make([]*CurrentEval, 0, len(decisions))
+		ceCopies := make([]*CurrentEval[T], 0, len(decisions))
 
 		for _, decision := range decisions {
-			ceCopy := ce.Copy().(*CurrentEval)
+			ceCopy := ce.Copy().(*CurrentEval[T])
 
 			err := ceCopy.ActOnDecision(decision, source)
 			if err != nil {

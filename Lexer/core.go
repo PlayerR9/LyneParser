@@ -11,12 +11,12 @@ import (
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
-type ErrLexerError struct {
+type ErrLexerError[T uc.Enumer] struct {
 	At   int
-	Prev []gr.Token
+	Prev []*gr.Token[T]
 }
 
-func (e *ErrLexerError) Error() string {
+func (e *ErrLexerError[T]) Error() string {
 	var builder strings.Builder
 
 	builder.WriteString("no matches found at ")
@@ -25,33 +25,33 @@ func (e *ErrLexerError) Error() string {
 	return builder.String()
 }
 
-func NewErrLexerError(at int, prev []gr.Token) *ErrLexerError {
-	e := &ErrLexerError{
+func NewErrLexerError[T uc.Enumer](at int, prev []*gr.Token[T]) *ErrLexerError[T] {
+	e := &ErrLexerError[T]{
 		At:   at,
 		Prev: prev,
 	}
 	return e
 }
 
-type TreeNode struct {
-	*tr.StatusInfo[EvalStatus, gr.Token]
+type TreeNode[T uc.Enumer] struct {
+	*tr.StatusInfo[EvalStatus, *gr.Token[T]]
 }
 
-func newTreeNode(value gr.Token) *TreeNode {
+func newTreeNode[T uc.Enumer](value *gr.Token[T]) *TreeNode[T] {
 	si := tr.NewStatusInfo(value, EvalIncomplete)
 
-	tn := &TreeNode{
+	tn := &TreeNode[T]{
 		StatusInfo: si,
 	}
 
 	return tn
 }
 
-func convBranch(branch *tr.Branch[*TreeNode]) []gr.Token {
+func convBranch[T uc.Enumer](branch *tr.Branch[*TreeNode[T]]) []*gr.Token[T] {
 	slice := branch.Slice()
 	slice = slice[1:] // Skip the root.
 
-	result := make([]gr.Token, 0, len(slice))
+	result := make([]*gr.Token[T], 0, len(slice))
 
 	for _, tn := range slice {
 		token := tn.GetData()
@@ -62,7 +62,7 @@ func convBranch(branch *tr.Branch[*TreeNode]) []gr.Token {
 	return result
 }
 
-func lastOfBranch(branch []gr.Token) int {
+func lastOfBranch[T uc.Enumer](branch []*gr.Token[T]) int {
 	len := len(branch)
 
 	if len == 0 {
@@ -74,13 +74,13 @@ func lastOfBranch(branch []gr.Token) int {
 	return last.At
 }
 
-func Lex(s *cds.Stream[byte], productions []*gr.RegProduction, v *Verbose) error {
-	f := func(tn *TreeNode) ([]*TreeNode, error) {
+func Lex[T uc.Enumer](s *cds.Stream[byte], productions []*gr.RegProduction[T], v *Verbose) error {
+	f := func(tn *TreeNode[T]) ([]*TreeNode[T], error) {
 		data := tn.GetData()
 
 		var nextAt int
 
-		if data.ID == gr.RootTokenID {
+		if data.ID.String() == gr.RootTokenID {
 			nextAt = 0
 		} else {
 			nextAt = data.At + len(data.Data.(string))
@@ -94,11 +94,10 @@ func Lex(s *cds.Stream[byte], productions []*gr.RegProduction, v *Verbose) error
 		// Get the longest match.
 		results = selectBestMatches(results, v)
 
-		children := make([]*TreeNode, 0, len(results))
+		children := make([]*TreeNode[T], 0, len(results))
 
 		for _, result := range results {
-			curr := result.GetMatch()
-			tn := newTreeNode(curr)
+			tn := newTreeNode(result.Matched)
 
 			children = append(children, tn)
 		}

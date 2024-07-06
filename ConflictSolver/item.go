@@ -10,9 +10,9 @@ import (
 )
 
 // Item represents an item in a decision table.
-type Item struct {
+type Item[T uc.Enumer] struct {
 	// Rule is the production rule that the item represents.
-	Rule *gr.Production
+	Rule *gr.Production[T]
 
 	// Pos is the position of the item in the production rule.
 	Pos int
@@ -22,10 +22,10 @@ type Item struct {
 }
 
 // String implements the fmt.Stringer interface.
-func (i *Item) String() string {
+func (i *Item[T]) String() string {
 	var builder strings.Builder
 
-	builder.WriteString(i.Rule.GetLhs())
+	builder.WriteString(i.Rule.GetLhs().String())
 	builder.WriteRune(' ')
 	builder.WriteString(gr.LeftToRight)
 
@@ -41,10 +41,10 @@ func (i *Item) String() string {
 
 		if pos == i.Pos {
 			builder.WriteRune('[')
-			builder.WriteString(rhs)
+			builder.WriteString(rhs.String())
 			builder.WriteRune(']')
 		} else {
-			builder.WriteString(rhs)
+			builder.WriteString(rhs.String())
 		}
 	}
 
@@ -59,9 +59,9 @@ func (i *Item) String() string {
 }
 
 // Copy implements the Copier interface.
-func (i *Item) Copy() uc.Copier {
-	return &Item{
-		Rule:      i.Rule.Copy().(*gr.Production),
+func (i *Item[T]) Copy() uc.Copier {
+	return &Item[T]{
+		Rule:      i.Rule.Copy().(*gr.Production[T]),
 		Pos:       i.Pos,
 		ruleIndex: i.ruleIndex,
 	}
@@ -78,7 +78,7 @@ func (i *Item) Copy() uc.Copier {
 //   - *Item: The pointer to the new Item.
 //   - error: An error of type *uc.ErrInvalidParameter if the rule is nil or
 //     the pos is out of bounds.
-func NewItem(rule *gr.Production, pos int, ruleIndex int) (*Item, error) {
+func NewItem[T uc.Enumer](rule *gr.Production[T], pos int, ruleIndex int) (*Item[T], error) {
 	if rule == nil {
 		return nil, uc.NewErrNilParameter("rule")
 	}
@@ -92,7 +92,7 @@ func NewItem(rule *gr.Production, pos int, ruleIndex int) (*Item, error) {
 		)
 	}
 
-	item := &Item{
+	item := &Item[T]{
 		Rule:      rule,
 		Pos:       pos,
 		ruleIndex: ruleIndex,
@@ -104,7 +104,7 @@ func NewItem(rule *gr.Production, pos int, ruleIndex int) (*Item, error) {
 //
 // Returns:
 //   - int: The position of the item.
-func (item *Item) GetPos() int {
+func (item *Item[T]) GetPos() int {
 	return item.Pos
 }
 
@@ -114,13 +114,13 @@ func (item *Item) GetPos() int {
 //   - index: The index of the right-hand side to get.
 //
 // Returns:
-//   - string: The right-hand side of the production rule.
+//   - T: The right-hand side of the production rule.
 //   - error: An error if it is unable to get the right-hand side.
 //
 // Errors:
 //   - *uc.ErrInvalidParameter: If the index is out of bounds or the item's rule
 //     is nil.
-func (item *Item) GetRhsAt(index int) (string, error) {
+func (item *Item[T]) GetRhsAt(index int) (T, error) {
 	rhs, err := item.Rule.GetRhsAt(index)
 	return rhs, err
 }
@@ -128,11 +128,11 @@ func (item *Item) GetRhsAt(index int) (string, error) {
 // GetRhs returns the right-hand side of the production rule at the current position.
 //
 // Returns:
-//   - string: The right-hand side of the production rule.
-func (item *Item) GetRhs() string {
+//   - T: The right-hand side of the production rule.
+func (item *Item[T]) GetRhs() T {
 	rhs, err := item.Rule.GetRhsAt(item.Pos)
 	if err != nil {
-		return ""
+		return *new(T)
 	}
 
 	return rhs
@@ -141,12 +141,12 @@ func (item *Item) GetRhs() string {
 // GetSymbolsUpToPos returns the symbols of the production rule up to the current position.
 //
 // Returns:
-//   - []string: The symbols of the production rule up to the current position.
+//   - []T: The symbols of the production rule up to the current position.
 //
 // Behaviors:
 //   - The symbols are reversed. Thus, the symbol at index 0 is the current symbol
 //     of the item.
-func (item *Item) GetSymbolsUpToPos() []string {
+func (item *Item[T]) GetSymbolsUpToPos() []T {
 	symbols := item.Rule.GetSymbols()
 
 	symbols = symbols[:item.Pos+1]
@@ -163,7 +163,7 @@ func (item *Item) GetSymbolsUpToPos() []string {
 //
 // Behaviors:
 //   - If the item's rule is nil, it returns false.
-func (item *Item) IsReduce() bool {
+func (item *Item[T]) IsReduce() bool {
 	size := item.Rule.Size()
 	return item.Pos == size
 }
@@ -184,10 +184,10 @@ func (item *Item) IsReduce() bool {
 //     or the index is out of bounds.
 //   - *gr.ErrLhsRhsMismatch: If the left-hand side of the production rule does
 //     not match the right-hand side.
-func (item *Item) ReplaceRhsAt(index int, rhs string) *Item {
+func (item *Item[T]) ReplaceRhsAt(index int, rhs T) *Item[T] {
 	ruleCopy := item.Rule.ReplaceRhsAt(index, rhs)
 
-	itemCopy := &Item{
+	itemCopy := &Item[T]{
 		Rule:      ruleCopy,
 		Pos:       item.Pos,
 		ruleIndex: item.ruleIndex,
@@ -212,15 +212,15 @@ func (item *Item) ReplaceRhsAt(index int, rhs string) *Item {
 //     or the index is out of bounds.
 //   - *gr.ErrLhsRhsMismatch: If the left-hand side of the production rule does
 //     not match the right-hand side.
-func (item *Item) SubstituteRhsAt(index int, otherI *Item) *Item {
+func (item *Item[T]) SubstituteRhsAt(index int, otherI *Item[T]) *Item[T] {
 	if otherI == nil {
-		itemCopy := item.Copy().(*Item)
+		itemCopy := item.Copy().(*Item[T])
 		return itemCopy
 	}
 
 	ruleCopy := item.Rule.SubstituteRhsAt(index, otherI.Rule)
 
-	itemCopy := &Item{
+	itemCopy := &Item[T]{
 		Rule:      ruleCopy,
 		Pos:       item.Pos,
 		ruleIndex: item.ruleIndex,
@@ -232,7 +232,7 @@ func (item *Item) SubstituteRhsAt(index int, otherI *Item) *Item {
 //
 // Returns:
 //   - *gr.Production: The production rule that the item represents.
-func (item *Item) GetRule() *gr.Production {
+func (item *Item[T]) GetRule() *gr.Production[T] {
 	return item.Rule
 }
 
@@ -244,7 +244,7 @@ func (item *Item) GetRule() *gr.Production {
 //
 // Returns:
 //   - bool: True if the left-hand side matches the right-hand side. Otherwise, false.
-func (item *Item) IsLhsRhs(rhs string) bool {
+func (item *Item[T]) IsLhsRhs(rhs T) bool {
 	lhs := item.Rule.GetLhs()
 	return lhs == rhs
 }
@@ -257,7 +257,7 @@ func (item *Item) IsLhsRhs(rhs string) bool {
 //
 // Returns:
 //   - []int: The indices of the right-hand side.
-func (item *Item) IndicesOfRhs(rhs string) []int {
+func (item *Item[T]) IndicesOfRhs(rhs T) []int {
 	indices := item.Rule.IndicesOfRhs(rhs)
 	return indices
 }

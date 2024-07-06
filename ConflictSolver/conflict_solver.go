@@ -23,12 +23,12 @@ var (
 var GlobalDebugMode bool = true
 
 // ConflictSolver solves conflicts in a decision table.
-type ConflictSolver struct {
+type ConflictSolver[T uc.Enumer] struct {
 	// table is a map of elements in the decision table.
-	table map[string][]*Helper
+	table map[T][]*Helper[T]
 
 	// rt is the rule table.
-	rt *RuleTable
+	rt *RuleTable[T]
 }
 
 // FString returns a formatted string representation of the decision table
@@ -39,7 +39,7 @@ type ConflictSolver struct {
 //
 // Returns:
 //   - []string: A formatted string representation of the decision table.
-func (cs *ConflictSolver) FString(trav *ffs.Traversor, opts ...ffs.Option) error {
+func (cs *ConflictSolver[T]) FString(trav *ffs.Traversor, opts ...ffs.Option) error {
 	if trav == nil {
 		return nil
 	}
@@ -92,10 +92,10 @@ func (cs *ConflictSolver) FString(trav *ffs.Traversor, opts ...ffs.Option) error
 // Errors:
 //   - *ErrCannotCreateItem: If an item cannot be created.
 //   - *uc.ErrInvalidParameter: If the item is nil.
-func NewConflictSolver(symbols []string, rules []*gr.Production) *ConflictSolver {
+func NewConflictSolver[T uc.Enumer](symbols []T, rules []*gr.Production[T]) *ConflictSolver[T] {
 	rt := NewRuleTable(symbols, rules)
 
-	cs := &ConflictSolver{
+	cs := &ConflictSolver[T]{
 		rt:    rt,
 		table: rt.GetBucketsCopy(),
 	}
@@ -106,8 +106,8 @@ func NewConflictSolver(symbols []string, rules []*gr.Production) *ConflictSolver
 //
 // Returns:
 //   - []*Helper: All helpers in the decision table.
-func (cs *ConflictSolver) getHelpers() []*Helper {
-	var result []*Helper
+func (cs *ConflictSolver[T]) getHelpers() []*Helper[T] {
+	var result []*Helper[T]
 
 	for _, bucket := range cs.table {
 		result = append(result, bucket...)
@@ -123,8 +123,8 @@ func (cs *ConflictSolver) getHelpers() []*Helper {
 //
 // Returns:
 //   - []*Helper: The elements with the specified LHS.
-func (cs *ConflictSolver) GetElemsWithLhs(rhs string) []*Helper {
-	filter := func(h *Helper) bool {
+func (cs *ConflictSolver[T]) GetElemsWithLhs(rhs T) []*Helper[T] {
+	filter := func(h *Helper[T]) bool {
 		ok := h.IsLhsRhs(rhs)
 		return ok
 	}
@@ -138,7 +138,7 @@ func (cs *ConflictSolver) GetElemsWithLhs(rhs string) []*Helper {
 
 // solveSetLookaheadOnShifts is a helper function that evaluates the look-ahead on shifts
 // in a simple and coarse way.
-func (cs *ConflictSolver) solveSetLookaheadOnShifts() {
+func (cs *ConflictSolver[T]) solveSetLookaheadOnShifts() {
 	helpers := cs.getHelpers()
 
 	for _, h := range helpers {
@@ -150,9 +150,9 @@ func (cs *ConflictSolver) solveSetLookaheadOnShifts() {
 // and groups them by the look-ahead.
 //
 // Returns:
-//   - map[string][]*Helper: The helpers with look-ahead.
-func (cs *ConflictSolver) getHelpersWithLookahead() map[string][]*Helper {
-	groups := make(map[string][]*Helper)
+//   - map[T][]*Helper: The helpers with look-ahead.
+func (cs *ConflictSolver[T]) getHelpersWithLookahead() map[T][]*Helper[T] {
+	groups := make(map[T][]*Helper[T])
 
 	todo := cs.getHelpers()
 
@@ -162,7 +162,7 @@ func (cs *ConflictSolver) getHelpersWithLookahead() map[string][]*Helper {
 		if lookahead != nil {
 			prev, ok := groups[*lookahead]
 			if !ok {
-				prev = []*Helper{h}
+				prev = []*Helper[T]{h}
 			} else {
 				prev = append(prev, h)
 			}
@@ -182,7 +182,7 @@ func (cs *ConflictSolver) getHelpersWithLookahead() map[string][]*Helper {
 // Errors:
 //   - *ErrHelpersConflictingSize: If the helpers have conflicting sizes.
 //   - *ErrHelper: If there is an error appending the right-hand side to the helper.
-func (cs *ConflictSolver) SolveAmbiguousShifts() error {
+func (cs *ConflictSolver[T]) SolveAmbiguousShifts() error {
 	cs.solveSetLookaheadOnShifts()
 
 	// Now, those shift actions that have the look-ahead are no longer
@@ -213,7 +213,7 @@ func (cs *ConflictSolver) SolveAmbiguousShifts() error {
 }
 
 // CMPerSymbol is a type that represents conflicts per symbol.
-type CMPerSymbol map[string]uc.Pair[[]*Helper, int]
+type CMPerSymbol[T uc.Enumer] map[T]uc.Pair[[]*Helper[T], int]
 
 // FindConflicts is a method that finds conflicts for a specific symbol.
 //
@@ -222,15 +222,15 @@ type CMPerSymbol map[string]uc.Pair[[]*Helper, int]
 //
 // Returns:
 //   - CMPerSymbol: The conflicts per symbol.
-func (cs *ConflictSolver) FindConflicts() CMPerSymbol {
-	conflictMap := make(CMPerSymbol)
+func (cs *ConflictSolver[T]) FindConflicts() CMPerSymbol[T] {
+	conflictMap := make(CMPerSymbol[T])
 
 	for symbol, bucket := range cs.table {
-		todo := make([]*Helper, len(bucket))
+		todo := make([]*Helper[T], len(bucket))
 		copy(todo, bucket)
 
 		// 1. Remove every shift action that has a look-ahead.
-		todo = us.SliceFilter(todo, func(h *Helper) bool {
+		todo = us.SliceFilter(todo, func(h *Helper[T]) bool {
 			lookahead := h.GetLookahead()
 
 			return lookahead == nil
@@ -255,8 +255,8 @@ func (cs *ConflictSolver) FindConflicts() CMPerSymbol {
 // Returns:
 //   - map[*Helper][]*ExpansionTree: The forest of expansion trees.
 //   - error: An error of type *ErrHelper if the operation failed.
-func (cs *ConflictSolver) MakeExpansionForests(index int, nextRhs map[*Helper]string) (map[*Helper][]string, error) {
-	possibleLookaheads := make(map[*Helper][]string)
+func (cs *ConflictSolver[T]) MakeExpansionForests(index int, nextRhs map[*Helper[T]]T) (map[*Helper[T]][]T, error) {
+	possibleLookaheads := make(map[*Helper[T]][]T)
 
 	for c, rhs := range nextRhs {
 		rs := cs.GetElemsWithLhs(rhs)
@@ -264,7 +264,7 @@ func (cs *ConflictSolver) MakeExpansionForests(index int, nextRhs map[*Helper]st
 			return possibleLookaheads, nil
 		}
 
-		var lookaheads []string
+		var lookaheads []T
 
 		for _, r := range rs {
 			tree, err := NewExpansionTreeRootedAt(cs, r)
@@ -305,9 +305,9 @@ func (cs *ConflictSolver) MakeExpansionForests(index int, nextRhs map[*Helper]st
 // Returns:
 //   - bool: A boolean value indicating if the operation was successful.
 //   - error: An error if the operation failed.
-func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, error) {
+func (cs *ConflictSolver[T]) SolveAmbiguous(index int, conflicts []*Helper[T]) (bool, error) {
 	// 1. Take the next symbol of each conflicting rule
-	nextRhs := make(map[*Helper]string)
+	nextRhs := make(map[*Helper[T]]T)
 
 	for _, c := range conflicts {
 		rhs, err := c.GetRhsAt(index + 1)
@@ -342,7 +342,7 @@ func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, 
 		newR.ForceLookahead(forest[0])
 
 		for key, bucket := range cs.table {
-			slice := make([]*Helper, 0, len(bucket))
+			slice := make([]*Helper[T], 0, len(bucket))
 
 			for _, h := range bucket {
 				if h == c {
@@ -365,7 +365,7 @@ func (cs *ConflictSolver) SolveAmbiguous(index int, conflicts []*Helper) (bool, 
 //
 // Returns:
 //   - error: An error if the operation failed.
-func (cs *ConflictSolver) Solve() error {
+func (cs *ConflictSolver[T]) Solve() error {
 	for {
 		conflictMap := cs.FindConflicts()
 		if len(conflictMap) == 0 {
@@ -412,11 +412,11 @@ func (cs *ConflictSolver) Solve() error {
 // Returns:
 //   - []HelperElem: The elements that match the top of the stack.
 //   - error: An error if the operation failed.
-func (cs *ConflictSolver) Match(stack *ud.History[lls.Stacker[gr.Token]]) ([]HelperElem, error) {
-	var top gr.Token
+func (cs *ConflictSolver[T]) Match(stack *ud.History[lls.Stacker[*gr.Token[T]]]) ([]HelperElem[T], error) {
+	var top *gr.Token[T]
 	var ok bool
 
-	stack.ReadData(func(data lls.Stacker[gr.Token]) {
+	stack.ReadData(func(data lls.Stacker[*gr.Token[T]]) {
 		top, ok = data.Peek()
 	})
 	if !ok {
@@ -430,8 +430,8 @@ func (cs *ConflictSolver) Match(stack *ud.History[lls.Stacker[gr.Token]]) ([]Hel
 		return nil, fmt.Errorf("no elems found for symbol %s", id)
 	}
 
-	f := func(h *Helper) (*Helper, error) {
-		cmd := lls.NewPop[gr.Token]()
+	f := func(h *Helper[T]) (*Helper[T], error) {
+		cmd := lls.NewPop[*gr.Token[T]]()
 		err := stack.ExecuteCommand(cmd)
 		if err != nil {
 			return nil, errors.New("no top token found")
@@ -446,7 +446,7 @@ func (cs *ConflictSolver) Match(stack *ud.History[lls.Stacker[gr.Token]]) ([]Hel
 		return h, nil
 	}
 
-	slice := make([]*Helper, len(elems))
+	slice := make([]*Helper[T], len(elems))
 	copy(slice, elems)
 
 	successOrFail, ok := us.EvaluateSimpleHelpers(slice, f)
@@ -464,7 +464,7 @@ func (cs *ConflictSolver) Match(stack *ud.History[lls.Stacker[gr.Token]]) ([]Hel
 	// Get the longest match
 	// TO DO: Implement a better way to get the longest match.
 	// As of now, every match is considered the longest match.
-	firsts := make([]HelperElem, 0, len(success))
+	firsts := make([]HelperElem[T], 0, len(success))
 
 	for _, final := range success {
 		act := final.GetAction()

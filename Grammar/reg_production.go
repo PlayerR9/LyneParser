@@ -9,9 +9,9 @@ import (
 
 // RegProduction represents a production in a grammar that matches a
 // regular expression.
-type RegProduction struct {
+type RegProduction[T uc.Enumer] struct {
 	// Left-hand side of the production.
-	lhs string
+	lhs T
 
 	// Right-hand side of the production.
 	rhs string
@@ -21,7 +21,7 @@ type RegProduction struct {
 }
 
 // GoString implements the fmt.GoStringer interface.
-func (r *RegProduction) GoString() string {
+func (r *RegProduction[T]) GoString() string {
 	str := fmt.Sprintf("%+v", *r)
 
 	return str
@@ -31,12 +31,12 @@ func (r *RegProduction) GoString() string {
 //
 // Two productions are equal if their left-hand sides are equal and their
 // right-hand sides are equal.
-func (p *RegProduction) Equals(other uc.Equaler) bool {
+func (p *RegProduction[T]) Equals(other uc.Equaler) bool {
 	if other == nil {
 		return false
 	}
 
-	val, ok := other.(*RegProduction)
+	val, ok := other.(*RegProduction[T])
 	if !ok {
 		return false
 	}
@@ -45,8 +45,8 @@ func (p *RegProduction) Equals(other uc.Equaler) bool {
 }
 
 // Copy implements the common.Copier interface.
-func (p *RegProduction) Copy() uc.Copier {
-	pCopy := &RegProduction{
+func (p *RegProduction[T]) Copy() uc.Copier {
+	pCopy := &RegProduction[T]{
 		lhs: p.lhs,
 		rhs: p.rhs,
 		rxp: p.rxp,
@@ -72,8 +72,8 @@ func (p *RegProduction) Copy() uc.Copier {
 // Information:
 //   - Must call Compile() on the returned RegProduction to compile the
 //     regular expression.
-func NewRegProduction(lhs string, regex string) *RegProduction {
-	p := &RegProduction{
+func NewRegProduction[T uc.Enumer](lhs T, regex string) *RegProduction[T] {
+	p := &RegProduction[T]{
 		lhs: lhs,
 		rhs: "^" + regex,
 	}
@@ -84,8 +84,8 @@ func NewRegProduction(lhs string, regex string) *RegProduction {
 // the production.
 //
 // Returns:
-//   - string: The left-hand side of the production.
-func (p *RegProduction) GetLhs() string {
+//   - T: The left-hand side of the production.
+func (p *RegProduction[T]) GetLhs() T {
 	return p.lhs
 }
 
@@ -94,9 +94,9 @@ func (p *RegProduction) GetLhs() string {
 // production.
 //
 // Returns:
-//   - []string: A slice of symbols in the production.
-func (p *RegProduction) GetSymbols() []string {
-	return []string{p.lhs}
+//   - []T: A slice of symbols in the production.
+func (p *RegProduction[T]) GetSymbols() []T {
+	return []T{p.lhs}
 }
 
 // Match is a method of RegProduction that returns a token that matches the
@@ -112,15 +112,15 @@ func (p *RegProduction) GetSymbols() []string {
 //   - Token: A token that matches the production in the stack.
 //   - bool: True if the production matches the input stack, false
 //     otherwise.
-func (p *RegProduction) Match(at int, b []byte) (Token, bool) {
+func (p *RegProduction[T]) MatchRegProd(at int, b []byte) (*Token[T], bool) {
 	data := p.rxp.Find(b)
 	if data == nil {
-		return Token{}, false
+		return nil, false
 	}
 
 	// Must be an exact match.
 	if len(data) != len(b) {
-		return Token{}, false
+		return nil, false
 	}
 
 	lt := NewToken(p.lhs, string(data), at, nil)
@@ -133,7 +133,7 @@ func (p *RegProduction) Match(at int, b []byte) (Token, bool) {
 //
 // Returns:
 //   - error: An error if the regular expression cannot be compiled.
-func (r *RegProduction) Compile() error {
+func (r *RegProduction[T]) Compile() error {
 	rxp, err := regexp.Compile(r.rhs)
 	if err != nil {
 		return err

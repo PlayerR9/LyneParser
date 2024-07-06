@@ -10,13 +10,13 @@ import (
 )
 
 // Parser is a parser that uses a stack to parse a stream of tokens.
-type Parser struct {
+type Parser[T uc.Enumer] struct {
 	// evals is a list of evaluations that the parser will use.
-	evals []*CurrentEval
+	evals []*CurrentEval[T]
 
 	// decisionFunc represents the function that the parser will use to determine
 	// the next action to take.
-	dt *cs.ConflictSolver
+	dt *cs.ConflictSolver[T]
 }
 
 /////////////////////////////////////////////////////////////
@@ -33,7 +33,7 @@ type Parser struct {
 // Errors:
 //   - *uc.ErrInvalidParameter: The grammar is nil.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
-func NewParser(grammar *Grammar) (*Parser, error) {
+func NewParser[T uc.Enumer](grammar *Grammar[T]) (*Parser[T], error) {
 	if grammar == nil {
 		return nil, uc.NewErrNilParameter("grammar")
 	}
@@ -48,7 +48,7 @@ func NewParser(grammar *Grammar) (*Parser, error) {
 		return nil, err
 	}
 
-	p := &Parser{
+	p := &Parser[T]{
 		dt: table,
 	}
 
@@ -63,7 +63,7 @@ func NewParser(grammar *Grammar) (*Parser, error) {
 //
 // Returns:
 //   - error: An error if the input stream could not be parsed.
-func Parse(p *Parser, source *cds.Stream[gr.Token]) error {
+func Parse[T uc.Enumer](p *Parser[T], source *cds.Stream[*gr.Token[T]]) error {
 	if p == nil {
 		return uc.NewErrNilParameter("parser")
 	}
@@ -76,7 +76,7 @@ func Parse(p *Parser, source *cds.Stream[gr.Token]) error {
 		return errors.New("source is empty")
 	}
 
-	ceRoot := NewCurrentEval()
+	ceRoot := NewCurrentEval[T]()
 
 	err := ceRoot.shift(source)
 	if err != nil {
@@ -107,12 +107,12 @@ func Parse(p *Parser, source *cds.Stream[gr.Token]) error {
 // Returns:
 //   - []*gr.TokenTree: A slice of parse trees.
 //   - error: An error if the parse tree could not be retrieved.
-func (p *Parser) GetParseTree() ([]*gr.TokenTree, error) {
+func (p *Parser[T]) GetParseTree() ([]*gr.TokenTree[T], error) {
 	if len(p.evals) == 0 {
 		return nil, errors.New("nothing was parsed. Use Parse() to parse the input stream")
 	}
 
-	var forest []*gr.TokenTree
+	var forest []*gr.TokenTree[T]
 
 	for _, eval := range p.evals {
 		tmp, err := eval.GetParseTree()

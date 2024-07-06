@@ -22,17 +22,17 @@ import (
 //   - If the matcher returns an error, the solutions will be set to the error.
 //   - The evaluations assume that, the more the element is elaborated, the more the weight increases.
 //     Thus, it is assumed to be the most likely solution as it is the most elaborated. Euristic: Depth.
-func evaluate(dt *cs.ConflictSolver, source *cds.Stream[gr.Token], elem *CurrentEval) []*us.WeightedHelper[*CurrentEval] {
+func evaluate[T uc.Enumer](dt *cs.ConflictSolver[T], source *cds.Stream[*gr.Token[T]], elem *CurrentEval[T]) []*us.WeightedHelper[*CurrentEval[T]] {
 	ok := elem.Accept()
 	if ok {
 		h := us.NewWeightedHelper(elem, nil, 0.0)
 
-		sols := []*us.WeightedHelper[*CurrentEval]{h}
+		sols := []*us.WeightedHelper[*CurrentEval[T]]{h}
 
 		return sols
 	}
 
-	var sols []*us.WeightedHelper[*CurrentEval]
+	var sols []*us.WeightedHelper[*CurrentEval[T]]
 
 	p := uc.NewPair(elem, 0.0)
 	S := Stacker.NewArrayStack(p)
@@ -51,7 +51,7 @@ func evaluate(dt *cs.ConflictSolver, source *cds.Stream[gr.Token], elem *Current
 			continue
 		}
 
-		newPairs := make([]uc.Pair[*CurrentEval, float64], 0, len(nexts))
+		newPairs := make([]uc.Pair[*CurrentEval[T], float64], 0, len(nexts))
 
 		for _, next := range nexts {
 			p := uc.NewPair(next, p.Second+1.0)
@@ -84,7 +84,7 @@ func evaluate(dt *cs.ConflictSolver, source *cds.Stream[gr.Token], elem *Current
 //   - If the solutions are empty, the function returns nil.
 //   - If the solutions contain errors, the function returns the first error.
 //   - Otherwise, the function returns the solutions.
-func extractResults(sols []*us.WeightedHelper[*CurrentEval]) ([]*CurrentEval, error) {
+func extractResults[T uc.Enumer](sols []*us.WeightedHelper[*CurrentEval[T]]) ([]*CurrentEval[T], error) {
 	if len(sols) == 0 {
 		return nil, nil
 	}
@@ -117,7 +117,7 @@ func extractResults(sols []*us.WeightedHelper[*CurrentEval]) ([]*CurrentEval, er
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branch cannot be parsed.
-func ParseBranch(parser *Parser, source *cds.Stream[gr.Token]) ([]*gr.TokenTree, error) {
+func ParseBranch[T uc.Enumer](parser *Parser[T], source *cds.Stream[*gr.Token[T]]) ([]*gr.TokenTree[T], error) {
 	err := Parse(parser, source)
 	if err != nil {
 		return nil, err

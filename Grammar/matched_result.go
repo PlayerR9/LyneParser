@@ -1,20 +1,14 @@
 package Grammar
 
+import uc "github.com/PlayerR9/MyGoLib/Units/common"
+
 // MatchedResult represents the result of a match operation.
-type MatchedResult[T Token] struct {
+type MatchedResult[T uc.Enumer] struct {
 	// Matched is the matched token.
-	Matched T
+	Matched *Token[T]
 
 	// RuleIndex is the index of the production that matched.
 	RuleIndex int
-}
-
-// GetMatch returns the matched token.
-//
-// Returns:
-//   - T: The matched token.
-func (mr *MatchedResult[T]) GetMatch() T {
-	return mr.Matched
 }
 
 // NewMatchResult is a constructor of MatchedResult.
@@ -25,6 +19,11 @@ func (mr *MatchedResult[T]) GetMatch() T {
 //
 // Returns:
 //   - *MatchedResult: A new MatchedResult.
-func NewMatchResult[T Token](matched T, ruleIndex int) *MatchedResult[T] {
-	return &MatchedResult[T]{Matched: matched, RuleIndex: ruleIndex}
+func NewMatchResult[T uc.Enumer](matched *Token[T], ruleIndex int) *MatchedResult[T] {
+	mr := &MatchedResult[T]{
+		Matched:   matched,
+		RuleIndex: ruleIndex,
+	}
+
+	return mr
 }

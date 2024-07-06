@@ -1,6 +1,10 @@
 package ConflictSolver
 
-import "fmt"
+import (
+	"fmt"
+
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
+)
 
 // ErrHelpersConflictingSize is an error that is returned when helpers have conflicting sizes.
 type ErrHelpersConflictingSize struct{}
@@ -44,9 +48,9 @@ func NewErr0thRhsNotSet() *Err0thRhsNotSet {
 
 // ErrHelper is an error that is returned when something goes wrong
 // with a helper.
-type ErrHelper struct {
+type ErrHelper[T uc.Enumer] struct {
 	// Elem is the helper that caused the error.
-	Elem *Helper
+	Elem *Helper[T]
 
 	// Reason is the reason for the error.
 	Reason error
@@ -57,7 +61,7 @@ type ErrHelper struct {
 // Messages:
 //   - "something went wrong with helper (no helper)" if Elem is nil.
 //   - "helper (Elem) error: Reason" if Reason is not nil.
-func (e *ErrHelper) Error() string {
+func (e *ErrHelper[T]) Error() string {
 	var elem string
 
 	if e.Elem == nil {
@@ -81,8 +85,8 @@ func (e *ErrHelper) Error() string {
 //
 // Returns:
 //   - *ErrHelper: A pointer to the new error.
-func NewErrHelper(elem *Helper, reason error) *ErrHelper {
-	return &ErrHelper{
+func NewErrHelper[T uc.Enumer](elem *Helper[T], reason error) *ErrHelper[T] {
+	return &ErrHelper[T]{
 		Elem:   elem,
 		Reason: reason,
 	}

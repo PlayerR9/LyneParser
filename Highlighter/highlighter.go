@@ -11,9 +11,9 @@ import (
 )
 
 // Highlighter is a highlighter that applies styles to tokens.
-type Highlighter struct {
+type Highlighter[T uc.Enumer] struct {
 	// rules is a map of rules to apply.
-	rules map[string]tcell.Style
+	rules map[T]tcell.Style
 
 	// defaultStyle is the default style to apply.
 	defaultStyle tcell.Style
@@ -22,10 +22,10 @@ type Highlighter struct {
 	errorStyle tcell.Style
 
 	// data is the highlighted data.
-	data *Data
+	data *Data[T]
 
 	// lexer is the lexer to use.
-	lexer *lx.Lexer
+	lexer *lx.Lexer[T]
 
 	// source is the source to use.
 	source []byte
@@ -35,13 +35,13 @@ type Highlighter struct {
 //
 // Returns:
 //   - *Highlighter: The new Highlighter.
-func NewHighlighter(lexer *lx.Lexer, defaultStyle tcell.Style) (*Highlighter, error) {
+func NewHighlighter[T uc.Enumer](lexer *lx.Lexer[T], defaultStyle tcell.Style) (*Highlighter[T], error) {
 	if lexer == nil {
 		return nil, uc.NewErrNilParameter("lexer")
 	}
 
-	h := &Highlighter{
-		rules:        make(map[string]tcell.Style),
+	h := &Highlighter[T]{
+		rules:        make(map[T]tcell.Style),
 		defaultStyle: defaultStyle,
 		errorStyle:   defaultStyle,
 	}
@@ -53,9 +53,9 @@ func NewHighlighter(lexer *lx.Lexer, defaultStyle tcell.Style) (*Highlighter, er
 // Parameters:
 //   - style: The style to apply.
 //   - ids: The IDs to apply the style to.
-func (h *Highlighter) SpecifyRule(style tcell.Style, ids ...string) {
+func (h *Highlighter[T]) SpecifyRule(style tcell.Style, ids ...T) {
 	if h.rules == nil {
-		h.rules = make(map[string]tcell.Style)
+		h.rules = make(map[T]tcell.Style)
 	}
 
 	for _, id := range ids {
@@ -67,11 +67,11 @@ func (h *Highlighter) SpecifyRule(style tcell.Style, ids ...string) {
 //
 // Parameters:
 //   - style: The style to apply to errors.
-func (h *Highlighter) ChangeErrorStyle(style tcell.Style) {
+func (h *Highlighter[T]) ChangeErrorStyle(style tcell.Style) {
 	h.errorStyle = style
 }
 
-func (h *Highlighter) extractErrorSection(data []byte, firstInvalid int) int {
+func (h *Highlighter[T]) extractErrorSection(data []byte, firstInvalid int) int {
 	// go until the first whitespace character
 	for i := firstInvalid; i < len(data); i++ {
 		ok := unicode.IsSpace(rune(data[i]))
@@ -84,8 +84,8 @@ func (h *Highlighter) extractErrorSection(data []byte, firstInvalid int) int {
 	return -1
 }
 
-func (h *Highlighter) makeData() *Data {
-	d := &Data{
+func (h *Highlighter[T]) makeData() *Data[T] {
+	d := &Data[T]{
 		elems:        make([]Texter, 0),
 		source:       h.source,
 		rules:        h.rules,
@@ -96,7 +96,7 @@ func (h *Highlighter) makeData() *Data {
 	return d
 }
 
-func (h *Highlighter) Apply(data []byte) {
+func (h *Highlighter[T]) Apply(data []byte) {
 	h.data = h.makeData()
 
 	v := lx.NewVerbose(true)
@@ -162,7 +162,7 @@ func (h *Highlighter) Apply(data []byte) {
 //
 // Returns:
 //   - error: An error if the rules could not be applied.
-func (h *Highlighter) apply(stream *cds.Stream[gr.Token], source []byte) error {
+func (h *Highlighter[T]) apply(stream *cds.Stream[*gr.Token[T]], source []byte) error {
 	atSource := 0
 
 	for at := 0; ; at++ {

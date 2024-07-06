@@ -11,15 +11,15 @@ import (
 )
 
 // InfoStruct is the information about the expansion tree.
-type InfoStruct struct {
+type InfoStruct[T uc.Enumer] struct {
 	// seen is a map of helpers that have been seen.
-	seen map[*Helper]bool
+	seen map[*Helper[T]]bool
 }
 
 // Copy implements the Copier interface.
-func (is *InfoStruct) Copy() uc.Copier {
-	isCopy := &InfoStruct{
-		seen: make(map[*Helper]bool),
+func (is *InfoStruct[T]) Copy() uc.Copier {
+	isCopy := &InfoStruct[T]{
+		seen: make(map[*Helper[T]]bool),
 	}
 
 	for k, v := range is.seen {
@@ -40,13 +40,13 @@ func (is *InfoStruct) Copy() uc.Copier {
 // Behaviors:
 //   - The root is set to seen.
 //   - If the root is nil, then nil is returned.
-func NewInfoStruct(root *Helper) *InfoStruct {
+func NewInfoStruct[T uc.Enumer](root *Helper[T]) *InfoStruct[T] {
 	if root == nil {
 		return nil
 	}
 
-	info := &InfoStruct{
-		seen: make(map[*Helper]bool),
+	info := &InfoStruct[T]{
+		seen: make(map[*Helper[T]]bool),
 	}
 
 	info.seen[root] = true
@@ -61,7 +61,7 @@ func NewInfoStruct(root *Helper) *InfoStruct {
 //
 // Returns:
 //   - bool: True if the helper is seen, false otherwise.
-func (is *InfoStruct) IsNotSeen(h *Helper) bool {
+func (is *InfoStruct[T]) IsNotSeen(h *Helper[T]) bool {
 	return !is.seen[h]
 }
 
@@ -69,17 +69,17 @@ func (is *InfoStruct) IsNotSeen(h *Helper) bool {
 //
 // Parameters:
 //   - h: The helper to set as seen.
-func (is *InfoStruct) SetSeen(h *Helper) {
+func (is *InfoStruct[T]) SetSeen(h *Helper[T]) {
 	is.seen[h] = true
 }
 
 // ExpansionTree is a tree of expansion helpers.
-type ExpansionTree struct {
+type ExpansionTree[T uc.Enumer] struct {
 	// tree is the tree of expansion helpers.
-	tree *tr.Tree[*Helper]
+	tree *tr.Tree[*Helper[T]]
 
 	// info is the information about the expansion tree.
-	info *InfoStruct
+	info *InfoStruct[T]
 }
 
 // NewExpansionTree creates a new expansion tree where the root is h and every node is a
@@ -97,11 +97,11 @@ type ExpansionTree struct {
 // Errors:
 //   - *ers.Err0thRhsNotSet: The 0th RHS of the root is not set.
 //   - *ers.ErrInvalidParameter: The root is nil.
-func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, error) {
+func NewExpansionTreeRootedAt[T uc.Enumer](cs *ConflictSolver[T], h *Helper[T]) (*ExpansionTree[T], error) {
 	info := NewInfoStruct(h)
 
-	nextsFunc := func(elem *Helper, is uc.Copier) ([]*Helper, error) {
-		isInf, ok := is.(*InfoStruct)
+	nextsFunc := func(elem *Helper[T], is uc.Copier) ([]*Helper[T], error) {
+		isInf, ok := is.(*InfoStruct[T])
 		if !ok {
 			return nil, uc.NewErrUnexpectedType("is", is)
 		}
@@ -111,7 +111,7 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 			return nil, NewErr0thRhsNotSet()
 		}
 
-		ok = gr.IsTerminal(rhs)
+		ok = gr.IsTerminal(rhs.String())
 		if ok {
 			return nil, nil
 		}
@@ -125,7 +125,7 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 		return result, nil
 	}
 
-	var builder trt.Builder[*Helper]
+	var builder trt.Builder[*Helper[T]]
 
 	builder.SetInfo(info)
 	builder.SetNextFunc(nextsFunc)
@@ -135,7 +135,7 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 		return nil, err
 	}
 
-	ext := &ExpansionTree{
+	ext := &ExpansionTree[T]{
 		tree: tree,
 		info: info,
 	}
@@ -144,7 +144,7 @@ func NewExpansionTreeRootedAt(cs *ConflictSolver, h *Helper) (*ExpansionTree, er
 }
 
 // PruneNonTerminalLeaves prunes the non-terminal leaves of the expansion tree.
-func (et *ExpansionTree) PruneNonTerminalLeaves() {
+func (et *ExpansionTree[T]) PruneNonTerminalLeaves() {
 	leaves := et.tree.GetLeaves()
 
 	todo := us.SliceFilter(leaves, FilterNonTerminalLeaf)
@@ -164,7 +164,7 @@ func (et *ExpansionTree) PruneNonTerminalLeaves() {
 //
 // Returns:
 //   - int: The size of the expansion tree.
-func (et *ExpansionTree) Size() int {
+func (et *ExpansionTree[T]) Size() int {
 	size := et.tree.Size()
 	return size
 }
@@ -173,11 +173,11 @@ func (et *ExpansionTree) Size() int {
 // are the 0th RHS of the terminal leaves.
 //
 // Returns:
-//   - []string: The collapsed expansion tree.
-func (et *ExpansionTree) Collapse() []string {
+//   - []T: The collapsed expansion tree.
+func (et *ExpansionTree[T]) Collapse() []T {
 	leaves := et.tree.GetLeaves()
 
-	var result []string
+	var result []T
 
 	for _, leaf := range leaves {
 		rhs, err := leaf.Data.GetRhsAt(0)

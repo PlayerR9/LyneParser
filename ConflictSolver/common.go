@@ -14,7 +14,7 @@ import (
 // Returns:
 //   - map[string][]*Helper: The elements in the decision table with conflicts solved.
 //   - error: An error if the operation failed.
-func SolveConflicts(symbols []string, rules []*gr.Production) (*ConflictSolver, error) {
+func SolveConflicts[T uc.Enumer](symbols []T, rules []*gr.Production[T]) (*ConflictSolver[T], error) {
 	if len(rules) == 0 {
 		return nil, uc.NewErrInvalidParameter("rules", uc.NewErrEmpty(rules))
 	}

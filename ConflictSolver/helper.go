@@ -10,29 +10,29 @@ import (
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
-type HelperElem interface {
+type HelperElem[T uc.Enumer] interface {
 	// SetLookahead sets the lookahead of the action.
 	//
 	// Parameters:
 	//   - lookahead: The lookahead to set.
-	SetLookahead(lookahead *string)
+	SetLookahead(lookahead *T)
 
 	fmt.Stringer
 	uc.Copier
 }
 
 // Helper represents a helper in a decision table.
-type Helper struct {
+type Helper[T uc.Enumer] struct {
 	// Item is the item of the helper.
-	*Item
+	*Item[T]
 
 	// Action is the action of the helper.
 	// This can never be nil.
-	Action HelperElem
+	Action HelperElem[T]
 }
 
 // String implements the fmt.Stringer interface.
-func (h *Helper) String() string {
+func (h *Helper[T]) String() string {
 	var builder strings.Builder
 
 	if h.Item != nil {
@@ -49,10 +49,10 @@ func (h *Helper) String() string {
 }
 
 // Copy implements the common.Copier interface.
-func (h *Helper) Copy() uc.Copier {
-	return &Helper{
-		Item:   h.Item.Copy().(*Item),
-		Action: h.Action.Copy().(HelperElem),
+func (h *Helper[T]) Copy() uc.Copier {
+	return &Helper[T]{
+		Item:   h.Item.Copy().(*Item[T]),
+		Action: h.Action.Copy().(HelperElem[T]),
 	}
 }
 
@@ -67,12 +67,12 @@ func (h *Helper) Copy() uc.Copier {
 //
 // Behaviors:
 //   - If the item or action are nil, then nil is returned.
-func NewHelper(item *Item, action HelperElem) *Helper {
+func NewHelper[T uc.Enumer](item *Item[T], action HelperElem[T]) *Helper[T] {
 	if item == nil || action == nil {
 		return nil
 	}
 
-	h := &Helper{
+	h := &Helper[T]{
 		Item:   item,
 		Action: action,
 	}
@@ -87,7 +87,7 @@ func NewHelper(item *Item, action HelperElem) *Helper {
 //
 // Behaviors:
 //   - If the action is nil, then the action is not set.
-func (h *Helper) SetAction(action HelperElem) {
+func (h *Helper[T]) SetAction(action HelperElem[T]) {
 	if action == nil {
 		return
 	}
@@ -99,7 +99,7 @@ func (h *Helper) SetAction(action HelperElem) {
 //
 // Returns:
 //   - error: An error if the evaluation failed.
-func (h *Helper) EvaluateLookahead() error {
+func (h *Helper[T]) EvaluateLookahead() error {
 	pos := h.Item.GetPos()
 
 	lookahead, err := h.Item.GetRhsAt(pos + 1)
@@ -107,7 +107,7 @@ func (h *Helper) EvaluateLookahead() error {
 		return fmt.Errorf("failed to evaluate lookahead: %w", err)
 	}
 
-	ok := gr.IsTerminal(lookahead)
+	ok := gr.IsTerminal(lookahead.String())
 	if !ok {
 		return nil
 	}
@@ -120,14 +120,14 @@ func (h *Helper) EvaluateLookahead() error {
 // GetLookahead returns the lookahead of the action.
 //
 // Returns:
-//   - *string: The lookahead token ID.
-func (h *Helper) GetLookahead() *string {
-	var lookahead *string
+//   - *T: The lookahead token ID.
+func (h *Helper[T]) GetLookahead() *T {
+	var lookahead *T
 
 	switch act := h.Action.(type) {
-	case *ActReduce:
+	case *ActReduce[T]:
 		lookahead = act.GetLookahead()
-	case *ActShift:
+	case *ActShift[T]:
 		lookahead = act.GetLookahead()
 	}
 
@@ -141,11 +141,11 @@ func (h *Helper) GetLookahead() *string {
 //
 // Returns:
 //   - error: An error of type *ErrNoActionProvided if the action is nil.
-func (h *Helper) AppendRhs(symbol string) error {
+func (h *Helper[T]) AppendRhs(symbol T) error {
 	switch act := h.Action.(type) {
-	case *ActReduce:
+	case *ActReduce[T]:
 		act.AppendRhs(symbol)
-	case *ActShift:
+	case *ActShift[T]:
 		act.AppendRhs(symbol)
 	default:
 		return uc.NewErrUnexpectedType("action", act)
@@ -170,12 +170,12 @@ func (h *Helper) AppendRhs(symbol string) error {
 //     otherH.Item is nil, or otherH.Item.Rule is nil.
 //   - *gr.ErrLhsRhsMismatch: The left-hand side of the item does not match the
 //     right-hand side of the other item.
-func (h *Helper) ReplaceRhsAt(index int, rhs string) *Helper {
+func (h *Helper[T]) ReplaceRhsAt(index int, rhs T) *Helper[T] {
 	itemCopy := h.Item.ReplaceRhsAt(index, rhs)
 
-	hCopy := &Helper{
+	hCopy := &Helper[T]{
 		Item:   itemCopy,
-		Action: h.Action.Copy().(HelperElem),
+		Action: h.Action.Copy().(HelperElem[T]),
 	}
 	return hCopy
 }
@@ -196,17 +196,17 @@ func (h *Helper) ReplaceRhsAt(index int, rhs string) *Helper {
 //     otherH.Item is nil, or otherH.Item.Rule is nil.
 //   - *gr.ErrLhsRhsMismatch: The left-hand side of the item does not match the
 //     right-hand side of the other item.
-func (h *Helper) SubstituteRhsAt(index int, otherH *Helper) *Helper {
+func (h *Helper[T]) SubstituteRhsAt(index int, otherH *Helper[T]) *Helper[T] {
 	if otherH == nil {
-		hCopy := h.Copy().(*Helper)
+		hCopy := h.Copy().(*Helper[T])
 		return hCopy
 	}
 
 	itemCopy := h.Item.SubstituteRhsAt(index, otherH.Item)
 
-	hCopy := &Helper{
+	hCopy := &Helper[T]{
 		Item:   itemCopy,
-		Action: h.Action.Copy().(HelperElem),
+		Action: h.Action.Copy().(HelperElem[T]),
 	}
 
 	return hCopy
@@ -223,13 +223,13 @@ func (h *Helper) SubstituteRhsAt(index int, otherH *Helper) *Helper {
 //
 // Behaviors:
 //   - The stack is refused.
-func (h *Helper) Match(top gr.Token, stack *ud.History[lls.Stacker[gr.Token]]) error {
+func (h *Helper[T]) Match(top *gr.Token[T], stack *ud.History[lls.Stacker[*gr.Token[T]]]) error {
 	var err error
 
 	switch act := h.Action.(type) {
-	case *ActReduce:
+	case *ActReduce[T]:
 		err = MatchAction(act.Action, top, stack)
-	case *ActShift:
+	case *ActShift[T]:
 		err = MatchAction(act.Action, top, stack)
 	default:
 		return uc.NewErrUnexpectedType("action", act)
@@ -252,11 +252,11 @@ func (h *Helper) Match(top gr.Token, stack *ud.History[lls.Stacker[gr.Token]]) e
 //
 // Behaviors:
 //   - If the action is invalid, -1 is returned.
-func (h *Helper) Size() int {
+func (h *Helper[T]) Size() int {
 	switch act := h.Action.(type) {
-	case *ActReduce:
+	case *ActReduce[T]:
 		return act.Size()
-	case *ActShift:
+	case *ActShift[T]:
 		return act.Size()
 	default:
 		return -1
@@ -267,7 +267,7 @@ func (h *Helper) Size() int {
 //
 // Returns:
 //   - Actioner: The action of the helper.
-func (h *Helper) GetAction() HelperElem {
+func (h *Helper[T]) GetAction() HelperElem[T] {
 	return h.Action
 }
 
@@ -275,6 +275,6 @@ func (h *Helper) GetAction() HelperElem {
 //
 // Parameters:
 //   - lookahead: The lookahead to force.
-func (h *Helper) ForceLookahead(lookahead string) {
+func (h *Helper[T]) ForceLookahead(lookahead T) {
 	h.Action.SetLookahead(&lookahead)
 }

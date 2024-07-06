@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	cdd "github.com/PlayerR9/MyGoLib/Display/drawtable"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	"github.com/gdamore/tcell"
 
 	p9 "github.com/PlayerR9/LyneParser/PlayerR9"
 )
 
 // Data is a highlighted data.
-type Data struct {
+type Data[T uc.Enumer] struct {
 	// source is the source of the data.
 	source []byte
 
@@ -18,7 +19,7 @@ type Data struct {
 	elems []Texter
 
 	// rules is a map of rules to apply.
-	rules map[string]tcell.Style
+	rules map[T]tcell.Style
 
 	// defaultStyle is the default style to apply.
 	defaultStyle tcell.Style
@@ -36,7 +37,7 @@ type Data struct {
 //
 // Returns:
 //   - error: An error if there was a problem drawing the data.
-func (d *Data) Draw(table cdd.DrawTable, x, y *int) error {
+func (d *Data[T]) Draw(table cdd.DrawTable, x, y *int) error {
 	for _, elem := range d.elems {
 		switch elem := elem.(type) {
 		case *NormalText:
@@ -51,7 +52,7 @@ func (d *Data) Draw(table cdd.DrawTable, x, y *int) error {
 			for _, sequence := range sequences {
 				table.WriteHorizontalSequence(x, y, sequence)
 			}
-		case *ValidText:
+		case *ValidText[T]:
 		default:
 			return fmt.Errorf("unknown Texter type: %T", elem)
 		}
@@ -64,7 +65,7 @@ func (d *Data) Draw(table cdd.DrawTable, x, y *int) error {
 //
 // Parameters:
 //   - elem: The element to add.
-func (d *Data) Add(elem Texter) {
+func (d *Data[T]) Add(elem Texter) {
 	if elem == nil {
 		return
 	}

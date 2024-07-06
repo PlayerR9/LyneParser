@@ -6,15 +6,16 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
+	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
 // Lexer is a lexer that uses a grammar to tokenize a string.
-type Lexer struct {
+type Lexer[T uc.Enumer] struct {
 	// productions are the production rules to use.
-	productions []*gr.RegProduction
+	productions []*gr.RegProduction[T]
 
 	// toSkip are the tokens to skip.
-	toSkip []string
+	toSkip []T
 }
 
 // NewLexer creates a new lexer.
@@ -52,8 +53,8 @@ type Lexer struct {
 //	}
 //
 //	// Finished successfully.
-func NewLexer(grammar *Grammar) *Lexer {
-	lex := new(Lexer)
+func NewLexer[T uc.Enumer](grammar *Grammar[T]) *Lexer[T] {
+	lex := new(Lexer[T])
 
 	if grammar == nil {
 		return lex
@@ -80,20 +81,20 @@ func NewLexer(grammar *Grammar) *Lexer {
 //   - *ErrNoMatches: No matches are found in the source.
 //   - *ErrAllMatchesFailed: All matches failed.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
-func (l *Lexer) Lex(input []byte, logger *Verbose) *LexerIterator {
-	prodCopy := make([]*gr.RegProduction, len(l.productions))
+func (l *Lexer[T]) Lex(input []byte, logger *Verbose) *LexerIterator[T] {
+	prodCopy := make([]*gr.RegProduction[T], len(l.productions))
 	copy(prodCopy, l.productions)
-	toSkip := make([]string, len(l.toSkip))
+	toSkip := make([]T, len(l.toSkip))
 	copy(toSkip, l.toSkip)
 
 	stream := cds.NewStream(input)
 
 	si := newSourceIterator(stream, prodCopy, logger)
 
-	li := &LexerIterator{
+	li := &LexerIterator[T]{
 		toSkip:     toSkip,
 		sourceIter: si,
-		completedLeaves: &leavesResult{
+		completedLeaves: &leavesResult[T]{
 			leaves: nil,
 		},
 	}
@@ -111,7 +112,7 @@ func (l *Lexer) Lex(input []byte, logger *Verbose) *LexerIterator {
 //
 // Returns:
 //   - *LexerIterator: The lexer iterator.
-func FullLexer(grammar *Grammar, input []byte, logger *Verbose) *LexerIterator {
+func FullLexer[T uc.Enumer](grammar *Grammar[T], input []byte, logger *Verbose) *LexerIterator[T] {
 	lexer := NewLexer(grammar)
 	if lexer == nil {
 		return nil
@@ -188,7 +189,7 @@ func splitBytesFromEnd(data []byte) [][]byte {
 //
 //	Hello, word!
 //	       ^
-func FormatSyntaxError(branch *cds.Stream[gr.Token], data []byte) string {
+func FormatSyntaxError[T uc.Enumer](branch *cds.Stream[*gr.Token[T]], data []byte) string {
 	if branch == nil {
 		return string(data)
 	}

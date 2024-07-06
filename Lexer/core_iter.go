@@ -9,17 +9,17 @@ import (
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
-type CoreIter struct {
-	doFunc uc.EvalManyFunc[*TreeNode, *TreeNode]
-	tree   *tr.Tree[*TreeNode]
+type CoreIter[T uc.Enumer] struct {
+	doFunc uc.EvalManyFunc[*TreeNode[T], *TreeNode[T]]
+	tree   *tr.Tree[*TreeNode[T]]
 }
 
-func (it *CoreIter) Size() (count int) {
+func (it *CoreIter[T]) Size() (count int) {
 	count = it.tree.Size()
 	return
 }
 
-func (it *CoreIter) canContinue() bool {
+func (it *CoreIter[T]) canContinue() bool {
 	size := it.tree.Size()
 
 	if size != 1 {
@@ -32,7 +32,7 @@ func (it *CoreIter) canContinue() bool {
 	return status != EvalComplete
 }
 
-func (it *CoreIter) Consume() ([][]gr.Token, error) {
+func (it *CoreIter[T]) Consume() ([][]*gr.Token[T], error) {
 	var errs uc.ErrOrSol[any]
 
 	for {
@@ -58,7 +58,7 @@ func (it *CoreIter) Consume() ([][]gr.Token, error) {
 
 		leaves := it.tree.GetLeaves()
 
-		f := func(tn *tr.TreeNode[*TreeNode]) bool {
+		f := func(tn *tr.TreeNode[*TreeNode[T]]) bool {
 			data := tn.Data
 			status := data.GetStatus()
 
@@ -68,7 +68,7 @@ func (it *CoreIter) Consume() ([][]gr.Token, error) {
 
 		leavesDone := us.SliceFilter(leaves, f)
 
-		var results [][]gr.Token
+		var results [][]*gr.Token[T]
 
 		for _, leaf := range leavesDone {
 			// Extract the branch.
@@ -88,7 +88,7 @@ func (it *CoreIter) Consume() ([][]gr.Token, error) {
 		}
 
 		if len(results) > 0 {
-			f := func(a, b []gr.Token) int {
+			f := func(a, b []*gr.Token[T]) int {
 				return len(a) - len(b)
 			}
 
@@ -99,26 +99,30 @@ func (it *CoreIter) Consume() ([][]gr.Token, error) {
 	}
 }
 
-func (it *CoreIter) Restart() {
-	root := gr.RootToken()
+func (it *CoreIter[T]) Restart() {
+	// root := gr.RootToken()
 
-	tn := newTreeNode(root)
+	// tn := newTreeNode(root)
 
-	tree := tr.NewTree(tn)
-	it.tree = tree
+	// tree := tr.NewTree(tn)
+	// it.tree = tree
+
+	panic("Restart not implemented yet")
 }
 
-func newCoreIter(doFunc uc.EvalManyFunc[*TreeNode, *TreeNode]) *CoreIter {
-	root := gr.RootToken()
+func newCoreIter[T uc.Enumer](doFunc uc.EvalManyFunc[*TreeNode[T], *TreeNode[T]]) *CoreIter[T] {
+	// root := gr.RootToken()
 
-	tn := newTreeNode(root)
+	// tn := newTreeNode(root)
 
-	tree := tr.NewTree(tn)
+	// tree := tr.NewTree(tn)
 
-	it := &CoreIter{
-		tree:   tree,
-		doFunc: doFunc,
-	}
+	// it := &CoreIter[T]{
+	// 	tree:   tree,
+	// 	doFunc: doFunc,
+	// }
 
-	return it
+	// return it
+
+	panic("newCoreIter not implemented yet")
 }

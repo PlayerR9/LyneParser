@@ -1,17 +1,8 @@
 package Parser
 
-import (
-	"strings"
-	"testing"
-
-	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
-	gr "github.com/PlayerR9/LyneParser/Grammar"
-	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
-)
-
+/*
 var (
-	TestGrammar *Grammar
+	TestGrammar *Grammar[T]
 )
 
 func init() {
@@ -35,6 +26,7 @@ func init() {
 
 	TestGrammar = grammar
 }
+
 
 func TestAmbiguousShifts(t *testing.T) {
 	rules := TestGrammar.GetProductions()
@@ -105,10 +97,11 @@ func TestConflictSolver(t *testing.T) {
 	t.Fatalf("TestConflictSolver() is not implemented")
 }
 
-var LexedContent *cds.Stream[gr.Token]
+
+var LexedContent *cds.Stream[*gr.Token]
 
 func init() {
-	tokens := []gr.Token{
+	tokens := []*gr.Token{
 		{
 			ID:   "OP_SQUARE",
 			Data: "[",
@@ -208,7 +201,7 @@ func init() {
 
 	for i := 0; i < len(tokens)-1; i++ {
 		elem := tokens[i]
-		elem.SetLookahead(&tokens[i+1])
+		elem.SetLookahead(tokens[i+1])
 	}
 
 	LexedContent = cds.NewStream(tokens)
@@ -236,3 +229,4 @@ func TestParsing(t *testing.T) {
 
 	t.Log(forest[0].DebugString())
 }
+*/

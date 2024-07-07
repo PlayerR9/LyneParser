@@ -1,6 +1,8 @@
 package Parser
 
 import (
+	"fmt"
+
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
@@ -10,15 +12,15 @@ import (
 )
 
 // CurrentEval is a struct that represents the current evaluation of the parser.
-type CurrentEval[T uc.Enumer] struct {
+type CurrentEval[T gr.TokenTyper] struct {
 	// stack represents the stack that the parser will use.
 	stack *ud.History[lls.Stacker[*gr.Token[T]]]
 
-	// currentIndex is the current index of the input stream.
-	currentIndex int
+	// current_index is the current index of the input stream.
+	current_index int
 
-	// isDone is a flag that represents if the parser has finished parsing.
-	isDone bool
+	// is_done is a flag that represents if the parser has finished parsing.
+	is_done bool
 }
 
 // Copy creates a copy of the current evaluation.
@@ -26,12 +28,12 @@ type CurrentEval[T uc.Enumer] struct {
 // Returns:
 //   - uc.Copier: A copy of the current evaluation.
 func (ce *CurrentEval[T]) Copy() uc.Copier {
-	ceCopy := &CurrentEval[T]{
-		stack:        ce.stack.Copy().(*ud.History[lls.Stacker[*gr.Token[T]]]),
-		currentIndex: ce.currentIndex,
-		isDone:       ce.isDone,
+	ce_copy := &CurrentEval[T]{
+		stack:         ce.stack.Copy().(*ud.History[lls.Stacker[*gr.Token[T]]]),
+		current_index: ce.current_index,
+		is_done:       ce.is_done,
 	}
-	return ceCopy
+	return ce_copy
 }
 
 // Accept returns true if the current evaluation has accepted the input stream.
@@ -39,17 +41,17 @@ func (ce *CurrentEval[T]) Copy() uc.Copier {
 // Returns:
 //   - bool: True if the current evaluation has accepted the input stream.
 func (ce *CurrentEval[T]) Accept() bool {
-	return ce.isDone
+	return ce.is_done
 }
 
 // NewCurrentEval creates a new current evaluation.
 //
 // Returns:
 //   - *CurrentEval: A new current evaluation.
-func NewCurrentEval[T uc.Enumer]() *CurrentEval[T] {
+func NewCurrentEval[T gr.TokenTyper]() *CurrentEval[T] {
 	ce := &CurrentEval[T]{
-		currentIndex: 0,
-		isDone:       false,
+		current_index: 0,
+		is_done:       false,
 	}
 
 	ce.stack = lls.NewStackWithHistory(lls.NewLinkedStack[*gr.Token[T]]())
@@ -98,15 +100,18 @@ func (ce *CurrentEval[T]) GetParseTree() ([]*gr.TokenTree[T], error) {
 // Returns:
 //   - error: An error of type *ErrNoAccept if the input stream is done.
 func (ce *CurrentEval[T]) shift(source *cds.Stream[*gr.Token[T]]) error {
-	toks, err := source.Get(ce.currentIndex, 1)
+	toks, err := source.Get(ce.current_index, 1)
 	if err != nil || len(toks) == 0 {
 		return NewErrNoAccept()
 	}
 
 	cmd := lls.NewPush(toks[0])
-	ce.stack.ExecuteCommand(cmd)
+	err = ce.stack.ExecuteCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("could not push token: %s", err.Error())
+	}
 
-	ce.currentIndex++
+	ce.current_index++
 
 	return nil
 }
@@ -178,14 +183,11 @@ func (ce *CurrentEval[T]) ActOnDecision(decision cs.HelperElem[T], source *cds.S
 	case *cs.ActShift[T]:
 		err = ce.shift(source)
 	case *cs.ActReduce[T]:
-		rule := decision.GetOriginal()
-
-		err = ce.reduce(rule)
+		err = ce.reduce(decision.Original)
+	case *cs.ActAccept[T]:
+		err = ce.reduce(decision.Original)
 		if err == nil {
-			ok := decision.ShouldAccept()
-			if ok {
-				ce.isDone = true
-			}
+			ce.is_done = true
 		}
 	default:
 		err = NewErrUnknownAction(decision)
@@ -226,19 +228,19 @@ func (ce *CurrentEval[T]) Parse(source *cds.Stream[*gr.Token[T]], dt *cs.Conflic
 
 		return []*CurrentEval[T]{ce}, nil
 	default:
-		ceCopies := make([]*CurrentEval[T], 0, len(decisions))
+		ce_copies := make([]*CurrentEval[T], 0, len(decisions))
 
 		for _, decision := range decisions {
-			ceCopy := ce.Copy().(*CurrentEval[T])
+			ce_copy := ce.Copy().(*CurrentEval[T])
 
-			err := ceCopy.ActOnDecision(decision, source)
+			err := ce_copy.ActOnDecision(decision, source)
 			if err != nil {
 				continue
 			}
 
-			ceCopies = append(ceCopies, ceCopy)
+			ce_copies = append(ce_copies, ce_copy)
 		}
 
-		return ceCopies, nil
+		return ce_copies, nil
 	}
 }

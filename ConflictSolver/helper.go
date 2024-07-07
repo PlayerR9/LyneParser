@@ -10,19 +10,27 @@ import (
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
-type HelperElem[T uc.Enumer] interface {
+type HelperElem[T gr.TokenTyper] interface {
 	// SetLookahead sets the lookahead of the action.
 	//
 	// Parameters:
 	//   - lookahead: The lookahead to set.
 	SetLookahead(lookahead *T)
 
+	// AppendRhs appends a symbol to the right-hand side of the action.
+	//
+	// Parameters:
+	//   - symbol: The symbol to append.
+	AppendRhs(symbol T)
+
+	Actioner[T]
+
 	fmt.Stringer
 	uc.Copier
 }
 
 // Helper represents a helper in a decision table.
-type Helper[T uc.Enumer] struct {
+type Helper[T gr.TokenTyper] struct {
 	// Item is the item of the helper.
 	*Item[T]
 
@@ -33,27 +41,36 @@ type Helper[T uc.Enumer] struct {
 
 // String implements the fmt.Stringer interface.
 func (h *Helper[T]) String() string {
-	var builder strings.Builder
+	var item_str string
 
 	if h.Item != nil {
-		builder.WriteString(h.Item.String())
+		item_str = h.Item.String()
 	} else {
-		builder.WriteString("no item")
+		item_str = "no item"
 	}
 
+	var builder strings.Builder
+
+	builder.WriteString(item_str)
 	builder.WriteString(" (")
 	builder.WriteString(h.Action.String())
 	builder.WriteRune(')')
 
-	return builder.String()
+	str := builder.String()
+	return str
 }
 
 // Copy implements the common.Copier interface.
 func (h *Helper[T]) Copy() uc.Copier {
-	return &Helper[T]{
-		Item:   h.Item.Copy().(*Item[T]),
-		Action: h.Action.Copy().(HelperElem[T]),
+	item_copy := h.Item.Copy().(*Item[T])
+	act_copy := h.Action.Copy().(HelperElem[T])
+
+	h_copy := &Helper[T]{
+		Item:   item_copy,
+		Action: act_copy,
 	}
+
+	return h_copy
 }
 
 // NewHelper is a constructor of Helper.
@@ -63,11 +80,8 @@ func (h *Helper[T]) Copy() uc.Copier {
 //   - action: The action of the helper.
 //
 // Returns:
-//   - *Helper: The pointer to the new Helper.
-//
-// Behaviors:
-//   - If the item or action are nil, then nil is returned.
-func NewHelper[T uc.Enumer](item *Item[T], action HelperElem[T]) *Helper[T] {
+//   - *Helper: The pointer to the new Helper. Nil if item or action is nil.
+func NewHelper[T gr.TokenTyper](item *Item[T], action HelperElem[T]) *Helper[T] {
 	if item == nil || action == nil {
 		return nil
 	}
@@ -107,7 +121,7 @@ func (h *Helper[T]) EvaluateLookahead() error {
 		return fmt.Errorf("failed to evaluate lookahead: %w", err)
 	}
 
-	ok := gr.IsTerminal(lookahead.String())
+	ok := lookahead.IsTerminal()
 	if !ok {
 		return nil
 	}
@@ -120,38 +134,19 @@ func (h *Helper[T]) EvaluateLookahead() error {
 // GetLookahead returns the lookahead of the action.
 //
 // Returns:
-//   - *T: The lookahead token ID.
-func (h *Helper[T]) GetLookahead() *T {
-	var lookahead *T
-
-	switch act := h.Action.(type) {
-	case *ActReduce[T]:
-		lookahead = act.GetLookahead()
-	case *ActShift[T]:
-		lookahead = act.GetLookahead()
-	}
-
-	return lookahead
+//   - T: The lookahead token ID.
+//   - bool: True if the lookahead is set, false otherwise.
+func (h *Helper[T]) GetLookahead() (T, bool) {
+	lookahead, ok := h.Action.GetLookahead()
+	return lookahead, ok
 }
 
 // AppendRhs appends a symbol to the right-hand side of the action.
 //
 // Parameters:
 //   - symbol: The symbol to append.
-//
-// Returns:
-//   - error: An error of type *ErrNoActionProvided if the action is nil.
-func (h *Helper[T]) AppendRhs(symbol T) error {
-	switch act := h.Action.(type) {
-	case *ActReduce[T]:
-		act.AppendRhs(symbol)
-	case *ActShift[T]:
-		act.AppendRhs(symbol)
-	default:
-		return uc.NewErrUnexpectedType("action", act)
-	}
-
-	return nil
+func (h *Helper[T]) AppendRhs(symbol T) {
+	h.Action.AppendRhs(symbol)
 }
 
 // ReplaceRhsAt replaces the right-hand side of the item
@@ -171,13 +166,14 @@ func (h *Helper[T]) AppendRhs(symbol T) error {
 //   - *gr.ErrLhsRhsMismatch: The left-hand side of the item does not match the
 //     right-hand side of the other item.
 func (h *Helper[T]) ReplaceRhsAt(index int, rhs T) *Helper[T] {
-	itemCopy := h.Item.ReplaceRhsAt(index, rhs)
+	item_copy := h.Item.ReplaceRhsAt(index, rhs)
+	act_copy := h.Action.Copy().(HelperElem[T])
 
-	hCopy := &Helper[T]{
-		Item:   itemCopy,
-		Action: h.Action.Copy().(HelperElem[T]),
+	h_copy := &Helper[T]{
+		Item:   item_copy,
+		Action: act_copy,
 	}
-	return hCopy
+	return h_copy
 }
 
 // ReplaceRhsAt replaces the right-hand side of the item
@@ -196,20 +192,21 @@ func (h *Helper[T]) ReplaceRhsAt(index int, rhs T) *Helper[T] {
 //     otherH.Item is nil, or otherH.Item.Rule is nil.
 //   - *gr.ErrLhsRhsMismatch: The left-hand side of the item does not match the
 //     right-hand side of the other item.
-func (h *Helper[T]) SubstituteRhsAt(index int, otherH *Helper[T]) *Helper[T] {
-	if otherH == nil {
-		hCopy := h.Copy().(*Helper[T])
-		return hCopy
+func (h *Helper[T]) SubstituteRhsAt(index int, other_helper *Helper[T]) *Helper[T] {
+	if other_helper == nil {
+		h_copy := h.Copy().(*Helper[T])
+		return h_copy
 	}
 
-	itemCopy := h.Item.SubstituteRhsAt(index, otherH.Item)
+	item_copy := h.Item.SubstituteRhsAt(index, other_helper.Item)
+	act_copy := h.Action.Copy().(HelperElem[T])
 
-	hCopy := &Helper[T]{
-		Item:   itemCopy,
-		Action: h.Action.Copy().(HelperElem[T]),
+	h_copy := &Helper[T]{
+		Item:   item_copy,
+		Action: act_copy,
 	}
 
-	return hCopy
+	return h_copy
 }
 
 // Match matches the top of the stack with the helper.
@@ -224,16 +221,10 @@ func (h *Helper[T]) SubstituteRhsAt(index int, otherH *Helper[T]) *Helper[T] {
 // Behaviors:
 //   - The stack is refused.
 func (h *Helper[T]) Match(top *gr.Token[T], stack *ud.History[lls.Stacker[*gr.Token[T]]]) error {
-	var err error
+	act, ok := h.Action.(Actioner[T])
+	uc.Assert(ok, "In Helper.Match: h.Action is not an Actioner")
 
-	switch act := h.Action.(type) {
-	case *ActReduce[T]:
-		err = MatchAction(act.Action, top, stack)
-	case *ActShift[T]:
-		err = MatchAction(act.Action, top, stack)
-	default:
-		return uc.NewErrUnexpectedType("action", act)
-	}
+	err := MatchAction(act, top, stack)
 
 	// Refuse the stack
 	stack.Reject()
@@ -249,18 +240,9 @@ func (h *Helper[T]) Match(top *gr.Token[T], stack *ud.History[lls.Stacker[*gr.To
 //
 // Returns:
 //   - int: The size of the helper.
-//
-// Behaviors:
-//   - If the action is invalid, -1 is returned.
 func (h *Helper[T]) Size() int {
-	switch act := h.Action.(type) {
-	case *ActReduce[T]:
-		return act.Size()
-	case *ActShift[T]:
-		return act.Size()
-	default:
-		return -1
-	}
+	size := h.Action.Size()
+	return size
 }
 
 // GetAction returns the action of the helper.

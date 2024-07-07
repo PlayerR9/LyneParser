@@ -10,15 +10,15 @@ import (
 )
 
 // Item represents an item in a decision table.
-type Item[T uc.Enumer] struct {
+type Item[T gr.TokenTyper] struct {
 	// Rule is the production rule that the item represents.
 	Rule *gr.Production[T]
 
 	// Pos is the position of the item in the production rule.
 	Pos int
 
-	// ruleIndex is the index of the rule in the decision table.
-	ruleIndex int
+	// rule_index is the index of the rule in the decision table.
+	rule_index int
 }
 
 // String implements the fmt.Stringer interface.
@@ -51,7 +51,7 @@ func (i *Item[T]) String() string {
 	builder.WriteRune(' ')
 	builder.WriteRune('(')
 
-	builder.WriteString(fmt.Sprintf("%d", i.ruleIndex))
+	builder.WriteString(fmt.Sprintf("%d", i.rule_index))
 
 	builder.WriteRune(')')
 
@@ -60,11 +60,15 @@ func (i *Item[T]) String() string {
 
 // Copy implements the Copier interface.
 func (i *Item[T]) Copy() uc.Copier {
-	return &Item[T]{
-		Rule:      i.Rule.Copy().(*gr.Production[T]),
-		Pos:       i.Pos,
-		ruleIndex: i.ruleIndex,
+	rule_copy := i.Rule.Copy().(*gr.Production[T])
+
+	i_copy := &Item[T]{
+		Rule:       rule_copy,
+		Pos:        i.Pos,
+		rule_index: i.rule_index,
 	}
+
+	return i_copy
 }
 
 // NewItem is a constructor of Item.
@@ -78,7 +82,7 @@ func (i *Item[T]) Copy() uc.Copier {
 //   - *Item: The pointer to the new Item.
 //   - error: An error of type *uc.ErrInvalidParameter if the rule is nil or
 //     the pos is out of bounds.
-func NewItem[T uc.Enumer](rule *gr.Production[T], pos int, ruleIndex int) (*Item[T], error) {
+func NewItem[T gr.TokenTyper](rule *gr.Production[T], pos int, rule_index int) (*Item[T], error) {
 	if rule == nil {
 		return nil, uc.NewErrNilParameter("rule")
 	}
@@ -93,9 +97,9 @@ func NewItem[T uc.Enumer](rule *gr.Production[T], pos int, ruleIndex int) (*Item
 	}
 
 	item := &Item[T]{
-		Rule:      rule,
-		Pos:       pos,
-		ruleIndex: ruleIndex,
+		Rule:       rule,
+		Pos:        pos,
+		rule_index: rule_index,
 	}
 	return item, nil
 }
@@ -131,9 +135,7 @@ func (item *Item[T]) GetRhsAt(index int) (T, error) {
 //   - T: The right-hand side of the production rule.
 func (item *Item[T]) GetRhs() T {
 	rhs, err := item.Rule.GetRhsAt(item.Pos)
-	if err != nil {
-		return *new(T)
-	}
+	uc.AssertF(err == nil, "GetRhs: %s", err.Error())
 
 	return rhs
 }
@@ -185,15 +187,15 @@ func (item *Item[T]) IsReduce() bool {
 //   - *gr.ErrLhsRhsMismatch: If the left-hand side of the production rule does
 //     not match the right-hand side.
 func (item *Item[T]) ReplaceRhsAt(index int, rhs T) *Item[T] {
-	ruleCopy := item.Rule.ReplaceRhsAt(index, rhs)
+	rule_copy := item.Rule.ReplaceRhsAt(index, rhs)
 
-	itemCopy := &Item[T]{
-		Rule:      ruleCopy,
-		Pos:       item.Pos,
-		ruleIndex: item.ruleIndex,
+	item_copy := &Item[T]{
+		Rule:       rule_copy,
+		Pos:        item.Pos,
+		rule_index: item.rule_index,
 	}
 
-	return itemCopy
+	return item_copy
 }
 
 // ReplaceRhsAt replaces the right-hand side of the production rule at the given
@@ -212,20 +214,20 @@ func (item *Item[T]) ReplaceRhsAt(index int, rhs T) *Item[T] {
 //     or the index is out of bounds.
 //   - *gr.ErrLhsRhsMismatch: If the left-hand side of the production rule does
 //     not match the right-hand side.
-func (item *Item[T]) SubstituteRhsAt(index int, otherI *Item[T]) *Item[T] {
-	if otherI == nil {
-		itemCopy := item.Copy().(*Item[T])
-		return itemCopy
+func (item *Item[T]) SubstituteRhsAt(index int, other_item *Item[T]) *Item[T] {
+	if other_item == nil {
+		item_copy := item.Copy().(*Item[T])
+		return item_copy
 	}
 
-	ruleCopy := item.Rule.SubstituteRhsAt(index, otherI.Rule)
+	rule_copy := item.Rule.SubstituteRhsAt(index, other_item.Rule)
 
-	itemCopy := &Item[T]{
-		Rule:      ruleCopy,
-		Pos:       item.Pos,
-		ruleIndex: item.ruleIndex,
+	item_copy := &Item[T]{
+		Rule:       rule_copy,
+		Pos:        item.Pos,
+		rule_index: item.rule_index,
 	}
-	return itemCopy
+	return item_copy
 }
 
 // GetRule returns the production rule that the item represents.

@@ -3,7 +3,7 @@ package ConflictSolver
 import (
 	"fmt"
 
-	uc "github.com/PlayerR9/MyGoLib/Units/common"
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 )
 
 // ErrHelpersConflictingSize is an error that is returned when helpers have conflicting sizes.
@@ -48,7 +48,7 @@ func NewErr0thRhsNotSet() *Err0thRhsNotSet {
 
 // ErrHelper is an error that is returned when something goes wrong
 // with a helper.
-type ErrHelper[T uc.Enumer] struct {
+type ErrHelper[T gr.TokenTyper] struct {
 	// Elem is the helper that caused the error.
 	Elem *Helper[T]
 
@@ -85,9 +85,11 @@ func (e *ErrHelper[T]) Error() string {
 //
 // Returns:
 //   - *ErrHelper: A pointer to the new error.
-func NewErrHelper[T uc.Enumer](elem *Helper[T], reason error) *ErrHelper[T] {
-	return &ErrHelper[T]{
+func NewErrHelper[T gr.TokenTyper](elem *Helper[T], reason error) *ErrHelper[T] {
+	e := &ErrHelper[T]{
 		Elem:   elem,
 		Reason: reason,
 	}
+
+	return e
 }

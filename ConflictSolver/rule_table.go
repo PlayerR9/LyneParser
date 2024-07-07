@@ -6,7 +6,7 @@ import (
 )
 
 // RuleTable represents a table of items.
-type RuleTable[T uc.Enumer] struct {
+type RuleTable[T gr.TokenTyper] struct {
 	// items is the items of the rule table.
 	items []*Item[T]
 
@@ -22,7 +22,7 @@ type RuleTable[T uc.Enumer] struct {
 //
 // Returns:
 //   - *RuleTable: The new rule table.
-func NewRuleTable[T uc.Enumer](symbols []T, rules []*gr.Production[T]) *RuleTable[T] {
+func NewRuleTable[T gr.TokenTyper](symbols []T, rules []*gr.Production[T]) *RuleTable[T] {
 	rt := &RuleTable[T]{
 		items: make([]*Item[T], 0),
 	}
@@ -33,39 +33,39 @@ func NewRuleTable[T uc.Enumer](symbols []T, rules []*gr.Production[T]) *RuleTabl
 
 			for _, i := range indices {
 				item, err := NewItem(r, i, len(rt.items))
-				if err != nil {
-					panic(err)
-				}
+				uc.AssertF(err == nil, "NewItem failed: %s", err)
 
 				rt.items = append(rt.items, item)
 			}
 		}
 	}
 
-	rt.buckets = rt.getItemBuckets()
+	rt.buckets = rt.get_item_buckets()
 
 	return rt
 }
 
-// getItemBuckets gets the item buckets of the rule table.
+// get_item_buckets gets the item buckets of the rule table.
 //
 // Returns:
 //   - map[T]*uts.Bucket[*Helper]: The item buckets.
-func (rt *RuleTable[T]) getItemBuckets() map[T][]*Helper[T] {
+func (rt *RuleTable[T]) get_item_buckets() map[T][]*Helper[T] {
 	buckets := make(map[T][]*Helper[T])
 
 	for _, item := range rt.items {
 		symbol, err := item.Rule.GetRhsAt(item.Pos)
-		if err != nil {
-			panic(err)
-		}
+		uc.AssertF(err == nil, "GetRhsAt failed: %s", err)
 
-		lastIndex := item.Rule.Size() - 1
+		last_index := item.Rule.Size() - 1
 
 		var act HelperElem[T]
 
-		if item.Pos == lastIndex {
-			act = NewActReduce(item.Rule, symbol.String() == gr.EOFTokenID)
+		if item.Pos == last_index {
+			if symbol.String() == gr.EOFTokenID {
+				act = NewActAccept(item.Rule)
+			} else {
+				act = NewActReduce(item.Rule)
+			}
 		} else {
 			act = NewActShift[T]()
 		}
@@ -93,10 +93,10 @@ func (rt *RuleTable[T]) GetBucketsCopy() map[T][]*Helper[T] {
 	buckets := make(map[T][]*Helper[T])
 
 	for k, v := range rt.buckets {
-		vCopy := make([]*Helper[T], len(v))
-		copy(vCopy, v)
+		v_copy := make([]*Helper[T], len(v))
+		copy(v_copy, v)
 
-		buckets[k] = vCopy
+		buckets[k] = v_copy
 	}
 
 	return buckets

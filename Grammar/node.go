@@ -86,7 +86,7 @@ func LinkParent[T Noder](parent T, children []T) {
 //
 // Returns:
 //   - []N: The sub nodes. Nil if there are no sub nodes.
-type AstRecFunc[N Noder, T uc.Enumer] func(tok *Token[T]) []N
+type AstRecFunc[N Noder, T TokenTyper] func(tok *Token[T]) []N
 
 // ExtractSubNodes is a helper function to extract sub nodes.
 //
@@ -100,7 +100,7 @@ type AstRecFunc[N Noder, T uc.Enumer] func(tok *Token[T]) []N
 //
 // Behaviors:
 //   - If the function is nil or tok is nil, the function will return nil and true.
-func ExtractSubNodes[N Noder, T uc.Enumer](f AstRecFunc[N, T], tok *Token[T]) ([]N, bool) {
+func ExtractSubNodes[N Noder, T TokenTyper](f AstRecFunc[N, T], tok *Token[T]) ([]N, bool) {
 	if f == nil || tok == nil {
 		return nil, true
 	}
@@ -135,7 +135,7 @@ func ExtractSubNodes[N Noder, T uc.Enumer](f AstRecFunc[N, T], tok *Token[T]) ([
 // Returns:
 //   - N: The root node.
 //   - error: An error if the AST generation fails.
-func Ast[N Noder, T uc.Enumer](f AstRecFunc[N, T], tok *Token[T]) (N, error) {
+func Ast[N Noder, T TokenTyper](f AstRecFunc[N, T], tok *Token[T]) (N, error) {
 	if f == nil {
 		return *new(N), uc.NewErrNilParameter("f")
 	} else if tok == nil {

@@ -22,7 +22,7 @@ import (
 //   - If the matcher returns an error, the solutions will be set to the error.
 //   - The evaluations assume that, the more the element is elaborated, the more the weight increases.
 //     Thus, it is assumed to be the most likely solution as it is the most elaborated. Euristic: Depth.
-func evaluate[T uc.Enumer](dt *cs.ConflictSolver[T], source *cds.Stream[*gr.Token[T]], elem *CurrentEval[T]) []*us.WeightedHelper[*CurrentEval[T]] {
+func evaluate[T gr.TokenTyper](dt *cs.ConflictSolver[T], source *cds.Stream[*gr.Token[T]], elem *CurrentEval[T]) []*us.WeightedHelper[*CurrentEval[T]] {
 	ok := elem.Accept()
 	if ok {
 		h := us.NewWeightedHelper(elem, nil, 0.0)
@@ -51,15 +51,15 @@ func evaluate[T uc.Enumer](dt *cs.ConflictSolver[T], source *cds.Stream[*gr.Toke
 			continue
 		}
 
-		newPairs := make([]uc.Pair[*CurrentEval[T], float64], 0, len(nexts))
+		new_pairs := make([]uc.Pair[*CurrentEval[T], float64], 0, len(nexts))
 
 		for _, next := range nexts {
 			p := uc.NewPair(next, p.Second+1.0)
 
-			newPairs = append(newPairs, p)
+			new_pairs = append(new_pairs, p)
 		}
 
-		for _, pair := range newPairs {
+		for _, pair := range new_pairs {
 			ok := pair.First.Accept()
 			if ok {
 				h := us.NewWeightedHelper(pair.First, nil, pair.Second)
@@ -74,7 +74,7 @@ func evaluate[T uc.Enumer](dt *cs.ConflictSolver[T], source *cds.Stream[*gr.Toke
 	return sols
 }
 
-// extractResults gets the results of the frontier evaluator.
+// extract_results gets the results of the frontier evaluator.
 //
 // Returns:
 //   - []T: The results of the frontier evaluator.
@@ -84,7 +84,7 @@ func evaluate[T uc.Enumer](dt *cs.ConflictSolver[T], source *cds.Stream[*gr.Toke
 //   - If the solutions are empty, the function returns nil.
 //   - If the solutions contain errors, the function returns the first error.
 //   - Otherwise, the function returns the solutions.
-func extractResults[T uc.Enumer](sols []*us.WeightedHelper[*CurrentEval[T]]) ([]*CurrentEval[T], error) {
+func extract_results[T gr.TokenTyper](sols []*us.WeightedHelper[*CurrentEval[T]]) ([]*CurrentEval[T], error) {
 	if len(sols) == 0 {
 		return nil, nil
 	}
@@ -117,7 +117,7 @@ func extractResults[T uc.Enumer](sols []*us.WeightedHelper[*CurrentEval[T]]) ([]
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branch cannot be parsed.
-func ParseBranch[T uc.Enumer](parser *Parser[T], source *cds.Stream[*gr.Token[T]]) ([]*gr.TokenTree[T], error) {
+func ParseBranch[T gr.TokenTyper](parser *Parser[T], source *cds.Stream[*gr.Token[T]]) ([]*gr.TokenTree[T], error) {
 	err := Parse(parser, source)
 	if err != nil {
 		return nil, err

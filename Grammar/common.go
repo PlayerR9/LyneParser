@@ -1,7 +1,5 @@
 package Grammar
 
-import "strings"
-
 const (
 	// LeftToRight is the direction of a production from left to right.
 	LeftToRight string = "->"
@@ -12,43 +10,9 @@ const (
 	// StartSymbolID is the identifier of the start symbol in the grammar.
 	StartSymbolID string = "source"
 
-	// EndSymbolID is the identifier of the end symbol in the grammar.
-	EndSymbolID string = "EOF"
-
 	// EpsilonSymbolID is the identifier of the epsilon symbol in the grammar.
 	EpsilonSymbolID string = "ε"
 )
-
-// SplitByArrow is a helper function that splits a string by an arrow.
-//
-// Parameters:
-//   - str: The string to split.
-//
-// Returns:
-//   - [2]string: The left-hand side and right-hand side of the string.
-//   - error: An error if there was a problem splitting the string.
-func SplitByArrow(str string) ([2]string, error) {
-	index := strings.Index(str, LeftToRight)
-	if index == -1 {
-		return [2]string{}, NewErrMissingArrow()
-	}
-
-	lhs := str[:index]
-	lhs = strings.TrimSpace(lhs)
-	if len(lhs) == 0 {
-		return [2]string{}, NewErrNoLHSFound()
-	}
-
-	rhs := str[index+ArrowLen:]
-	rhs = strings.TrimSpace(rhs)
-	if len(rhs) == 0 {
-		return [2]string{}, NewErrNoRHSFound()
-	}
-
-	return [2]string{lhs, rhs}, nil
-}
-
-const ()
 
 /*
 LHS : [a-z][a-zA-Z0-9_]* ;

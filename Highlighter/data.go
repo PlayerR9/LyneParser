@@ -3,15 +3,15 @@ package Highlighter
 import (
 	"fmt"
 
+	gr "github.com/PlayerR9/LyneParser/Grammar"
+	p9 "github.com/PlayerR9/LyneParser/PlayerR9"
 	cdd "github.com/PlayerR9/MyGoLib/Display/drawtable"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	"github.com/gdamore/tcell"
-
-	p9 "github.com/PlayerR9/LyneParser/PlayerR9"
 )
 
 // Data is a highlighted data.
-type Data[T uc.Enumer] struct {
+type Data[T gr.TokenTyper] struct {
 	// source is the source of the data.
 	source []byte
 
@@ -21,11 +21,11 @@ type Data[T uc.Enumer] struct {
 	// rules is a map of rules to apply.
 	rules map[T]tcell.Style
 
-	// defaultStyle is the default style to apply.
-	defaultStyle tcell.Style
+	// default_style is the default style to apply.
+	default_style tcell.Style
 
-	// errorStyle is the style to apply to errors.
-	errorStyle tcell.Style
+	// error_style is the style to apply to errors.
+	error_style tcell.Style
 }
 
 // Draw draws the data.
@@ -44,9 +44,7 @@ func (d *Data[T]) Draw(table cdd.DrawTable, x, y *int) error {
 			sequences, err := p9.AnyToLines(elem, func(r rune) (*cdd.ColoredUnit, error) {
 				return cdd.NewColoredUnit(r, elem.style), nil
 			})
-			if err != nil {
-				panic(err)
-			}
+			uc.AssertF(err == nil, "AnyToLines failed: %s", err.Error())
 
 			// FINISH THIS
 			for _, sequence := range sequences {

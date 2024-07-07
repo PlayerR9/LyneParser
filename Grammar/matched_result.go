@@ -1,9 +1,7 @@
 package Grammar
 
-import uc "github.com/PlayerR9/MyGoLib/Units/common"
-
 // MatchedResult represents the result of a match operation.
-type MatchedResult[T uc.Enumer] struct {
+type MatchedResult[T TokenTyper] struct {
 	// Matched is the matched token.
 	Matched *Token[T]
 
@@ -19,7 +17,7 @@ type MatchedResult[T uc.Enumer] struct {
 //
 // Returns:
 //   - *MatchedResult: A new MatchedResult.
-func NewMatchResult[T uc.Enumer](matched *Token[T], ruleIndex int) *MatchedResult[T] {
+func NewMatchResult[T TokenTyper](matched *Token[T], ruleIndex int) *MatchedResult[T] {
 	mr := &MatchedResult[T]{
 		Matched:   matched,
 		RuleIndex: ruleIndex,

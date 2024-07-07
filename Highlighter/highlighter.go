@@ -11,15 +11,15 @@ import (
 )
 
 // Highlighter is a highlighter that applies styles to tokens.
-type Highlighter[T uc.Enumer] struct {
+type Highlighter[T gr.TokenTyper] struct {
 	// rules is a map of rules to apply.
 	rules map[T]tcell.Style
 
-	// defaultStyle is the default style to apply.
-	defaultStyle tcell.Style
+	// default_style is the default style to apply.
+	default_style tcell.Style
 
-	// errorStyle is the style to apply to errors.
-	errorStyle tcell.Style
+	// error_style is the style to apply to errors.
+	error_style tcell.Style
 
 	// data is the highlighted data.
 	data *Data[T]
@@ -35,15 +35,15 @@ type Highlighter[T uc.Enumer] struct {
 //
 // Returns:
 //   - *Highlighter: The new Highlighter.
-func NewHighlighter[T uc.Enumer](lexer *lx.Lexer[T], defaultStyle tcell.Style) (*Highlighter[T], error) {
+func NewHighlighter[T gr.TokenTyper](lexer *lx.Lexer[T], default_style tcell.Style) (*Highlighter[T], error) {
 	if lexer == nil {
 		return nil, uc.NewErrNilParameter("lexer")
 	}
 
 	h := &Highlighter[T]{
-		rules:        make(map[T]tcell.Style),
-		defaultStyle: defaultStyle,
-		errorStyle:   defaultStyle,
+		rules:         make(map[T]tcell.Style),
+		default_style: default_style,
+		error_style:   default_style,
 	}
 	return h, nil
 }
@@ -68,7 +68,7 @@ func (h *Highlighter[T]) SpecifyRule(style tcell.Style, ids ...T) {
 // Parameters:
 //   - style: The style to apply to errors.
 func (h *Highlighter[T]) ChangeErrorStyle(style tcell.Style) {
-	h.errorStyle = style
+	h.error_style = style
 }
 
 func (h *Highlighter[T]) extractErrorSection(data []byte, firstInvalid int) int {
@@ -86,11 +86,11 @@ func (h *Highlighter[T]) extractErrorSection(data []byte, firstInvalid int) int 
 
 func (h *Highlighter[T]) makeData() *Data[T] {
 	d := &Data[T]{
-		elems:        make([]Texter, 0),
-		source:       h.source,
-		rules:        h.rules,
-		defaultStyle: h.defaultStyle,
-		errorStyle:   h.errorStyle,
+		elems:         make([]Texter, 0),
+		source:        h.source,
+		rules:         h.rules,
+		default_style: h.default_style,
+		error_style:   h.error_style,
 	}
 
 	return d
@@ -106,51 +106,49 @@ func (h *Highlighter[T]) Apply(data []byte) {
 
 	for {
 		branch, err := iter.Consume()
-		var hasError bool
+		var has_error bool
 
 		if err != nil {
 			ok := uc.Is[*uc.ErrExhaustedIter](err)
 			if !ok {
-				hasError = true
+				has_error = true
 			}
 		}
 
 		// Find the most ideal token stream to use
 		// As of now, we will use the first token stream
-		tokenItems := branch.GetItems()
+		token_items := branch.GetItems()
 
-		txt, err := NewValidText(tokenItems)
-		if err != nil {
-			panic(err)
-		}
+		txt, err := NewValidText(token_items)
+		uc.AssertF(err == nil, "NewValidText failed: %s", err.Error())
 
 		h.data.Add(txt)
 
-		if !hasError {
+		if !has_error {
 			break
 		}
 
-		tokenItems = branch.GetItems()
-		lastItem := tokenItems[len(tokenItems)-1]
+		token_items = branch.GetItems()
+		last_item := token_items[len(token_items)-1]
 
-		firstInvalid := lastItem.At + len(lastItem.Data.(string))
+		first_invalid := last_item.At + len(last_item.Data.(string))
 
 		// go until the first whitespace character
-		indexOfWS := h.extractErrorSection(data, firstInvalid)
-		if indexOfWS == -1 {
+		index_of_ws := h.extractErrorSection(data, first_invalid)
+		if index_of_ws == -1 {
 			// Anything else is an error
-			nt := NewNormalText(data[firstInvalid:], h.errorStyle)
+			nt := NewNormalText(data[first_invalid:], h.error_style)
 			h.data.Add(nt)
 
 			return
 		}
 
 		// Extract the error section
-		nt := NewNormalText(data[firstInvalid:indexOfWS], h.errorStyle)
+		nt := NewNormalText(data[first_invalid:index_of_ws], h.error_style)
 		h.data.Add(nt)
 
 		// Create a new token stream for the rest of the data
-		data = data[indexOfWS:]
+		data = data[index_of_ws:]
 	}
 }
 
@@ -163,7 +161,7 @@ func (h *Highlighter[T]) Apply(data []byte) {
 // Returns:
 //   - error: An error if the rules could not be applied.
 func (h *Highlighter[T]) apply(stream *cds.Stream[*gr.Token[T]], source []byte) error {
-	atSource := 0
+	at_source := 0
 
 	for at := 0; ; at++ {
 		token, err := stream.GetOne(at)
@@ -171,20 +169,20 @@ func (h *Highlighter[T]) apply(stream *cds.Stream[*gr.Token[T]], source []byte) 
 			break
 		}
 
-		nextAtToken := token.At
+		next_at_token := token.At
 
-		if atSource < nextAtToken {
-			h.data.Add(NewNormalText(source[atSource:nextAtToken], h.defaultStyle))
-			atSource = nextAtToken
+		if at_source < next_at_token {
+			h.data.Add(NewNormalText(source[at_source:next_at_token], h.default_style))
+			at_source = next_at_token
 		}
 
 		style, ok := h.rules[token.ID]
 		if !ok {
-			style = h.defaultStyle
+			style = h.default_style
 		}
 
 		h.data.Add(NewNormalText([]byte(token.Data.(string)), style))
-		atSource += len(token.Data.(string))
+		at_source += len(token.Data.(string))
 	}
 
 	return nil

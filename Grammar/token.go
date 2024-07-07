@@ -3,7 +3,6 @@ package Grammar
 import (
 	"errors"
 	"fmt"
-	"unicode"
 
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
@@ -11,33 +10,21 @@ import (
 const (
 	// EOFTokenID is the identifier of the end-of-file token.
 	EOFTokenID string = "EOF"
-
-	// RootTokenID is the identifier of the root token.
-	RootTokenID string = "ROOT"
 )
 
-// IsTerminal checks if the given identifier is a terminal. Terminals are identifiers
-// that start with an uppercase letter.
-//
-// Parameters:
-//   - identifier: The identifier to check.
-//
-// Returns:
-//   - bool: True if the identifier is a terminal, false otherwise.
-//
-// Asserts:
-//   - The identifier is not empty.
-func IsTerminal(identifier string) bool {
-	uc.Assert(identifier != "", "In IsTerminal: identifier is empty")
+// TokenTyper is an interface for a token type.
+type TokenTyper interface {
+	// IsTerminal checks if the token type is a terminal.
+	//
+	// Returns:
+	//   - bool: True if the token type is a terminal, false otherwise.
+	IsTerminal() bool
 
-	firstLetter := []rune(identifier)[0]
-
-	ok := unicode.IsUpper(firstLetter)
-	return ok
+	uc.Enumer
 }
 
 // Token is the information about a token.
-type Token[T uc.Enumer] struct {
+type Token[T TokenTyper] struct {
 	// ID is the identifier of the token.
 	ID T
 
@@ -56,9 +43,34 @@ type Token[T uc.Enumer] struct {
 	Data any
 }
 
+// Copy implements common.Copier interface.
+func (tok *Token[T]) Copy() uc.Copier {
+	lt := &Token[T]{
+		ID: tok.ID,
+		At: tok.At,
+	}
+
+	switch data := tok.Data.(type) {
+	case string:
+		lt.Data = data
+	case []*Token[T]:
+		slice_copy := make([]*Token[T], 0, len(data))
+		for _, elem := range data {
+			elem_copy := elem.Copy().(*Token[T])
+			slice_copy = append(slice_copy, elem_copy)
+		}
+
+		lt.Data = slice_copy
+	default:
+		panic("In Token.Copy: unsupported data type")
+	}
+
+	return lt
+}
+
 // GoString is a method of fmt.GoStringer interface.
 func (tok *Token[T]) GoString() string {
-	str := fmt.Sprintf("%+v", *tok)
+	str := fmt.Sprintf("Token[T]%+v", *tok)
 	return str
 }
 
@@ -74,7 +86,7 @@ func (tok *Token[T]) GoString() string {
 // Returns:
 //   - *Token: A pointer to the new token info. Nil if the data is nil
 //     or not a string or a slice of Token.
-func NewToken[T uc.Enumer](id T, data any, at int, lookahead *Token[T]) *Token[T] {
+func NewToken[T TokenTyper](id T, data any, at int, lookahead *Token[T]) *Token[T] {
 	uc.AssertParam("data", data != nil, errors.New("in NewToken: data is nil"))
 
 	switch data.(type) {
@@ -159,29 +171,4 @@ func (tok *Token[T]) IsNonLeaf() bool {
 //   - any: The data of the token.
 func (tok *Token[T]) GetData() any {
 	return tok.Data
-}
-
-// Copy implements common.Copier interface.
-func (tok *Token[T]) Copy() uc.Copier {
-	lt := &Token[T]{
-		ID: tok.ID,
-		At: tok.At,
-	}
-
-	switch data := tok.Data.(type) {
-	case string:
-		lt.Data = data
-	case []*Token[T]:
-		sliceCopy := make([]*Token[T], 0, len(data))
-		for _, elem := range data {
-			elemCopy := elem.Copy().(*Token[T])
-			sliceCopy = append(sliceCopy, elemCopy)
-		}
-
-		lt.Data = sliceCopy
-	default:
-		panic("In Token.Copy: unsupported data type")
-	}
-
-	return lt
 }

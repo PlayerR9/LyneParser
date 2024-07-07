@@ -10,8 +10,28 @@ import (
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
+// Actioner represents an action that the parser will take.
+type Actioner[T gr.TokenTyper] interface {
+	// GetLookahead returns the lookahead token ID for the action.
+	//
+	// Returns:
+	//   - T: The lookahead token ID.
+	//   - bool: True if there is a lookahead token ID.
+	GetLookahead() (T, bool)
+
+	// Size returns the size of the right-hand side tokens.
+	//
+	// Returns:
+	//   - int: The size of the right-hand side tokens.
+	Size() int
+
+	fmt.Stringer
+
+	uc.Iterable[T]
+}
+
 // Action represents an action in a decision table.
-type Action[T uc.Enumer] struct {
+type Action[T gr.TokenTyper] struct {
 	// lookahead is the lookahead token ID for the shift action.
 	lookahead *T
 
@@ -48,10 +68,39 @@ func (a *Action[T]) String() string {
 	return builder.String()
 }
 
+// Copy implements the common.Copier interface.
+func (a *Action[T]) Copy() uc.Copier {
+	rhs_copy := make([]T, len(a.rhs))
+	copy(rhs_copy, a.rhs)
+
+	a_copy := &Action[T]{
+		lookahead: a.lookahead,
+		rhs:       rhs_copy,
+	}
+
+	return a_copy
+}
+
 // Iterator implements the Iterators.Iterater interface.
 func (a *Action[T]) Iterator() uc.Iterater[T] {
 	iter := uc.NewSimpleIterator(a.rhs)
 	return iter
+}
+
+// newAction creates a new action.
+//
+// Parameters:
+//   - lookahead: The lookahead token ID for the action.
+//   - rhs: The right-hand side tokens of the rule.
+//
+// Returns:
+//   - *Action: A pointer to the new action.
+func newAction[T gr.TokenTyper](lookahead *T, rhs []T) *Action[T] {
+	act := &Action[T]{
+		lookahead: lookahead,
+		rhs:       rhs,
+	}
+	return act
 }
 
 // AppendRhs appends a right-hand side token to the action.
@@ -78,169 +127,186 @@ func (a *Action[T]) SetLookahead(lookahead *T) {
 	a.lookahead = lookahead
 }
 
-// GetLookahead returns the lookahead token ID for the action.
-//
-// Returns:
-//   - *T: The lookahead token ID.
-func (a *Action[T]) GetLookahead() *T {
-	return a.lookahead
-}
+// GetLookahead implements the Actioner interface.
+func (a *Action[T]) GetLookahead() (T, bool) {
+	if a.lookahead == nil {
+		return *new(T), false
+	}
 
-// Actioner represents an action that the parser will take.
-type Actioner[T uc.Enumer] interface {
-	// GetLookahead returns the lookahead token ID for the action.
-	//
-	// Returns:
-	//   - *T: The lookahead token ID.
-	GetLookahead() *T
-
-	fmt.Stringer
-
-	uc.Iterable[T]
+	return *a.lookahead, true
 }
 
 // ActShift represents a shift action.
-type ActShift[T uc.Enumer] struct {
+type ActShift[T gr.TokenTyper] struct {
 	*Action[T]
 }
 
 // String implements the Actioner interface.
 func (a *ActShift[T]) String() string {
+	actStr := a.Action.String()
+
 	var builder strings.Builder
 
-	builder.WriteString("shift")
-	builder.WriteRune('{')
-	builder.WriteString(a.Action.String())
+	builder.WriteString("shift{")
+	builder.WriteString(actStr)
 	builder.WriteRune('}')
 
-	return builder.String()
+	str := builder.String()
+
+	return str
 }
 
 // Copy implements the common.Copier interface.
 func (a *ActShift[T]) Copy() uc.Copier {
-	rhsCopy := make([]T, len(a.Action.rhs))
-	copy(rhsCopy, a.Action.rhs)
+	act_copy := a.Action.Copy().(*Action[T])
 
-	return &ActShift[T]{
-		Action: &Action[T]{
-			lookahead: a.Action.lookahead,
-			rhs:       rhsCopy,
-		},
+	a_copy := &ActShift[T]{
+		Action: act_copy,
 	}
+
+	return a_copy
 }
 
 // NewActShift creates a new shift action.
 //
 // Returns:
 //   - *ActShift: A pointer to the new shift action.
-func NewActShift[T uc.Enumer]() *ActShift[T] {
+func NewActShift[T gr.TokenTyper]() *ActShift[T] {
+	act := newAction(nil, make([]T, 0))
+
 	as := &ActShift[T]{
-		Action: &Action[T]{
-			lookahead: nil,
-			rhs:       make([]T, 0),
-		},
+		Action: act,
 	}
 	return as
 }
 
 // ActReduce represents a reduce action.
-type ActReduce[T uc.Enumer] struct {
+type ActReduce[T gr.TokenTyper] struct {
 	*Action[T]
 
-	// rule is the rule to reduce by.
-	rule *gr.Production[T]
+	// Rule is the Rule to reduce by.
+	Rule *gr.Production[T]
 
-	// original is the original rule to reduce by.
+	// Original is the Original rule to reduce by.
 	// this should never be modified.
-	original *gr.Production[T]
-
-	// shouldAccept is true if the reduce action should accept.
-	shouldAccept bool
+	Original *gr.Production[T]
 }
 
 // String implements the Actioner interface.
 func (a *ActReduce[T]) String() string {
+	act_str := a.Action.String()
+
 	var builder strings.Builder
 
-	if a.shouldAccept {
-		builder.WriteString("accept{")
-	} else {
-		builder.WriteString("reduce{")
-	}
-
-	builder.WriteString(a.Action.String())
+	builder.WriteString("reduce{")
+	builder.WriteString(act_str)
 	builder.WriteRune('}')
 
-	return builder.String()
+	str := builder.String()
+
+	return str
 }
 
 // Copy implements the common.Copier interface.
 func (a *ActReduce[T]) Copy() uc.Copier {
-	rhsCopy := make([]T, len(a.Action.rhs))
-	copy(rhsCopy, a.Action.rhs)
+	act_copy := a.Action.Copy().(*Action[T])
+	rule_copy := a.Rule.Copy().(*gr.Production[T])
 
-	ar := &ActReduce[T]{
-		Action: &Action[T]{
-			lookahead: a.Action.lookahead,
-			rhs:       rhsCopy,
-		},
-		rule:         a.rule.Copy().(*gr.Production[T]),
-		original:     a.original,
-		shouldAccept: a.shouldAccept,
+	a_copy := &ActReduce[T]{
+		Action:   act_copy,
+		Rule:     rule_copy,
+		Original: a.Original,
 	}
-	return ar
+	return a_copy
 }
 
 // NewActReduce creates a new reduce action.
 //
 // Parameters:
 //   - rule: The rule to reduce by.
-//   - shouldAccept: True if the reduce action should accept.
 //
 // Returns:
-//   - *ActReduce: A pointer to the new reduce action.
-//
-// Behaviors:
-//   - If the rule is nil, nil is returned.
-func NewActReduce[T uc.Enumer](rule *gr.Production[T], shouldAccept bool) *ActReduce[T] {
+//   - *ActReduce: A pointer to the new reduce action. Nil if the rule is nil.
+func NewActReduce[T gr.TokenTyper](rule *gr.Production[T]) *ActReduce[T] {
 	if rule == nil {
 		return nil
 	}
 
+	act := newAction(nil, make([]T, 0))
+
+	rule_copy := rule.Copy().(*gr.Production[T])
+
 	ar := &ActReduce[T]{
-		Action: &Action[T]{
-			lookahead: nil,
-			rhs:       make([]T, 0),
-		},
-		rule:         rule.Copy().(*gr.Production[T]),
-		original:     rule,
-		shouldAccept: shouldAccept,
+		Action:   act,
+		Rule:     rule_copy,
+		Original: rule,
 	}
 	return ar
 }
 
-// GetRule returns the rule to reduce by.
-//
-// Returns:
-//   - *gr.Production: The rule to reduce by.
-func (a *ActReduce[T]) GetRule() *gr.Production[T] {
-	return a.rule
+// ActAccept represents an accept action.
+type ActAccept[T gr.TokenTyper] struct {
+	*Action[T]
+
+	// Rule is the Rule to reduce by.
+	Rule *gr.Production[T]
+
+	// Original is the Original rule to reduce by.
+	// this should never be modified.
+	Original *gr.Production[T]
 }
 
-// GetOriginal returns the original rule to reduce by.
-//
-// Returns:
-//   - *gr.Production: The original rule to reduce by.
-func (a *ActReduce[T]) GetOriginal() *gr.Production[T] {
-	return a.original
+// String implements the Actioner interface.
+func (a *ActAccept[T]) String() string {
+	act_str := a.Action.String()
+
+	var builder strings.Builder
+
+	builder.WriteString("accept{")
+	builder.WriteString(act_str)
+	builder.WriteRune('}')
+
+	str := builder.String()
+
+	return str
 }
 
-// ShouldAccept returns true if the reduce action should accept.
+// Copy implements the common.Copier interface.
+func (a *ActAccept[T]) Copy() uc.Copier {
+	act_copy := a.Action.Copy().(*Action[T])
+
+	rule_copy := a.Rule.Copy().(*gr.Production[T])
+
+	aCopy := &ActAccept[T]{
+		Action:   act_copy,
+		Rule:     rule_copy,
+		Original: a.Original,
+	}
+	return aCopy
+}
+
+// NewActAccept creates a new accept action.
+//
+// Parameters:
+//   - rule: The rule to reduce by.
 //
 // Returns:
-//   - bool: True if the reduce action should accept.
-func (a *ActReduce[T]) ShouldAccept() bool {
-	return a.shouldAccept
+//   - *ActAccept: A pointer to the new reduce action. Nil if the rule is nil.
+func NewActAccept[T gr.TokenTyper](rule *gr.Production[T]) *ActAccept[T] {
+	if rule == nil {
+		return nil
+	}
+
+	act := newAction(nil, make([]T, 0))
+
+	rule_copy := rule.Copy().(*gr.Production[T])
+
+	ar := &ActAccept[T]{
+		Action:   act,
+		Rule:     rule_copy,
+		Original: rule,
+	}
+	return ar
 }
 
 // Match matches the action with the top of the stack.
@@ -252,15 +318,23 @@ func (a *ActReduce[T]) ShouldAccept() bool {
 //
 // Returns:
 //   - error: An error if the action does not match the top of the stack.
-func MatchAction[T uc.Enumer](a Actioner[T], top *gr.Token[T], stack *ud.History[lls.Stacker[*gr.Token[T]]]) error {
-	ela := a.GetLookahead()
+func MatchAction[T gr.TokenTyper](a Actioner[T], top *gr.Token[T], stack *ud.History[lls.Stacker[*gr.Token[T]]]) error {
+	if a == nil {
+		return uc.NewErrNilParameter("a")
+	} else if top == nil {
+		return uc.NewErrNilParameter("top")
+	} else if stack == nil {
+		return uc.NewErrNilParameter("stack")
+	}
+
 	tla := top.GetLookahead()
 
-	if ela != nil {
+	ela, ok := a.GetLookahead()
+	if ok {
 		if tla == nil {
-			return uc.NewErrUnexpected("", (*ela).String())
-		} else if *ela != tla.GetID() {
-			return uc.NewErrUnexpected(top.GoString(), (*ela).String())
+			return uc.NewErrUnexpected("", ela.String())
+		} else if ela != tla.GetID() {
+			return uc.NewErrUnexpected(top.GoString(), ela.String())
 		}
 	}
 

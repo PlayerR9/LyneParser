@@ -1,8 +1,8 @@
 package ConflictSolver
 
-import uc "github.com/PlayerR9/MyGoLib/Units/common"
+import gr "github.com/PlayerR9/LyneParser/Grammar"
 
-// getRhssAt is a helper function that groups helpers by their right-hand side
+// get_rhss_at is a helper function that groups helpers by their right-hand side
 // symbols at a specific index.
 //
 // Parameters:
@@ -12,7 +12,7 @@ import uc "github.com/PlayerR9/MyGoLib/Units/common"
 // Returns:
 //   - map[T][]*Helper: The grouped helpers.
 //   - error: An error of type *ErrHelpersConflictingSize if the helpers have conflicting sizes.
-func getRhssAt[T uc.Enumer](bucket []*Helper[T], index int) (map[T][]*Helper[T], error) {
+func get_rhss_at[T gr.TokenTyper](bucket []*Helper[T], index int) (map[T][]*Helper[T], error) {
 	groups := make(map[T][]*Helper[T])
 
 	for _, h := range bucket {
@@ -27,7 +27,7 @@ func getRhssAt[T uc.Enumer](bucket []*Helper[T], index int) (map[T][]*Helper[T],
 	return groups, nil
 }
 
-// minimumUnique is a helper function that, given a set of helpers and the limit
+// minimum_unique is a helper function that, given a set of helpers and the limit
 // (i.e., the position of the shared symbol for all helpers), solves conflicts
 // by finding the least number of rhs symbols under the limit that are unique
 // to each helper.
@@ -59,7 +59,7 @@ func getRhssAt[T uc.Enumer](bucket []*Helper[T], index int) (map[T][]*Helper[T],
 // Errors:
 //   - *ErrHelpersConflictingSize: If the helpers have conflicting sizes.
 //   - *ErrHelper: If there is an error appending the right-hand side to the helper.
-func minimumUnique[T uc.Enumer](bucket []*Helper[T], limit int) error {
+func minimum_unique[T gr.TokenTyper](bucket []*Helper[T], limit int) error {
 	todo := make(map[*Helper[T]]bool)
 
 	for _, h := range bucket {
@@ -67,18 +67,15 @@ func minimumUnique[T uc.Enumer](bucket []*Helper[T], limit int) error {
 	}
 
 	for i := limit; i >= 0; i-- {
-		rhsPerLevel, err := getRhssAt(bucket, i)
+		rhs_per_level, err := get_rhss_at(bucket, i)
 		if err != nil {
 			return NewErrHelpersConflictingSize()
 		}
 
-		for rhs, helpers := range rhsPerLevel {
+		for rhs, helpers := range rhs_per_level {
 			// Add the rhs to the helpers.
 			for _, h := range helpers {
-				err := h.AppendRhs(rhs)
-				if err != nil {
-					return NewErrHelper(h, err)
-				}
+				h.AppendRhs(rhs)
 			}
 
 			// However, if there is only one helper, then there is no conflict.
@@ -92,7 +89,7 @@ func minimumUnique[T uc.Enumer](bucket []*Helper[T], limit int) error {
 	return nil
 }
 
-// solveSubgroup is a helper function that solves conflicts between a subgroup of helpers.
+// solve_subgroup is a helper function that solves conflicts between a subgroup of helpers.
 //
 // Parameters:
 //   - helpers: The helpers to solve conflicts for.
@@ -103,7 +100,7 @@ func minimumUnique[T uc.Enumer](bucket []*Helper[T], limit int) error {
 // Errors:
 //   - *ErrHelpersConflictingSize: If the helpers have conflicting sizes.
 //   - *ErrHelper: If there is an error appending the right-hand side to the helper.
-func solveSubgroup[T uc.Enumer](bucket []*Helper[T]) error {
+func solve_subgroup[T gr.TokenTyper](bucket []*Helper[T]) error {
 	// 1. Bucket sort the items by their position.
 
 	buckets := make(map[int][]*Helper[T])
@@ -123,7 +120,7 @@ func solveSubgroup[T uc.Enumer](bucket []*Helper[T]) error {
 
 	// 2. Solve conflicts for each bucket.
 	for limit, bucket := range buckets {
-		err := minimumUnique(bucket, limit)
+		err := minimum_unique(bucket, limit)
 		if err != nil {
 			return err
 		}
@@ -132,7 +129,7 @@ func solveSubgroup[T uc.Enumer](bucket []*Helper[T]) error {
 	return nil
 }
 
-// findConflict is a helper function that finds conflicts between a subgroup of helpers.
+// find_conflict is a helper function that finds conflicts between a subgroup of helpers.
 //
 // Parameters:
 //   - limit: The index of the shared symbol for all helpers.
@@ -140,68 +137,68 @@ func solveSubgroup[T uc.Enumer](bucket []*Helper[T]) error {
 //
 // Returns:
 //   - []*Helper: The conflicting helpers.
-func findConflict[T uc.Enumer](limit int, bucket []*Helper[T]) []*Helper[T] {
+func find_conflict[T gr.TokenTyper](limit int, bucket []*Helper[T]) []*Helper[T] {
 	if len(bucket) < 2 {
 		return nil
 	}
 
 	// 1. Fill the matrix of symbols.
-	matrixOfSymbols := make([][]*T, limit+1)
-	for i := range matrixOfSymbols {
-		matrixOfSymbols[i] = make([]*T, len(bucket))
+	matrix_of_symbols := make([][]*T, limit+1)
+	for i := range matrix_of_symbols {
+		matrix_of_symbols[i] = make([]*T, len(bucket))
 	}
 
 	for i, h := range bucket {
 		for l := 0; l <= limit; l++ {
 			rhs, err := h.GetRhsAt(l)
 			if err != nil {
-				matrixOfSymbols[l][i] = nil
+				matrix_of_symbols[l][i] = nil
 			} else {
-				matrixOfSymbols[l][i] = &rhs
+				matrix_of_symbols[l][i] = &rhs
 			}
 		}
 	}
 
 	// 2. Create a conflict matrix.
-	conflictMatrix := make([][]int, 0, len(bucket))
+	conflict_matrix := make([][]int, 0, len(bucket))
 
 	for range bucket {
 		row := make([]int, len(bucket))
-		conflictMatrix = append(conflictMatrix, row)
+		conflict_matrix = append(conflict_matrix, row)
 	}
 
 	// 3. Evaluate the matrix of conflicts.
-	for _, row := range matrixOfSymbols {
+	for _, row := range matrix_of_symbols {
 		for i := 0; i < len(bucket); i++ {
 			for j := 0; j < len(bucket); j++ {
 				if *row[i] == *row[j] {
-					conflictMatrix[i][j]++
+					conflict_matrix[i][j]++
 				}
 			}
 		}
 	}
 
 	// 4. Find conflicts.
-	countMap := make(map[int][]*Helper[T])
+	count_map := make(map[int][]*Helper[T])
 
 	for j, h1 := range bucket {
 		count := 0
 
 		for i := 0; i < len(bucket); i++ {
-			count += conflictMatrix[i][j]
+			count += conflict_matrix[i][j]
 		}
 
-		prev, ok := countMap[count]
+		prev, ok := count_map[count]
 		if !ok {
 			prev = []*Helper[T]{h1}
 		} else {
 			prev = append(prev, h1)
 		}
 
-		countMap[count] = prev
+		count_map[count] = prev
 	}
 
-	for count, helpers := range countMap {
+	for count, helpers := range count_map {
 		if count > 1 {
 			return helpers
 		}
@@ -210,7 +207,7 @@ func findConflict[T uc.Enumer](limit int, bucket []*Helper[T]) []*Helper[T] {
 	return nil
 }
 
-// findConflictsPerSymbol is a helper function that finds conflicts for a specific symbol.
+// find_conflicts_per_symbol is a helper function that finds conflicts for a specific symbol.
 //
 // Parameters:
 //   - symbol: The symbol to find conflicts for.
@@ -219,7 +216,7 @@ func findConflict[T uc.Enumer](limit int, bucket []*Helper[T]) []*Helper[T] {
 // Returns:
 //   - []*Helper: The conflicting helpers.
 //   - int: The position of the conflict.
-func findConflictsPerSymbol[T uc.Enumer](symbol T, bucket []*Helper[T]) ([]*Helper[T], int) {
+func find_conflicts_per_symbol[T gr.TokenTyper](symbol T, bucket []*Helper[T]) ([]*Helper[T], int) {
 	if len(bucket) < 2 {
 		return nil, -1
 	}
@@ -242,7 +239,7 @@ func findConflictsPerSymbol[T uc.Enumer](symbol T, bucket []*Helper[T]) ([]*Help
 	}
 
 	for limit, bucket := range buckets {
-		conflicts := findConflict(limit, bucket)
+		conflicts := find_conflict(limit, bucket)
 		if conflicts != nil {
 			return conflicts, limit
 		}

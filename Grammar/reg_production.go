@@ -9,7 +9,7 @@ import (
 
 // RegProduction represents a production in a grammar that matches a
 // regular expression.
-type RegProduction[T uc.Enumer] struct {
+type RegProduction[T TokenTyper] struct {
 	// Left-hand side of the production.
 	lhs T
 
@@ -23,7 +23,6 @@ type RegProduction[T uc.Enumer] struct {
 // GoString implements the fmt.GoStringer interface.
 func (r *RegProduction[T]) GoString() string {
 	str := fmt.Sprintf("%+v", *r)
-
 	return str
 }
 
@@ -46,12 +45,12 @@ func (p *RegProduction[T]) Equals(other uc.Equaler) bool {
 
 // Copy implements the common.Copier interface.
 func (p *RegProduction[T]) Copy() uc.Copier {
-	pCopy := &RegProduction[T]{
+	p_copy := &RegProduction[T]{
 		lhs: p.lhs,
 		rhs: p.rhs,
 		rxp: p.rxp,
 	}
-	return pCopy
+	return p_copy
 }
 
 // NewRegProduction is a function that returns a new RegProduction with the
@@ -72,7 +71,7 @@ func (p *RegProduction[T]) Copy() uc.Copier {
 // Information:
 //   - Must call Compile() on the returned RegProduction to compile the
 //     regular expression.
-func NewRegProduction[T uc.Enumer](lhs T, regex string) *RegProduction[T] {
+func NewRegProduction[T TokenTyper](lhs T, regex string) *RegProduction[T] {
 	p := &RegProduction[T]{
 		lhs: lhs,
 		rhs: "^" + regex,

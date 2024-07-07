@@ -11,15 +11,15 @@ import (
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
-type leavesResult[T uc.Enumer] struct {
+type leaves_result[T gr.TokenTyper] struct {
 	leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
 }
 
-func (lr *leavesResult[T]) Size() int {
+func (lr *leaves_result[T]) Size() int {
 	return len(lr.leaves)
 }
 
-func (lr *leavesResult[T]) getFirst() *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]] {
+func (lr *leaves_result[T]) get_first() *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]] {
 	if len(lr.leaves) == 0 {
 		return nil
 	}
@@ -31,7 +31,7 @@ func (lr *leavesResult[T]) getFirst() *tr.TreeNode[*tr.StatusInfo[EvalStatus, *g
 }
 
 // SourceIterator is an iterator that uses a grammar to tokenize a string.
-type SourceIterator[T uc.Enumer] struct {
+type SourceIterator[T gr.TokenTyper] struct {
 	// source is the source to lex.
 	source *cds.Stream[byte]
 
@@ -41,11 +41,11 @@ type SourceIterator[T uc.Enumer] struct {
 	// productions are the production rules to use.
 	productions []*gr.RegProduction[T]
 
-	// canContinue is a flag that indicates if the lexer can continue.
-	canContinue bool
+	// can_continue is a flag that indicates if the lexer can continue.
+	can_continue bool
 
-	// errBranches are the branches that have errors.
-	errBranches []*tr.Branch[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
+	// err_branches are the branches that have errors.
+	err_branches []*tr.Branch[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
 
 	// logger is a flag that indicates if the lexer should be verbose.
 	logger *Verbose
@@ -62,12 +62,12 @@ func (si *SourceIterator[T]) Size() (count int) {
 	return
 }
 
-// generateEvalTrees adds the matches to a root tree as leaves.
+// generate_eval_trees adds the matches to a root tree as leaves.
 //
 // Parameters:
 //   - matches: The matches to add to the tree evaluator.
 //   - logger: A verbose logger.
-func generateEvalTrees[T uc.Enumer](matches []*gr.MatchedResult[T], logger *Verbose) []*tr.StatusInfo[EvalStatus, *gr.Token[T]] {
+func generate_eval_trees[T gr.TokenTyper](matches []*gr.MatchedResult[T], logger *Verbose) []*tr.StatusInfo[EvalStatus, *gr.Token[T]] {
 	logger.DoIf(func(p *Printer) {
 		// DEBUG: Display the matches
 		p.Print("Matches:")
@@ -78,7 +78,7 @@ func generateEvalTrees[T uc.Enumer](matches []*gr.MatchedResult[T], logger *Verb
 	})
 
 	// Get the longest match.
-	matches = selectBestMatches(matches, logger)
+	matches = select_best_matches(matches, logger)
 
 	children := make([]*tr.StatusInfo[EvalStatus, *gr.Token[T]], 0, len(matches))
 
@@ -91,15 +91,15 @@ func generateEvalTrees[T uc.Enumer](matches []*gr.MatchedResult[T], logger *Verb
 	return children
 }
 
-// lexOne lexes one branch of the tree.
+// lex_one lexes one branch of the tree.
 //
 // Parameters:
 //   - logger: A verbose logger.
 //
 // Returns:
 //   - error: An error if lexing fails.
-func (si *SourceIterator[T]) lexOne(logger *Verbose) error {
-	p := filterLeaves(si.source, si.productions, logger)
+func (si *SourceIterator[T]) lex_one(logger *Verbose) error {
+	p := filter_leaves(si.source, si.productions, logger)
 
 	err := si.tree.ProcessLeaves(p)
 	if err != nil {
@@ -115,9 +115,7 @@ func (si *SourceIterator[T]) lexOne(logger *Verbose) error {
 		)
 
 		err = si.tree.FString(trav)
-		if err != nil {
-			panic(err)
-		}
+		uc.AssertF(err == nil, "FString failed: %s", err.Error())
 
 		pages := ffs.Stringfy(printer.GetPages(), 1)
 
@@ -144,7 +142,7 @@ func (si *SourceIterator[T]) lexOne(logger *Verbose) error {
 	for _, leaf := range failed {
 		branch := si.tree.ExtractBranch(leaf, true)
 		if branch != nil {
-			si.errBranches = append(si.errBranches, branch)
+			si.err_branches = append(si.err_branches, branch)
 		}
 	}
 
@@ -163,23 +161,23 @@ func (si *SourceIterator[T]) lexOne(logger *Verbose) error {
 }
 
 // Consume implements the Iterater interface.
-func (si *SourceIterator[T]) Consume() (*leavesResult[T], error) {
-	var result *leavesResult[T]
+func (si *SourceIterator[T]) Consume() (*leaves_result[T], error) {
+	var result *leaves_result[T]
 
 	for {
-		if !si.canContinue {
+		if !si.can_continue {
 			return nil, uc.NewErrExhaustedIter()
 		}
 
 		var leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
 
-		err := si.lexOne(si.logger)
+		err := si.lex_one(si.logger)
 		if err != nil {
-			si.canContinue = false
+			si.can_continue = false
 
 			leaves = si.tree.GetLeaves()
 		} else {
-			leaves, si.canContinue = si.getCompletedBranch()
+			leaves, si.can_continue = si.get_completed_branch()
 		}
 
 		// Ignore error leaves.
@@ -193,7 +191,7 @@ func (si *SourceIterator[T]) Consume() (*leavesResult[T], error) {
 		leaves = us.SliceFilter(leaves, f)
 
 		if len(leaves) > 0 {
-			result = &leavesResult[T]{
+			result = &leaves_result[T]{
 				leaves: leaves,
 			}
 
@@ -206,7 +204,7 @@ func (si *SourceIterator[T]) Consume() (*leavesResult[T], error) {
 
 // Restart implements the Iterater interface.
 func (si *SourceIterator[T]) Restart() {
-	si.canContinue = true
+	si.can_continue = true
 
 	//rootNode := gr.RootToken()
 
@@ -226,7 +224,7 @@ func (si *SourceIterator[T]) Restart() {
 //
 // Returns:
 //   - *SourceIterator: The new source iterator.
-func newSourceIterator[T uc.Enumer](source *cds.Stream[byte], productions []*gr.RegProduction[T], logger *Verbose) *SourceIterator[T] {
+func newSourceIterator[T gr.TokenTyper](source *cds.Stream[byte], productions []*gr.RegProduction[T], logger *Verbose) *SourceIterator[T] {
 	// rootNode := gr.RootToken()
 
 	// p := tr.NewStatusInfo(rootNode, EvalIncomplete)
@@ -246,50 +244,51 @@ func newSourceIterator[T uc.Enumer](source *cds.Stream[byte], productions []*gr.
 	panic("newSourceIterator() not implemented")
 }
 
-// getCompletedBranch gets the completed branch of the tree.
+// get_completed_branch gets the completed branch of the tree.
 //
 // Returns:
 //   - []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]: The completed branch.
 //   - bool: True if the branch can continue, false otherwise.
-func (si *SourceIterator[T]) getCompletedBranch() ([]*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]], bool) {
+func (si *SourceIterator[T]) get_completed_branch() ([]*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]], bool) {
 	leaves := si.tree.GetLeaves()
 
-	canContinue := false
+	can_continue := false
 
-	var completedLeaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
+	var completed_leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
 
 	for _, leaf := range leaves {
 		ld := leaf.Data
 		status := ld.GetStatus()
 
 		if status == EvalComplete {
-			completedLeaves = append(completedLeaves, leaf)
+			completed_leaves = append(completed_leaves, leaf)
 		} else if status == EvalIncomplete {
-			canContinue = true
+			can_continue = true
 		}
 	}
 
-	return completedLeaves, canContinue
+	return completed_leaves, can_continue
 }
 
-// deleteBranch deletes a branch from the tree.
+// delete_branch deletes a branch from the tree.
 //
 // Parameters:
 //   - leaf: The leaf to delete.
-func (si *SourceIterator[T]) deleteBranch(leaf *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]) {
-	si.tree.DeleteBranchContaining(leaf)
+func (si *SourceIterator[T]) delete_branch(leaf *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]) {
+	err := si.tree.DeleteBranchContaining(leaf)
+	uc.AssertF(err == nil, "DeleteBranchContaining failed: %s", err.Error())
 }
 
 // LexerIterator is an iterator that uses a grammar to tokenize a string.
-type LexerIterator[T uc.Enumer] struct {
-	// toSkip are the tokens to skip.
-	toSkip []T
+type LexerIterator[T gr.TokenTyper] struct {
+	// to_skip are the tokens to skip.
+	to_skip []T
 
-	// completedLeaves are the leaves that have been completed.
-	completedLeaves *leavesResult[T]
+	// completed_leaves are the leaves that have been completed.
+	completed_leaves *leaves_result[T]
 
-	// sourceIter is the source iterator.
-	sourceIter *SourceIterator[T]
+	// source_iter is the source iterator.
+	source_iter *SourceIterator[T]
 }
 
 // Size implements the Iterater interface.
@@ -297,9 +296,9 @@ type LexerIterator[T uc.Enumer] struct {
 // Size is calculated by the number of leaves in the source iterator
 // and the number of completed leaves.
 func (li *LexerIterator[T]) Size() (count int) {
-	count = li.sourceIter.Size()
+	count = li.source_iter.Size()
 
-	count += li.completedLeaves.Size()
+	count += li.completed_leaves.Size()
 
 	return
 }
@@ -309,24 +308,24 @@ func (li *LexerIterator[T]) Consume() (*cds.Stream[*gr.Token[T]], error) {
 	var branch *cds.Stream[*gr.Token[T]]
 
 	for {
-		if li.completedLeaves.Size() == 0 {
-			res, err := li.sourceIter.Consume()
+		if li.completed_leaves.Size() == 0 {
+			res, err := li.source_iter.Consume()
 			if err != nil {
 				return nil, err
 			}
 
-			li.completedLeaves = res
+			li.completed_leaves = res
 		}
 
 		// Extract the entire branch
-		leaf := li.completedLeaves.getFirst()
+		leaf := li.completed_leaves.get_first()
 
 		anch := leaf.GetAncestors()
 		anch = append(anch, leaf)
 
-		li.sourceIter.deleteBranch(leaf)
+		li.source_iter.delete_branch(leaf)
 
-		branch = convertBranchToTokenStream(anch, li.toSkip)
+		branch = convert_branch_to_token_stream(anch, li.to_skip)
 		if branch.Size() > 0 {
 			break
 		}
@@ -337,8 +336,8 @@ func (li *LexerIterator[T]) Consume() (*cds.Stream[*gr.Token[T]], error) {
 
 // Restart implements the Iterater interface.
 func (li *LexerIterator[T]) Restart() {
-	li.completedLeaves = nil
-	li.sourceIter.Restart()
+	li.completed_leaves = nil
+	li.source_iter.Restart()
 }
 
 /*

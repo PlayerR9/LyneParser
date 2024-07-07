@@ -34,6 +34,8 @@ func NewNormalText(data []byte, style tcell.Style) *NormalText {
 
 	for len(data) > 0 {
 		r, size := utf8.DecodeRune(data)
+		uc.Assert(r != utf8.RuneError, "utf8.DecodeRune failed")
+
 		data = data[size:]
 
 		runes = append(runes, r)
@@ -56,7 +58,7 @@ func (hd *NormalText) Runes() []rune {
 }
 
 // ValidText is a highlighted text.
-type ValidText[T uc.Enumer] struct {
+type ValidText[T gr.TokenTyper] struct {
 	// data is the data of the highlighted data.
 	data []*gr.Token[T]
 }
@@ -69,7 +71,7 @@ type ValidText[T uc.Enumer] struct {
 // Returns:
 //   - *ValidText: The new highlighted data.
 //   - error: An error of type *uc.ErrInvalidParameter if the tokens are empty.
-func NewValidText[T uc.Enumer](tokens []*gr.Token[T]) (*ValidText[T], error) {
+func NewValidText[T gr.TokenTyper](tokens []*gr.Token[T]) (*ValidText[T], error) {
 	if len(tokens) == 0 {
 		return nil, uc.NewErrInvalidParameter(
 			"tokens",

@@ -1,8 +1,90 @@
 package Lexer
 
 import (
+	"strconv"
+	"strings"
+
+	gr "github.com/PlayerR9/LyneParser/Grammar"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
+
+// ErrUnexpectedChar is an error that is returned when an unexpected character is found.
+type ErrUnexpectedChar struct {
+	// Expected is the expected rune.
+	Expected rune
+
+	// Previous is the previous rune.
+	Previous rune
+
+	// Got is the got rune.
+	Got *rune
+}
+
+// Error implements the error interface.
+//
+// Message: "expected <expected> after <previous>, found <got> instead".
+func (e *ErrUnexpectedChar) Error() string {
+	var got_str string
+
+	if e.Got != nil {
+		got_str = strconv.QuoteRune(*e.Got)
+	} else {
+		got_str = "nothing"
+	}
+
+	var builder strings.Builder
+
+	builder.WriteString("expected ")
+	builder.WriteString(strconv.QuoteRune(e.Expected))
+	builder.WriteString(" after ")
+	builder.WriteString(strconv.QuoteRune(e.Previous))
+	builder.WriteString(", found ")
+	builder.WriteString(got_str)
+	builder.WriteString(" instead")
+
+	msg := builder.String()
+	return msg
+}
+
+// NewErrUnexpectedChar creates a new ErrUnexpectedChar.
+//
+// Parameters:
+//   - expected: The expected rune.
+//   - previous: The previous rune.
+//   - got: The got rune.
+//
+// Returns:
+//   - *ErrUnexpectedChar: The new ErrUnexpectedChar.
+func NewErrUnexpectedChar(expected, previous rune, got *rune) *ErrUnexpectedChar {
+	e := &ErrUnexpectedChar{
+		Expected: expected,
+		Previous: previous,
+		Got:      got,
+	}
+	return e
+}
+
+type ErrLexerError[T gr.TokenTyper] struct {
+	At   int
+	Prev []*gr.Token[T]
+}
+
+func (e *ErrLexerError[T]) Error() string {
+	var builder strings.Builder
+
+	builder.WriteString("no matches found at ")
+	builder.WriteString(strconv.Itoa(e.At))
+
+	return builder.String()
+}
+
+func NewErrLexerError[T gr.TokenTyper](at int, prev []*gr.Token[T]) *ErrLexerError[T] {
+	e := &ErrLexerError[T]{
+		At:   at,
+		Prev: prev,
+	}
+	return e
+}
 
 // ErrNoMatches is an error that is returned when there are no
 // matches at a position.

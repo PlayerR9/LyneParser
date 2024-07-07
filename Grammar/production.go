@@ -11,7 +11,7 @@ import (
 )
 
 // Production represents a production in a grammar.
-type Production[T uc.Enumer] struct {
+type Production[T TokenTyper] struct {
 	// Left-hand side of the production.
 	lhs T
 
@@ -83,13 +83,13 @@ func (p *Production[T]) Iterator() uc.Iterater[T] {
 
 // Copy implements the common.Copier interface.
 func (p *Production[T]) Copy() uc.Copier {
-	pCopy := &Production[T]{
+	p_copy := &Production[T]{
 		lhs: p.lhs,
 		rhs: make([]T, len(p.rhs)),
 	}
-	copy(pCopy.rhs, p.rhs)
+	copy(p_copy.rhs, p.rhs)
 
-	return pCopy
+	return p_copy
 }
 
 // NewProduction is a function that returns a new Production with the
@@ -102,7 +102,7 @@ func (p *Production[T]) Copy() uc.Copier {
 // Returns:
 //   - *Production: A new Production with the given left-hand side and
 //     right-hand side.
-func NewProduction[T uc.Enumer](lhs T, rhss []T) *Production[T] {
+func NewProduction[T TokenTyper](lhs T, rhss []T) *Production[T] {
 	p := &Production[T]{
 		lhs: lhs,
 		rhs: rhss,
@@ -207,8 +207,8 @@ func (p *Production[T]) Match(at int, stack *ud.History[lls.Stacker[*Token[T]]])
 
 	slices.Reverse(solutions)
 
-	lastElem := solutions[len(solutions)-1]
-	lookahead := lastElem.GetLookahead()
+	last_elem := solutions[len(solutions)-1]
+	lookahead := last_elem.GetLookahead()
 
 	tok := NewToken(p.lhs, solutions, at, lookahead)
 
@@ -289,13 +289,13 @@ func (p *Production[T]) IndicesOfRhs(rhs T) []int {
 //     not match the symbol at the given index in the right-hand side of the
 //     production.
 func (p *Production[T]) ReplaceRhsAt(index int, rhs T) *Production[T] {
-	newP := p.Copy().(*Production[T])
+	new_p := p.Copy().(*Production[T])
 
 	if index >= 0 && index < len(p.rhs) {
-		newP.rhs[index] = rhs
+		new_p.rhs[index] = rhs
 	}
 
-	return newP
+	return new_p
 }
 
 // ReplaceRhsAt is a method of Production that replaces the symbol at the
@@ -316,23 +316,23 @@ func (p *Production[T]) ReplaceRhsAt(index int, rhs T) *Production[T] {
 //   - *ErrLhsRhsMismatch: If the left-hand side of the other production does
 //     not match the symbol at the given index in the right-hand side of the
 //     production.
-func (p *Production[T]) SubstituteRhsAt(index int, otherP *Production[T]) *Production[T] {
-	newP := p.Copy().(*Production[T])
+func (p *Production[T]) SubstituteRhsAt(index int, other_p *Production[T]) *Production[T] {
+	new_p := p.Copy().(*Production[T])
 
-	if index < 0 || index >= len(p.rhs) || otherP == nil {
-		return newP
+	if index < 0 || index >= len(p.rhs) || other_p == nil {
+		return new_p
 	}
 
 	if index == 0 {
-		newP.rhs = append(otherP.rhs, newP.rhs[1:]...)
+		new_p.rhs = append(other_p.rhs, new_p.rhs[1:]...)
 	} else if index == len(p.rhs)-1 {
-		newP.rhs = append(newP.rhs[:index], otherP.rhs...)
+		new_p.rhs = append(new_p.rhs[:index], other_p.rhs...)
 	} else {
-		newP.rhs = append(newP.rhs[:index], otherP.rhs...)
-		newP.rhs = append(newP.rhs, newP.rhs[index+1:]...)
+		new_p.rhs = append(new_p.rhs[:index], other_p.rhs...)
+		new_p.rhs = append(new_p.rhs, new_p.rhs[index+1:]...)
 	}
 
-	return newP
+	return new_p
 }
 
 // HasRhs is a method of Production that returns whether the right-hand

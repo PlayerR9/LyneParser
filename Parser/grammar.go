@@ -6,11 +6,10 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
-	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
 // Grammar represents a context-free grammar.
-type Grammar[T uc.Enumer] struct {
+type Grammar[T gr.TokenTyper] struct {
 	// productions is a slice of productions in the grammar.
 	productions []*gr.Production[T]
 
@@ -31,7 +30,7 @@ type Grammar[T uc.Enumer] struct {
 //
 // Returns:
 //   - *ParserGrammar: A new empty ParserGrammar.
-func NewGrammar[T uc.Enumer]() (*Grammar[T], error) {
+func NewGrammar[T gr.TokenTyper]() (*Grammar[T], error) {
 	g := &Grammar[T]{
 		productions: make([]*gr.Production[T], 0),
 		symbols:     make([]T, 0),

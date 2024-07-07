@@ -2,8 +2,6 @@ package Lexer
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
@@ -11,33 +9,11 @@ import (
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
-type ErrLexerError[T uc.Enumer] struct {
-	At   int
-	Prev []*gr.Token[T]
-}
-
-func (e *ErrLexerError[T]) Error() string {
-	var builder strings.Builder
-
-	builder.WriteString("no matches found at ")
-	builder.WriteString(strconv.Itoa(e.At))
-
-	return builder.String()
-}
-
-func NewErrLexerError[T uc.Enumer](at int, prev []*gr.Token[T]) *ErrLexerError[T] {
-	e := &ErrLexerError[T]{
-		At:   at,
-		Prev: prev,
-	}
-	return e
-}
-
-type TreeNode[T uc.Enumer] struct {
+type TreeNode[T gr.TokenTyper] struct {
 	*tr.StatusInfo[EvalStatus, *gr.Token[T]]
 }
 
-func newTreeNode[T uc.Enumer](value *gr.Token[T]) *TreeNode[T] {
+func new_tree_node[T gr.TokenTyper](value *gr.Token[T]) *TreeNode[T] {
 	si := tr.NewStatusInfo(value, EvalIncomplete)
 
 	tn := &TreeNode[T]{
@@ -47,7 +23,7 @@ func newTreeNode[T uc.Enumer](value *gr.Token[T]) *TreeNode[T] {
 	return tn
 }
 
-func convBranch[T uc.Enumer](branch *tr.Branch[*TreeNode[T]]) []*gr.Token[T] {
+func convert_branch[T gr.TokenTyper](branch *tr.Branch[*TreeNode[T]]) []*gr.Token[T] {
 	slice := branch.Slice()
 	slice = slice[1:] // Skip the root.
 
@@ -62,7 +38,7 @@ func convBranch[T uc.Enumer](branch *tr.Branch[*TreeNode[T]]) []*gr.Token[T] {
 	return result
 }
 
-func lastOfBranch[T uc.Enumer](branch []*gr.Token[T]) int {
+func last_of_branch[T gr.TokenTyper](branch []*gr.Token[T]) int {
 	len := len(branch)
 
 	if len == 0 {
@@ -74,38 +50,40 @@ func lastOfBranch[T uc.Enumer](branch []*gr.Token[T]) int {
 	return last.At
 }
 
-func Lex[T uc.Enumer](s *cds.Stream[byte], productions []*gr.RegProduction[T], v *Verbose) error {
+func Lex[T gr.TokenTyper](s *cds.Stream[byte], productions []*gr.RegProduction[T], v *Verbose) error {
 	f := func(tn *TreeNode[T]) ([]*TreeNode[T], error) {
-		data := tn.GetData()
+		// data := tn.GetData()
 
-		var nextAt int
+		// var nextAt int
 
-		if data.ID.String() == gr.RootTokenID {
-			nextAt = 0
-		} else {
-			nextAt = data.At + len(data.Data.(string))
-		}
+		// if data.ID.String() == gr.RootTokenID {
+		// 	nextAt = 0
+		// } else {
+		// 	nextAt = data.At + len(data.Data.(string))
+		// }
 
-		results, err := matchFrom(s, nextAt, productions)
-		if err != nil {
-			return nil, err
-		}
+		// results, err := matchFrom(s, nextAt, productions)
+		// if err != nil {
+		// 	return nil, err
+		// }
 
 		// Get the longest match.
-		results = selectBestMatches(results, v)
+		// results = selectBestMatches(results, v)
 
-		children := make([]*TreeNode[T], 0, len(results))
+		// children := make([]*TreeNode[T], 0, len(results))
 
-		for _, result := range results {
-			tn := newTreeNode(result.Matched)
+		// for _, result := range results {
+		// 	tn := newTreeNode(result.Matched)
 
-			children = append(children, tn)
-		}
+		// 	children = append(children, tn)
+		// }
 
-		return children, nil
+		// return children, nil
+
+		panic("Lex: not implemented")
 	}
 
-	iter := newCoreIter(f)
+	iter := new_core_iter(f)
 
 	for {
 		branches, err := iter.Consume()

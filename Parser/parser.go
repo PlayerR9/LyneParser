@@ -10,7 +10,7 @@ import (
 )
 
 // Parser is a parser that uses a stack to parse a stream of tokens.
-type Parser[T uc.Enumer] struct {
+type Parser[T gr.TokenTyper] struct {
 	// evals is a list of evaluations that the parser will use.
 	evals []*CurrentEval[T]
 
@@ -33,7 +33,7 @@ type Parser[T uc.Enumer] struct {
 // Errors:
 //   - *uc.ErrInvalidParameter: The grammar is nil.
 //   - *gr.ErrNoProductionRulesFound: No production rules are found in the grammar.
-func NewParser[T uc.Enumer](grammar *Grammar[T]) (*Parser[T], error) {
+func NewParser[T gr.TokenTyper](grammar *Grammar[T]) (*Parser[T], error) {
 	if grammar == nil {
 		return nil, uc.NewErrNilParameter("grammar")
 	}
@@ -63,7 +63,7 @@ func NewParser[T uc.Enumer](grammar *Grammar[T]) (*Parser[T], error) {
 //
 // Returns:
 //   - error: An error if the input stream could not be parsed.
-func Parse[T uc.Enumer](p *Parser[T], source *cds.Stream[*gr.Token[T]]) error {
+func Parse[T gr.TokenTyper](p *Parser[T], source *cds.Stream[*gr.Token[T]]) error {
 	if p == nil {
 		return uc.NewErrNilParameter("parser")
 	}
@@ -76,16 +76,16 @@ func Parse[T uc.Enumer](p *Parser[T], source *cds.Stream[*gr.Token[T]]) error {
 		return errors.New("source is empty")
 	}
 
-	ceRoot := NewCurrentEval[T]()
+	ce_root := NewCurrentEval[T]()
 
-	err := ceRoot.shift(source)
+	err := ce_root.shift(source)
 	if err != nil {
 		return err
 	}
 
-	sols := evaluate(p.dt, source, ceRoot)
+	sols := evaluate(p.dt, source, ce_root)
 
-	results, err := extractResults(sols)
+	results, err := extract_results(sols)
 	if err != nil {
 		return err
 	}

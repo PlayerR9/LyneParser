@@ -21,7 +21,8 @@ func (e *ErrNoAccept) Error() string {
 //
 //   - *ErrNoAccept: A pointer to the new ErrNoAccept error.
 func NewErrNoAccept() *ErrNoAccept {
-	return &ErrNoAccept{}
+	e := &ErrNoAccept{}
+	return e
 }
 
 // ErrUnknownAction is an error that is returned when the parser encounters an unknown
@@ -36,7 +37,7 @@ type ErrUnknownAction struct {
 // Error is a method of the error interface.
 //
 // Returns:
-//  - string: The error message.
+//   - string: The error message.
 func (e *ErrUnknownAction) Error() string {
 	return fmt.Sprintf("unknown action: %T", e.Action)
 }
@@ -49,7 +50,9 @@ func (e *ErrUnknownAction) Error() string {
 // Returns:
 //   - *ErrUnknownAction: A pointer to the new ErrUnknownAction error.
 func NewErrUnknownAction(action any) *ErrUnknownAction {
-	return &ErrUnknownAction{
+	e := &ErrUnknownAction{
 		Action: action,
 	}
+
+	return e
 }

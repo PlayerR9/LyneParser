@@ -8,7 +8,7 @@ import (
 )
 
 type Printer struct {
-	msgChan chan string
+	msg_chan chan string
 
 	wg sync.WaitGroup
 
@@ -28,7 +28,7 @@ func NewPrinter() *Printer {
 }
 
 func (p *Printer) Start() {
-	p.msgChan = make(chan string)
+	p.msg_chan = make(chan string)
 
 	p.wg.Add(1)
 
@@ -42,18 +42,18 @@ func (p *Printer) Close() {
 	default:
 		p.cancel()
 
-		close(p.msgChan)
+		close(p.msg_chan)
 
 		p.wg.Wait()
 
-		p.msgChan = nil
+		p.msg_chan = nil
 	}
 }
 
 func (p *Printer) msgListener() {
 	defer p.wg.Done()
 
-	for msg := range p.msgChan {
+	for msg := range p.msg_chan {
 		ok := strings.HasSuffix(msg, "\n")
 
 		if ok {
@@ -71,7 +71,7 @@ func (p *Printer) Print(a ...interface{}) {
 	case <-p.ctx.Done():
 		// Do nothing
 	default:
-		p.msgChan <- fmt.Sprint(a...)
+		p.msg_chan <- fmt.Sprint(a...)
 	}
 }
 
@@ -80,21 +80,21 @@ func (p *Printer) Printf(format string, a ...interface{}) {
 	case <-p.ctx.Done():
 		// Do nothing
 	default:
-		p.msgChan <- fmt.Sprintf(format, a...)
+		p.msg_chan <- fmt.Sprintf(format, a...)
 	}
 }
 
 type Verbose struct {
-	isActive bool
-	printer  *Printer
+	is_active bool
+	printer   *Printer
 }
 
 func NewVerbose(active bool) *Verbose {
 	p := NewPrinter()
 
 	v := &Verbose{
-		isActive: active,
-		printer:  p,
+		is_active: active,
+		printer:   p,
 	}
 
 	p.Start()
@@ -107,7 +107,7 @@ func (v *Verbose) Close() {
 }
 
 func (v *Verbose) DoIf(doFunc func(p *Printer)) {
-	if !v.isActive {
+	if !v.is_active {
 		return
 	}
 

@@ -11,22 +11,22 @@ import (
 )
 
 // InfoStruct is the information about the expansion tree.
-type InfoStruct[T uc.Enumer] struct {
+type InfoStruct[T gr.TokenTyper] struct {
 	// seen is a map of helpers that have been seen.
 	seen map[*Helper[T]]bool
 }
 
 // Copy implements the Copier interface.
 func (is *InfoStruct[T]) Copy() uc.Copier {
-	isCopy := &InfoStruct[T]{
+	is_copy := &InfoStruct[T]{
 		seen: make(map[*Helper[T]]bool),
 	}
 
 	for k, v := range is.seen {
-		isCopy.seen[k] = v
+		is_copy.seen[k] = v
 	}
 
-	return isCopy
+	return is_copy
 }
 
 // NewInfoStruct creates a new InfoStruct.
@@ -40,7 +40,7 @@ func (is *InfoStruct[T]) Copy() uc.Copier {
 // Behaviors:
 //   - The root is set to seen.
 //   - If the root is nil, then nil is returned.
-func NewInfoStruct[T uc.Enumer](root *Helper[T]) *InfoStruct[T] {
+func NewInfoStruct[T gr.TokenTyper](root *Helper[T]) *InfoStruct[T] {
 	if root == nil {
 		return nil
 	}
@@ -74,7 +74,7 @@ func (is *InfoStruct[T]) SetSeen(h *Helper[T]) {
 }
 
 // ExpansionTree is a tree of expansion helpers.
-type ExpansionTree[T uc.Enumer] struct {
+type ExpansionTree[T gr.TokenTyper] struct {
 	// tree is the tree of expansion helpers.
 	tree *tr.Tree[*Helper[T]]
 
@@ -97,11 +97,11 @@ type ExpansionTree[T uc.Enumer] struct {
 // Errors:
 //   - *ers.Err0thRhsNotSet: The 0th RHS of the root is not set.
 //   - *ers.ErrInvalidParameter: The root is nil.
-func NewExpansionTreeRootedAt[T uc.Enumer](cs *ConflictSolver[T], h *Helper[T]) (*ExpansionTree[T], error) {
+func NewExpansionTreeRootedAt[T gr.TokenTyper](cs *ConflictSolver[T], h *Helper[T]) (*ExpansionTree[T], error) {
 	info := NewInfoStruct(h)
 
-	nextsFunc := func(elem *Helper[T], is uc.Copier) ([]*Helper[T], error) {
-		isInf, ok := is.(*InfoStruct[T])
+	nexts_func := func(elem *Helper[T], is uc.Copier) ([]*Helper[T], error) {
+		is_inf, ok := is.(*InfoStruct[T])
 		if !ok {
 			return nil, uc.NewErrUnexpectedType("is", is)
 		}
@@ -111,16 +111,16 @@ func NewExpansionTreeRootedAt[T uc.Enumer](cs *ConflictSolver[T], h *Helper[T]) 
 			return nil, NewErr0thRhsNotSet()
 		}
 
-		ok = gr.IsTerminal(rhs.String())
+		ok = rhs.IsTerminal()
 		if ok {
 			return nil, nil
 		}
 
 		result := cs.GetElemsWithLhs(rhs)
 
-		result = us.SliceFilter(result, isInf.IsNotSeen)
+		result = us.SliceFilter(result, is_inf.IsNotSeen)
 
-		isInf.SetSeen(elem)
+		is_inf.SetSeen(elem)
 
 		return result, nil
 	}
@@ -128,7 +128,7 @@ func NewExpansionTreeRootedAt[T uc.Enumer](cs *ConflictSolver[T], h *Helper[T]) 
 	var builder trt.Builder[*Helper[T]]
 
 	builder.SetInfo(info)
-	builder.SetNextFunc(nextsFunc)
+	builder.SetNextFunc(nexts_func)
 
 	tree, err := builder.Build(h)
 	if err != nil {
@@ -154,9 +154,7 @@ func (et *ExpansionTree[T]) PruneNonTerminalLeaves() {
 
 	for _, leaf := range todo {
 		err := et.tree.DeleteBranchContaining(leaf)
-		if err != nil {
-			panic(err)
-		}
+		uc.AssertF(err == nil, "unexpected error: %s", err.Error())
 	}
 }
 
@@ -181,9 +179,7 @@ func (et *ExpansionTree[T]) Collapse() []T {
 
 	for _, leaf := range leaves {
 		rhs, err := leaf.Data.GetRhsAt(0)
-		if err != nil {
-			panic(err)
-		}
+		uc.AssertF(err == nil, "unexpected error: %s", err.Error())
 
 		pos, ok := slices.BinarySearch(result, rhs)
 		if !ok {

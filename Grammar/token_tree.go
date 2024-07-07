@@ -11,7 +11,7 @@ import (
 )
 
 // TTInfo is the information about the token tree.
-type TTInfo[T uc.Enumer] struct {
+type TTInfo[T TokenTyper] struct {
 	// depth is the depth of each token.
 	depth map[*Token[T]]int
 }
@@ -21,15 +21,15 @@ type TTInfo[T uc.Enumer] struct {
 // Returns:
 //   - uc.Copier: A copy of the TTInfo.
 func (tti *TTInfo[T]) Copy() uc.Copier {
-	ttiCopy := &TTInfo[T]{
+	tti_copy := &TTInfo[T]{
 		depth: make(map[*Token[T]]int),
 	}
 
 	for k, v := range tti.depth {
-		ttiCopy.depth[k] = v
+		tti_copy.depth[k] = v
 	}
 
-	return ttiCopy
+	return tti_copy
 }
 
 // NewTTInfo creates a new TTInfo.
@@ -43,7 +43,7 @@ func (tti *TTInfo[T]) Copy() uc.Copier {
 //
 // Behaviors:
 //   - The depth of the root is set to 0.
-func NewTTInfo[T uc.Enumer](root *Token[T]) (*TTInfo[T], error) {
+func NewTTInfo[T TokenTyper](root *Token[T]) (*TTInfo[T], error) {
 	info := &TTInfo[T]{
 		depth: make(map[*Token[T]]int),
 	}
@@ -90,7 +90,7 @@ func (tti *TTInfo[T]) GetDepth(Token *Token[T]) (int, bool) {
 }
 
 // TokenTree is a tree of tokens.
-type TokenTree[T uc.Enumer] struct {
+type TokenTree[T TokenTyper] struct {
 	// tree is the tree of tokens.
 	tree *tr.Tree[*Token[T]]
 
@@ -111,14 +111,14 @@ type TokenTree[T uc.Enumer] struct {
 //   - *ErrCycleDetected: A cycle is detected in the token tree.
 //   - *uc.ErrInvalidParameter: The root is nil.
 //   - *ErrUnknowToken: The root is not a known token.
-func NewTokenTree[T uc.Enumer](root *Token[T]) (*TokenTree[T], error) {
-	treeInfo, err := NewTTInfo(root)
+func NewTokenTree[T TokenTyper](root *Token[T]) (*TokenTree[T], error) {
+	tree_info, err := NewTTInfo(root)
 	if err != nil {
 		return nil, err
 	}
 
-	nextsFunc := func(elem *Token[T], h uc.Copier) ([]*Token[T], error) {
-		hInfo, ok := h.(*TTInfo[T])
+	nexts_func := func(elem *Token[T], h uc.Copier) ([]*Token[T], error) {
+		h_info, ok := h.(*TTInfo[T])
 		if !ok {
 			return nil, fmt.Errorf("invalid type: %T", h)
 		}
@@ -136,7 +136,7 @@ func NewTokenTree[T uc.Enumer](root *Token[T]) (*TokenTree[T], error) {
 		children := elem.Data.([]*Token[T])
 
 		for _, child := range children {
-			ok := hInfo.SetDepth(child, hInfo.depth[elem]+1)
+			ok := h_info.SetDepth(child, h_info.depth[elem]+1)
 			if !ok {
 				return nil, NewErrCycleDetected()
 			}
@@ -147,8 +147,8 @@ func NewTokenTree[T uc.Enumer](root *Token[T]) (*TokenTree[T], error) {
 
 	var builder trt.Builder[*Token[T]]
 
-	builder.SetNextFunc(nextsFunc)
-	builder.SetInfo(treeInfo)
+	builder.SetNextFunc(nexts_func)
+	builder.SetInfo(tree_info)
 
 	tree, err := builder.Build(root)
 	if err != nil {
@@ -157,7 +157,7 @@ func NewTokenTree[T uc.Enumer](root *Token[T]) (*TokenTree[T], error) {
 
 	tt := &TokenTree[T]{
 		tree: tree,
-		Info: treeInfo,
+		Info: tree_info,
 	}
 
 	return tt, nil
@@ -176,12 +176,12 @@ func (tt *TokenTree[T]) DebugString() string {
 		tt.tree,
 		tt.Info,
 		func(elem *Token[T], inf uc.Copier) (bool, error) {
-			hInfo, ok := inf.(*TTInfo[T])
+			h_info, ok := inf.(*TTInfo[T])
 			if !ok {
 				return false, fmt.Errorf("invalid type: %T", inf)
 			}
 
-			depth, ok := hInfo.GetDepth(elem)
+			depth, ok := h_info.GetDepth(elem)
 			if !ok {
 				return false, fmt.Errorf("depth not found for: %v", elem)
 			}
@@ -202,9 +202,7 @@ func (tt *TokenTree[T]) DebugString() string {
 			return true, nil
 		},
 	)
-	if err != nil {
-		panic(err)
-	}
+	uc.AssertF(err == nil, "DFS failed: %s", err.Error())
 
 	return builder.String()
 }

@@ -4,17 +4,16 @@ import (
 	"slices"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
 )
 
 // Grammar represents a context-free grammar.
-type Grammar[T uc.Enumer] struct {
+type Grammar[T gr.TokenTyper] struct {
 	// productions is a slice of productions in the grammar.
 	productions []*gr.RegProduction[T]
 
-	// lhsToSkip is a slice of productions to skip.
-	lhsToSkip []T
+	// lhs_to_skip is a slice of productions to skip.
+	lhs_to_skip []T
 
 	// symbols is a slice of symbols in the grammar.
 	symbols []T
@@ -24,14 +23,14 @@ type Grammar[T uc.Enumer] struct {
 //
 // Never errors.
 func (g *Grammar[T]) Fix() error {
-	g.lhsToSkip = us.SliceFilter(
-		g.lhsToSkip,
+	g.lhs_to_skip = us.SliceFilter(
+		g.lhs_to_skip,
 		func(lhs T) bool {
-			filterProductionWithLHS := func(p *gr.RegProduction[T]) bool {
+			filter_production_with_lhs := func(p *gr.RegProduction[T]) bool {
 				return p != nil && p.GetLhs() == lhs
 			}
 
-			return slices.ContainsFunc(g.productions, filterProductionWithLHS)
+			return slices.ContainsFunc(g.productions, filter_production_with_lhs)
 		},
 	)
 
@@ -51,11 +50,11 @@ func (g *Grammar[T]) Fix() error {
 //
 // Returns:
 //   - *LexerGrammar: A new empty LexerGrammar.
-func NewGrammar[T uc.Enumer](toSkip []T) *Grammar[T] {
-	toSkip = us.Uniquefy(toSkip, true)
+func NewGrammar[T gr.TokenTyper](to_skip []T) *Grammar[T] {
+	to_skip = us.Uniquefy(to_skip, true)
 
 	g := &Grammar[T]{
-		lhsToSkip: toSkip,
+		lhs_to_skip: to_skip,
 	}
 
 	return g
@@ -107,10 +106,10 @@ func (g *Grammar[T]) GetSymbols() []T {
 // Returns:
 //   - []*RegProduction: A slice of RegProduction in the grammar.
 func (g *Grammar[T]) GetRegexProds() []*gr.RegProduction[T] {
-	regProds := make([]*gr.RegProduction[T], len(g.productions))
-	copy(regProds, g.productions)
+	reg_prods := make([]*gr.RegProduction[T], len(g.productions))
+	copy(reg_prods, g.productions)
 
-	return regProds
+	return reg_prods
 }
 
 // GetToSkip returns a slice of LHSs to skip.
@@ -118,8 +117,8 @@ func (g *Grammar[T]) GetRegexProds() []*gr.RegProduction[T] {
 // Returns:
 //   - []T: A slice of LHSs to skip.
 func (g *Grammar[T]) GetToSkip() []T {
-	toSkip := make([]T, len(g.lhsToSkip))
-	copy(toSkip, g.lhsToSkip)
+	to_skip := make([]T, len(g.lhs_to_skip))
+	copy(to_skip, g.lhs_to_skip)
 
-	return toSkip
+	return to_skip
 }

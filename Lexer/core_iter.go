@@ -11,8 +11,8 @@ import (
 )
 
 type CoreIter[T gr.TokenTyper] struct {
-	do_func uc.EvalManyFunc[*TreeNode[T], *TreeNode[T]]
-	tree    *tr.Tree[*TreeNode[T]]
+	do_func uc.EvalManyFunc[tr.Noder, tr.Noder]
+	tree    *tr.Tree
 
 	// data is the data.
 	data []rune
@@ -40,7 +40,11 @@ func (it *CoreIter[T]) can_continue() bool {
 	}
 
 	root := it.tree.Root()
-	status := root.Data.GetStatus()
+
+	n, ok := root.(*tr.TreeNode[*tr.StatusInfo[EvalStatus, T]])
+	uc.Assert(ok, "Must be a *Tree.TreeNode[T]")
+
+	status := n.Data.GetStatus()
 
 	return status != EvalComplete
 }
@@ -61,11 +65,13 @@ func (it *CoreIter[T]) Consume() ([][]*gr.Token[T], error) {
 
 		leaves := it.tree.GetLeaves()
 
-		f := func(tn *tr.TreeNode[*TreeNode[T]]) bool {
-			data := tn.Data
-			status := data.GetStatus()
+		f := func(n tr.Noder) bool {
+			tn, ok := n.(*TreeNode[T])
+			if !ok {
+				return false
+			}
 
-			ok := status != EvalIncomplete
+			ok = tn.Status != EvalIncomplete
 			return ok
 		}
 
@@ -73,15 +79,20 @@ func (it *CoreIter[T]) Consume() ([][]*gr.Token[T], error) {
 
 		var results [][]*gr.Token[T]
 
-		for _, leaf := range leaves_done {
+		for i, leaf := range leaves_done {
 			// Extract the branch.
-			branch := it.tree.ExtractBranch(leaf, true)
-			status := leaf.Data.GetStatus()
+			branch, err := it.tree.ExtractBranch(leaf, true)
+			if err != nil {
+				return nil, uc.NewErrWhileAt("extracting", i+1, "branch", err)
+			}
 
-			converted := convert_branch(branch)
+			tn, ok := leaf.(*TreeNode[T])
+			uc.Assert(ok, "Must be a *TreeNode[T]")
+
+			converted := convert_branch[T](branch)
 			level := last_of_branch(converted)
 
-			if status == EvalError {
+			if tn.Status == EvalError {
 				err := NewErrLexerError(level, converted)
 
 				errs.AddErr(err, level)

@@ -5,7 +5,9 @@ import (
 	"strings"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
+	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
@@ -37,6 +39,81 @@ type Helper[T gr.TokenTyper] struct {
 	// Action is the action of the helper.
 	// This can never be nil.
 	Action HelperElem[T]
+}
+
+// AddChild implements Tree.Noder.
+func (h *Helper[T]) AddChild(child tr.Noder) {
+	panic("unimplemented")
+}
+
+// Cleanup implements Tree.Noder.
+func (h *Helper[T]) Cleanup() {
+	panic("unimplemented")
+}
+
+// DeleteChild implements Tree.Noder.
+func (h *Helper[T]) DeleteChild(target tr.Noder) []tr.Noder {
+	panic("unimplemented")
+}
+
+// FString implements Tree.Noder.
+func (h *Helper[T]) FString(trav *ffs.Traversor, opts ...ffs.Option) error {
+	panic("unimplemented")
+}
+
+// GetAncestors implements Tree.Noder.
+func (h *Helper[T]) GetAncestors() []tr.Noder {
+	panic("unimplemented")
+}
+
+// GetFirstChild implements Tree.Noder.
+func (h *Helper[T]) GetFirstChild() tr.Noder {
+	panic("unimplemented")
+}
+
+// GetLeaves implements Tree.Noder.
+func (h *Helper[T]) GetLeaves() []tr.Noder {
+	panic("unimplemented")
+}
+
+// GetParent implements Tree.Noder.
+func (h *Helper[T]) GetParent() tr.Noder {
+	panic("unimplemented")
+}
+
+// IsLeaf implements Tree.Noder.
+func (h *Helper[T]) IsLeaf() bool {
+	panic("unimplemented")
+}
+
+// IsSingleton implements Tree.Noder.
+func (h *Helper[T]) IsSingleton() bool {
+	panic("unimplemented")
+}
+
+// Iterator implements Tree.Noder.
+func (h *Helper[T]) Iterator() uc.Iterater[tr.Noder] {
+	panic("unimplemented")
+}
+
+// LinkChildren implements Tree.Noder.
+func (h *Helper[T]) LinkChildren(children []tr.Noder) {
+	panic("unimplemented")
+}
+
+// RemoveNode implements Tree.Noder.
+func (h *Helper[T]) RemoveNode() []tr.Noder {
+	panic("unimplemented")
+}
+
+// SetParent implements Tree.Noder.
+func (h *Helper[T]) SetParent(parent tr.Noder) bool {
+	panic("unimplemented")
+}
+
+// TreeOf implements Tree.Noder.
+func (h *Helper[T]) TreeOf() *tr.Tree {
+	panic("unimplemented")
 }
 
 // String implements the fmt.Stringer interface.

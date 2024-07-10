@@ -12,14 +12,33 @@ import (
 )
 
 type leaves_result[T gr.TokenTyper] struct {
-	leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
+	leaves []*TreeNode[T]
+}
+
+func new_leaves_result[T gr.TokenTyper](nodes []tr.Noder) *leaves_result[T] {
+	var valid_nodes []*TreeNode[T]
+
+	for _, node := range nodes {
+		n, ok := node.(*TreeNode[T])
+		if !ok {
+			continue
+		}
+
+		valid_nodes = append(valid_nodes, n)
+	}
+
+	lr := &leaves_result[T]{
+		leaves: valid_nodes,
+	}
+
+	return lr
 }
 
 func (lr *leaves_result[T]) Size() int {
 	return len(lr.leaves)
 }
 
-func (lr *leaves_result[T]) get_first() *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]] {
+func (lr *leaves_result[T]) get_first() *TreeNode[T] {
 	if len(lr.leaves) == 0 {
 		return nil
 	}
@@ -36,7 +55,7 @@ type SourceIterator[T gr.TokenTyper] struct {
 	source *cds.Stream[byte]
 
 	// tree is the tree to use.
-	tree *tr.Tree[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
+	tree *tr.Tree
 
 	// productions are the production rules to use.
 	productions []*gr.RegProduction[T]
@@ -45,7 +64,7 @@ type SourceIterator[T gr.TokenTyper] struct {
 	can_continue bool
 
 	// err_branches are the branches that have errors.
-	err_branches []*tr.Branch[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
+	err_branches []*tr.Branch
 
 	// logger is a flag that indicates if the lexer should be verbose.
 	logger *Verbose
@@ -67,7 +86,7 @@ func (si *SourceIterator[T]) Size() (count int) {
 // Parameters:
 //   - matches: The matches to add to the tree evaluator.
 //   - logger: A verbose logger.
-func generate_eval_trees[T gr.TokenTyper](matches []*gr.MatchedResult[T], logger *Verbose) []*tr.StatusInfo[EvalStatus, *gr.Token[T]] {
+func generate_eval_trees[T gr.TokenTyper](matches []*gr.MatchedResult[T], logger *Verbose) []*TreeNode[T] {
 	logger.DoIf(func(p *Printer) {
 		// DEBUG: Display the matches
 		p.Print("Matches:")
@@ -80,12 +99,12 @@ func generate_eval_trees[T gr.TokenTyper](matches []*gr.MatchedResult[T], logger
 	// Get the longest match.
 	matches = select_best_matches(matches, logger)
 
-	children := make([]*tr.StatusInfo[EvalStatus, *gr.Token[T]], 0, len(matches))
+	children := make([]*TreeNode[T], 0, len(matches))
 
 	for _, match := range matches {
-		inf := tr.NewStatusInfo(match.Matched, EvalIncomplete)
+		tn := NewTreeNode(match.Matched)
 
-		children = append(children, inf)
+		children = append(children, tn)
 	}
 
 	return children
@@ -124,23 +143,27 @@ func (si *SourceIterator[T]) lex_one(logger *Verbose) error {
 
 	leaves := si.tree.GetLeaves()
 
-	var success []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
-	var failed []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
+	var success []*TreeNode[T]
+	var failed []*TreeNode[T]
 
 	for _, leaf := range leaves {
-		ld := leaf.Data
+		tn, ok := leaf.(*TreeNode[T])
+		uc.Assert(ok, "Must be a *TreeNode[T]")
 
-		status := ld.GetStatus()
-		if status == EvalError {
-			failed = append(failed, leaf)
+		if tn.Status == EvalError {
+			failed = append(failed, tn)
 		} else {
-			success = append(success, leaf)
+			success = append(success, tn)
 		}
 	}
 
 	// Add the failed branches to the error branches.
-	for _, leaf := range failed {
-		branch := si.tree.ExtractBranch(leaf, true)
+	for i, leaf := range failed {
+		branch, err := si.tree.ExtractBranch(leaf, true)
+		if err != nil {
+			return uc.NewErrWhileAt("extracting", i+1, "branch", err)
+		}
+
 		if branch != nil {
 			si.err_branches = append(si.err_branches, branch)
 		}
@@ -169,7 +192,7 @@ func (si *SourceIterator[T]) Consume() (*leaves_result[T], error) {
 			return nil, uc.NewErrExhaustedIter()
 		}
 
-		var leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
+		var leaves []tr.Noder
 
 		err := si.lex_one(si.logger)
 		if err != nil {
@@ -181,20 +204,19 @@ func (si *SourceIterator[T]) Consume() (*leaves_result[T], error) {
 		}
 
 		// Ignore error leaves.
-		f := func(leaf *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]) bool {
-			ld := leaf.Data
-			status := ld.GetStatus()
+		f := func(leaf tr.Noder) bool {
+			tn, ok := leaf.(*TreeNode[T])
+			if !ok {
+				return false
+			}
 
-			return status != EvalError
+			return tn.Status != EvalError
 		}
 
 		leaves = us.SliceFilter(leaves, f)
 
 		if len(leaves) > 0 {
-			result = &leaves_result[T]{
-				leaves: leaves,
-			}
-
+			result = new_leaves_result[T](leaves)
 			break
 		}
 	}
@@ -247,22 +269,23 @@ func newSourceIterator[T gr.TokenTyper](source *cds.Stream[byte], productions []
 // get_completed_branch gets the completed branch of the tree.
 //
 // Returns:
-//   - []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]: The completed branch.
+//   - []Tree.Noder: The completed branch.
 //   - bool: True if the branch can continue, false otherwise.
-func (si *SourceIterator[T]) get_completed_branch() ([]*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]], bool) {
+func (si *SourceIterator[T]) get_completed_branch() ([]tr.Noder, bool) {
 	leaves := si.tree.GetLeaves()
 
 	can_continue := false
 
-	var completed_leaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]
+	var completed_leaves []tr.Noder
 
 	for _, leaf := range leaves {
-		ld := leaf.Data
-		status := ld.GetStatus()
+		tn, ok := leaf.(*TreeNode[T])
+		uc.Assert(ok, "Must be a *TreeNode[T]")
 
-		if status == EvalComplete {
+		switch tn.Status {
+		case EvalComplete:
 			completed_leaves = append(completed_leaves, leaf)
-		} else if status == EvalIncomplete {
+		case EvalIncomplete:
 			can_continue = true
 		}
 	}
@@ -274,7 +297,7 @@ func (si *SourceIterator[T]) get_completed_branch() ([]*tr.TreeNode[*tr.StatusIn
 //
 // Parameters:
 //   - leaf: The leaf to delete.
-func (si *SourceIterator[T]) delete_branch(leaf *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]) {
+func (si *SourceIterator[T]) delete_branch(leaf tr.Noder) {
 	err := si.tree.DeleteBranchContaining(leaf)
 	uc.AssertF(err == nil, "DeleteBranchContaining failed: %s", err.Error())
 }

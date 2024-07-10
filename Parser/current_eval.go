@@ -7,6 +7,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
+	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
@@ -73,8 +74,8 @@ func NewCurrentEval[T gr.TokenTyper]() *CurrentEval[T] {
 //   - *gr.ErrCycleDetected: A cycle is detected in the token tree.
 //   - *uc.ErrInvalidParameter: The top of the stack is nil.
 //   - *gr.ErrUnknowToken: The root is not a known token.
-func (ce *CurrentEval[T]) GetParseTree() ([]*gr.TokenTree[T], error) {
-	var forest []*gr.TokenTree[T]
+func (ce *CurrentEval[T]) GetParseTree() ([]*gr.TokenTree, error) {
+	var forest []*gr.TokenTree
 
 	for {
 		cmd := lls.NewPop[*gr.Token[T]]()
@@ -84,7 +85,9 @@ func (ce *CurrentEval[T]) GetParseTree() ([]*gr.TokenTree[T], error) {
 		}
 		top := cmd.Value()
 
-		tree, err := gr.NewTokenTree(top)
+		tn := tr.NewTreeNode(top)
+
+		tree, err := gr.NewTokenTree(tn)
 		if err != nil {
 			return nil, err
 		}

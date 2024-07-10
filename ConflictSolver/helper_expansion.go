@@ -4,7 +4,6 @@ import (
 	"slices"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	trt "github.com/PlayerR9/MyGoLib/TreeLike/Traversor"
 	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
@@ -76,7 +75,7 @@ func (is *InfoStruct[T]) SetSeen(h *Helper[T]) {
 // ExpansionTree is a tree of expansion helpers.
 type ExpansionTree[T gr.TokenTyper] struct {
 	// tree is the tree of expansion helpers.
-	tree *tr.Tree[*Helper[T]]
+	tree *tr.Tree
 
 	// info is the information about the expansion tree.
 	info *InfoStruct[T]
@@ -100,13 +99,18 @@ type ExpansionTree[T gr.TokenTyper] struct {
 func NewExpansionTreeRootedAt[T gr.TokenTyper](cs *ConflictSolver[T], h *Helper[T]) (*ExpansionTree[T], error) {
 	info := NewInfoStruct(h)
 
-	nexts_func := func(elem *Helper[T], is uc.Copier) ([]*Helper[T], error) {
+	nexts_func := func(data tr.Noder, is tr.Infoer) ([]tr.Noder, error) {
 		is_inf, ok := is.(*InfoStruct[T])
 		if !ok {
 			return nil, uc.NewErrUnexpectedType("is", is)
 		}
 
-		rhs, err := elem.GetRhsAt(0)
+		hn, ok := data.(*Helper[T])
+		if !ok {
+			return nil, uc.NewErrUnexpectedType("Helper[T] node", data)
+		}
+
+		rhs, err := hn.GetRhsAt(0)
 		if err != nil {
 			return nil, NewErr0thRhsNotSet()
 		}
@@ -120,12 +124,18 @@ func NewExpansionTreeRootedAt[T gr.TokenTyper](cs *ConflictSolver[T], h *Helper[
 
 		result = us.SliceFilter(result, is_inf.IsNotSeen)
 
-		is_inf.SetSeen(elem)
+		is_inf.SetSeen(hn)
 
-		return result, nil
+		var children []tr.Noder
+
+		for _, r := range result {
+			children = append(children, r)
+		}
+
+		return children, nil
 	}
 
-	var builder trt.Builder[*Helper[T]]
+	var builder tr.Builder
 
 	builder.SetInfo(info)
 	builder.SetNextFunc(nexts_func)
@@ -147,7 +157,7 @@ func NewExpansionTreeRootedAt[T gr.TokenTyper](cs *ConflictSolver[T], h *Helper[
 func (et *ExpansionTree[T]) PruneNonTerminalLeaves() {
 	leaves := et.tree.GetLeaves()
 
-	todo := us.SliceFilter(leaves, FilterNonTerminalLeaf)
+	todo := us.SliceFilter(leaves, FilterNonTerminalLeaf[T])
 	if len(todo) == 0 {
 		return
 	}
@@ -178,7 +188,10 @@ func (et *ExpansionTree[T]) Collapse() []T {
 	var result []T
 
 	for _, leaf := range leaves {
-		rhs, err := leaf.Data.GetRhsAt(0)
+		tn, ok := leaf.(*Helper[T])
+		uc.Assert(ok, "Must be a *Helper[T]")
+
+		rhs, err := tn.GetRhsAt(0)
 		uc.AssertF(err == nil, "unexpected error: %s", err.Error())
 
 		pos, ok := slices.BinarySearch(result, rhs)

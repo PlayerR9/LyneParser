@@ -117,7 +117,7 @@ func extract_results[T gr.TokenTyper](sols []*us.WeightedHelper[*CurrentEval[T]]
 //
 //   - []gr.NonLeafToken: A slice of non-leaf tokens.
 //   - error: An error if the branch cannot be parsed.
-func ParseBranch[T gr.TokenTyper](parser *Parser[T], source *cds.Stream[*gr.Token[T]]) ([]*gr.TokenTree[T], error) {
+func ParseBranch[T gr.TokenTyper](parser *Parser[T], source *cds.Stream[*gr.Token[T]]) ([]*gr.TokenTree, error) {
 	err := Parse(parser, source)
 	if err != nil {
 		return nil, err

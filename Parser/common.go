@@ -23,7 +23,7 @@ import (
 //
 //   - []gr.NonLeafToken: The parse tree.
 //   - error: An error if the input stream could not be parsed.
-func FullParse[T gr.TokenTyper](grammar *Grammar[T], source *cds.Stream[*gr.Token[T]], dt *cs.ConflictSolver[T]) ([]*gr.TokenTree[T], error) {
+func FullParse[T gr.TokenTyper](grammar *Grammar[T], source *cds.Stream[*gr.Token[T]], dt *cs.ConflictSolver[T]) ([]*gr.TokenTree, error) {
 	parser, err := NewParser(grammar)
 	if err != nil {
 		return nil, fmt.Errorf("could not create parser: %s", err.Error())

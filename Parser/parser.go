@@ -107,12 +107,12 @@ func Parse[T gr.TokenTyper](p *Parser[T], source *cds.Stream[*gr.Token[T]]) erro
 // Returns:
 //   - []*gr.TokenTree: A slice of parse trees.
 //   - error: An error if the parse tree could not be retrieved.
-func (p *Parser[T]) GetParseTree() ([]*gr.TokenTree[T], error) {
+func (p *Parser[T]) GetParseTree() ([]*gr.TokenTree, error) {
 	if len(p.evals) == 0 {
 		return nil, errors.New("nothing was parsed. Use Parse() to parse the input stream")
 	}
 
-	var forest []*gr.TokenTree[T]
+	var forest []*gr.TokenTree
 
 	for _, eval := range p.evals {
 		tmp, err := eval.GetParseTree()

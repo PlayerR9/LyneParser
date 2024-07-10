@@ -29,12 +29,17 @@ func FilterTerminalLeaf[T gr.TokenTyper](tn *tr.TreeNode[*Helper[T]]) bool {
 //
 // Returns:
 //   - bool: False if the tree node is a terminal leaf, true otherwise.
-func FilterNonTerminalLeaf[T gr.TokenTyper](tn *tr.TreeNode[*Helper[T]]) bool {
-	rhs, err := tn.Data.GetRhsAt(0)
+func FilterNonTerminalLeaf[T gr.TokenTyper](n tr.Noder) bool {
+	tn, ok := n.(*Helper[T])
+	if !ok {
+		return false
+	}
+
+	rhs, err := tn.GetRhsAt(0)
 	if err != nil {
 		return true
 	}
 
-	ok := rhs.IsTerminal()
+	ok = rhs.IsTerminal()
 	return !ok
 }

@@ -94,13 +94,19 @@ func set_lookahead[T gr.TokenTyper](tokens []*gr.Token[T]) {
 //
 // Returns:
 //   - *cds.Stream[*LeafToken]: The token stream.
-func convert_branch_to_token_stream[T gr.TokenTyper](branch []*tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]], toSkip []T) *cds.Stream[*gr.Token[T]] {
+func convert_branch_to_token_stream[T gr.TokenTyper](branch []tr.Noder, toSkip []T) *cds.Stream[*gr.Token[T]] {
 	branch = branch[1:]
 
 	for _, elem := range toSkip {
-		filter_token_different_id := func(h *tr.TreeNode[*tr.StatusInfo[EvalStatus, *gr.Token[T]]]) bool {
-			data := h.Data.GetData()
-			return data.ID != elem
+		filter_token_different_id := func(n tr.Noder) bool {
+			tn, ok := n.(*TreeNode[T])
+			if !ok {
+				return false
+			}
+
+			token := tn.Token
+
+			return token.ID != elem
 		}
 
 		branch = us.SliceFilter(branch, filter_token_different_id)
@@ -109,8 +115,10 @@ func convert_branch_to_token_stream[T gr.TokenTyper](branch []*tr.TreeNode[*tr.S
 	var ts []*gr.Token[T]
 
 	for _, elem := range branch {
-		data := elem.Data.GetData()
-		ts = append(ts, data)
+		tn, ok := elem.(*TreeNode[T])
+		uc.Assert(ok, "Must be a *TreeNode[T]")
+
+		ts = append(ts, tn.Token)
 	}
 
 	ts = set_eof_token(ts)
@@ -194,8 +202,8 @@ func match_from[T gr.TokenTyper](s *cds.Stream[byte], from int, ps []*gr.RegProd
 // Returns:
 //   - bool: True if all leaves are complete, false otherwise.
 //   - error: An error of type *ErrAllMatchesFailed if all matches failed.
-func filter_leaves[T gr.TokenTyper](source *cds.Stream[byte], productions []*gr.RegProduction[T], logger *Verbose) uc.EvalManyFunc[*tr.StatusInfo[EvalStatus, *gr.Token[T]], *tr.StatusInfo[EvalStatus, *gr.Token[T]]] {
-	filter_func := func(ld *tr.StatusInfo[EvalStatus, *gr.Token[T]]) ([]*tr.StatusInfo[EvalStatus, *gr.Token[T]], error) {
+func filter_leaves[T gr.TokenTyper](source *cds.Stream[byte], productions []*gr.RegProduction[T], logger *Verbose) uc.EvalManyFunc[tr.Noder, tr.Noder] {
+	filter_func := func(ld tr.Noder) ([]tr.Noder, error) {
 		// data := ld.GetData()
 
 		// var nextAt int

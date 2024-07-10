@@ -1,28 +1,26 @@
 package Grammar
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
-	trt "github.com/PlayerR9/MyGoLib/TreeLike/Traversor"
 	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 )
 
 // TTInfo is the information about the token tree.
-type TTInfo[T TokenTyper] struct {
+type TTInfo struct {
 	// depth is the depth of each token.
-	depth map[*Token[T]]int
+	depth map[tr.Noder]int
 }
 
 // Copy creates a copy of the TTInfo.
 //
 // Returns:
 //   - uc.Copier: A copy of the TTInfo.
-func (tti *TTInfo[T]) Copy() uc.Copier {
-	tti_copy := &TTInfo[T]{
-		depth: make(map[*Token[T]]int),
+func (tti *TTInfo) Copy() uc.Copier {
+	tti_copy := &TTInfo{
+		depth: make(map[tr.Noder]int),
 	}
 
 	for k, v := range tti.depth {
@@ -43,9 +41,9 @@ func (tti *TTInfo[T]) Copy() uc.Copier {
 //
 // Behaviors:
 //   - The depth of the root is set to 0.
-func NewTTInfo[T TokenTyper](root *Token[T]) (*TTInfo[T], error) {
-	info := &TTInfo[T]{
-		depth: make(map[*Token[T]]int),
+func NewTTInfo(root tr.Noder) (*TTInfo, error) {
+	info := &TTInfo{
+		depth: make(map[tr.Noder]int),
 	}
 
 	info.depth[root] = 0
@@ -61,7 +59,7 @@ func NewTTInfo[T TokenTyper](root *Token[T]) (*TTInfo[T], error) {
 //
 // Returns:
 //   - bool: True if the depth was set. False if the Token already has a depth.
-func (tti *TTInfo[T]) SetDepth(Token *Token[T], depth int) bool {
+func (tti *TTInfo) SetDepth(Token tr.Noder, depth int) bool {
 	_, ok := tti.depth[Token]
 	if ok {
 		return false
@@ -80,7 +78,7 @@ func (tti *TTInfo[T]) SetDepth(Token *Token[T], depth int) bool {
 // Returns:
 //   - int: The depth of the Token.
 //   - bool: True if the depth was found. False if the Token does not have a depth.
-func (tti *TTInfo[T]) GetDepth(Token *Token[T]) (int, bool) {
+func (tti *TTInfo) GetDepth(Token tr.Noder) (int, bool) {
 	depth, ok := tti.depth[Token]
 	if !ok {
 		return 0, false
@@ -90,12 +88,12 @@ func (tti *TTInfo[T]) GetDepth(Token *Token[T]) (int, bool) {
 }
 
 // TokenTree is a tree of tokens.
-type TokenTree[T TokenTyper] struct {
+type TokenTree struct {
 	// tree is the tree of tokens.
-	tree *tr.Tree[*Token[T]]
+	tree *tr.Tree
 
 	// Info is the information about the tree.
-	Info *TTInfo[T]
+	Info *TTInfo
 }
 
 // NewTokenTree creates a new token tree.
@@ -111,14 +109,14 @@ type TokenTree[T TokenTyper] struct {
 //   - *ErrCycleDetected: A cycle is detected in the token tree.
 //   - *uc.ErrInvalidParameter: The root is nil.
 //   - *ErrUnknowToken: The root is not a known token.
-func NewTokenTree[T TokenTyper](root *Token[T]) (*TokenTree[T], error) {
+func NewTokenTree(root tr.Noder) (*TokenTree, error) {
 	tree_info, err := NewTTInfo(root)
 	if err != nil {
 		return nil, err
 	}
 
-	nexts_func := func(elem *Token[T], h uc.Copier) ([]*Token[T], error) {
-		h_info, ok := h.(*TTInfo[T])
+	nexts_func := func(elem tr.Noder, h tr.Infoer) ([]tr.Noder, error) {
+		h_info, ok := h.(*TTInfo)
 		if !ok {
 			return nil, fmt.Errorf("invalid type: %T", h)
 		}
@@ -128,24 +126,34 @@ func NewTokenTree[T TokenTyper](root *Token[T]) (*TokenTree[T], error) {
 			return nil, nil
 		}
 
-		ok = elem.IsNonLeaf()
-		if !ok {
-			return nil, errors.New("token is not leaf or non-leaf")
+		iter := elem.Iterator()
+		if iter == nil {
+			return nil, nil
 		}
 
-		children := elem.Data.([]*Token[T])
+		var children []tr.Noder
 
-		for _, child := range children {
-			ok := h_info.SetDepth(child, h_info.depth[elem]+1)
+		for {
+			val, err := iter.Consume()
+			ok := uc.IsDone(err)
+			if ok {
+				break
+			} else if err != nil {
+				return nil, err
+			}
+
+			ok = h_info.SetDepth(val, h_info.depth[elem]+1)
 			if !ok {
 				return nil, NewErrCycleDetected()
 			}
+
+			children = append(children, val)
 		}
 
 		return children, nil
 	}
 
-	var builder trt.Builder[*Token[T]]
+	var builder tr.Builder
 
 	builder.SetNextFunc(nexts_func)
 	builder.SetInfo(tree_info)
@@ -155,7 +163,7 @@ func NewTokenTree[T TokenTyper](root *Token[T]) (*TokenTree[T], error) {
 		return nil, err
 	}
 
-	tt := &TokenTree[T]{
+	tt := &TokenTree{
 		tree: tree,
 		Info: tree_info,
 	}
@@ -169,34 +177,37 @@ func NewTokenTree[T TokenTyper](root *Token[T]) (*TokenTree[T], error) {
 //   - string: The string representation of the token tree.
 //
 // Information: This is a debug function.
-func (tt *TokenTree[T]) DebugString() string {
+func (tt *TokenTree) DebugString(f func(data tr.Noder) string) string {
 	var builder strings.Builder
 
-	err := trt.DFS(
+	err := tr.DFS(
 		tt.tree,
 		tt.Info,
-		func(elem *Token[T], inf uc.Copier) (bool, error) {
-			h_info, ok := inf.(*TTInfo[T])
+		func(data tr.Noder, info tr.Infoer) (bool, error) {
+			h_info, ok := info.(*TTInfo)
 			if !ok {
-				return false, fmt.Errorf("invalid type: %T", inf)
+				return false, fmt.Errorf("invalid type: %T", info)
 			}
 
-			depth, ok := h_info.GetDepth(elem)
+			depth, ok := h_info.GetDepth(data)
 			if !ok {
-				return false, fmt.Errorf("depth not found for: %v", elem)
+				return false, fmt.Errorf("depth not found for: %v", data)
 			}
 
 			builder.WriteString(strings.Repeat("   ", depth))
-			builder.WriteString(elem.GetID().String())
 
-			ok = elem.IsLeaf()
+			str := f(data)
+			/*builder.WriteString(data.GetID().String())
+
+			ok = data.IsLeaf()
 			if ok {
 				builder.WriteString(" -> ")
-				builder.WriteString(elem.Data.(string))
+				builder.WriteString(data.Data.(string))
 			} else {
 				builder.WriteString(" :")
-			}
+			}*/
 
+			builder.WriteString(str)
 			builder.WriteRune('\n')
 
 			return true, nil
@@ -211,18 +222,20 @@ func (tt *TokenTree[T]) DebugString() string {
 //
 // Returns:
 //   - [][]Token: All the branches of the token tree.
-func (tt *TokenTree[T]) GetAllBranches() [][]*Token[T] {
-	trav := tt.tree.SnakeTraversal()
-	return trav
+func (tt *TokenTree) GetAllBranches() ([][]tr.Noder, error) {
+	trav, err := tt.tree.SnakeTraversal()
+	if err != nil {
+		return nil, err
+	}
+
+	return trav, nil
 }
 
 // GetRoot returns the root of the token tree.
 //
 // Returns:
 //   - Token: The root of the token tree.
-func (tt *TokenTree[T]) GetRoot() *Token[T] {
+func (tt *TokenTree) GetRoot() tr.Noder {
 	root := tt.tree.Root()
-	data := root.Data
-
-	return data
+	return root
 }

@@ -7,9 +7,9 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
-	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
+	"github.com/PlayerR9/treenode"
 )
 
 // CurrentEval is a struct that represents the current evaluation of the parser.
@@ -85,7 +85,7 @@ func (ce *CurrentEval[T]) GetParseTree() ([]*gr.TokenTree, error) {
 		}
 		top := cmd.Value()
 
-		tn := tr.NewTreeNode(top)
+		tn := treenode.NewTreeNode(top)
 
 		tree, err := gr.NewTokenTree(tn)
 		if err != nil {

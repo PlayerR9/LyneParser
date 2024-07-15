@@ -4,21 +4,22 @@ import (
 	"slices"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
+	tr "github.com/PlayerR9/tree/Tree"
+	tn "github.com/PlayerR9/treenode"
 )
 
 // InfoStruct is the information about the expansion tree.
 type InfoStruct[T gr.TokenTyper] struct {
 	// seen is a map of helpers that have been seen.
-	seen map[*Helper[T]]bool
+	seen map[*HelperNode[T]]bool
 }
 
 // Copy implements the Copier interface.
 func (is *InfoStruct[T]) Copy() uc.Copier {
 	is_copy := &InfoStruct[T]{
-		seen: make(map[*Helper[T]]bool),
+		seen: make(map[*HelperNode[T]]bool),
 	}
 
 	for k, v := range is.seen {
@@ -39,13 +40,13 @@ func (is *InfoStruct[T]) Copy() uc.Copier {
 // Behaviors:
 //   - The root is set to seen.
 //   - If the root is nil, then nil is returned.
-func NewInfoStruct[T gr.TokenTyper](root *Helper[T]) *InfoStruct[T] {
+func NewInfoStruct[T gr.TokenTyper](root *HelperNode[T]) *InfoStruct[T] {
 	if root == nil {
 		return nil
 	}
 
 	info := &InfoStruct[T]{
-		seen: make(map[*Helper[T]]bool),
+		seen: make(map[*HelperNode[T]]bool),
 	}
 
 	info.seen[root] = true
@@ -60,7 +61,7 @@ func NewInfoStruct[T gr.TokenTyper](root *Helper[T]) *InfoStruct[T] {
 //
 // Returns:
 //   - bool: True if the helper is seen, false otherwise.
-func (is *InfoStruct[T]) IsNotSeen(h *Helper[T]) bool {
+func (is *InfoStruct[T]) IsNotSeen(h *HelperNode[T]) bool {
 	return !is.seen[h]
 }
 
@@ -68,7 +69,7 @@ func (is *InfoStruct[T]) IsNotSeen(h *Helper[T]) bool {
 //
 // Parameters:
 //   - h: The helper to set as seen.
-func (is *InfoStruct[T]) SetSeen(h *Helper[T]) {
+func (is *InfoStruct[T]) SetSeen(h *HelperNode[T]) {
 	is.seen[h] = true
 }
 
@@ -96,18 +97,18 @@ type ExpansionTree[T gr.TokenTyper] struct {
 // Errors:
 //   - *ers.Err0thRhsNotSet: The 0th RHS of the root is not set.
 //   - *ers.ErrInvalidParameter: The root is nil.
-func NewExpansionTreeRootedAt[T gr.TokenTyper](cs *ConflictSolver[T], h *Helper[T]) (*ExpansionTree[T], error) {
+func NewExpansionTreeRootedAt[T gr.TokenTyper](cs *ConflictSolver[T], h *HelperNode[T]) (*ExpansionTree[T], error) {
 	info := NewInfoStruct(h)
 
-	nexts_func := func(data tr.Noder, is tr.Infoer) ([]tr.Noder, error) {
+	nexts_func := func(data tn.Noder, is tr.Infoer) ([]tn.Noder, error) {
 		is_inf, ok := is.(*InfoStruct[T])
 		if !ok {
 			return nil, uc.NewErrUnexpectedType("is", is)
 		}
 
-		hn, ok := data.(*Helper[T])
+		hn, ok := data.(*HelperNode[T])
 		if !ok {
-			return nil, uc.NewErrUnexpectedType("Helper[T] node", data)
+			return nil, uc.NewErrUnexpectedType("HelperNode[T] node", data)
 		}
 
 		rhs, err := hn.GetRhsAt(0)
@@ -126,7 +127,7 @@ func NewExpansionTreeRootedAt[T gr.TokenTyper](cs *ConflictSolver[T], h *Helper[
 
 		is_inf.SetSeen(hn)
 
-		var children []tr.Noder
+		var children []tn.Noder
 
 		for _, r := range result {
 			children = append(children, r)
@@ -188,8 +189,8 @@ func (et *ExpansionTree[T]) Collapse() []T {
 	var result []T
 
 	for _, leaf := range leaves {
-		tn, ok := leaf.(*Helper[T])
-		uc.Assert(ok, "Must be a *Helper[T]")
+		tn, ok := leaf.(*HelperNode[T])
+		uc.Assert(ok, "Must be a *HelperNode[T]")
 
 		rhs, err := tn.GetRhsAt(0)
 		uc.AssertF(err == nil, "unexpected error: %s", err.Error())

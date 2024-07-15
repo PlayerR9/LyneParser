@@ -50,7 +50,7 @@ func NewErr0thRhsNotSet() *Err0thRhsNotSet {
 // with a helper.
 type ErrHelper[T gr.TokenTyper] struct {
 	// Elem is the helper that caused the error.
-	Elem *Helper[T]
+	Elem *HelperNode[T]
 
 	// Reason is the reason for the error.
 	Reason error
@@ -85,7 +85,7 @@ func (e *ErrHelper[T]) Error() string {
 //
 // Returns:
 //   - *ErrHelper: A pointer to the new error.
-func NewErrHelper[T gr.TokenTyper](elem *Helper[T], reason error) *ErrHelper[T] {
+func NewErrHelper[T gr.TokenTyper](elem *HelperNode[T], reason error) *ErrHelper[T] {
 	e := &ErrHelper[T]{
 		Elem:   elem,
 		Reason: reason,

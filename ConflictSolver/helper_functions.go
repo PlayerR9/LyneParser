@@ -12,8 +12,8 @@ import gr "github.com/PlayerR9/LyneParser/Grammar"
 // Returns:
 //   - map[T][]*Helper: The grouped helpers.
 //   - error: An error of type *ErrHelpersConflictingSize if the helpers have conflicting sizes.
-func get_rhss_at[T gr.TokenTyper](bucket []*Helper[T], index int) (map[T][]*Helper[T], error) {
-	groups := make(map[T][]*Helper[T])
+func get_rhss_at[T gr.TokenTyper](bucket []*HelperNode[T], index int) (map[T][]*HelperNode[T], error) {
+	groups := make(map[T][]*HelperNode[T])
 
 	for _, h := range bucket {
 		rhs, err := h.GetRhsAt(index)
@@ -59,8 +59,8 @@ func get_rhss_at[T gr.TokenTyper](bucket []*Helper[T], index int) (map[T][]*Help
 // Errors:
 //   - *ErrHelpersConflictingSize: If the helpers have conflicting sizes.
 //   - *ErrHelper: If there is an error appending the right-hand side to the helper.
-func minimum_unique[T gr.TokenTyper](bucket []*Helper[T], limit int) error {
-	todo := make(map[*Helper[T]]bool)
+func minimum_unique[T gr.TokenTyper](bucket []*HelperNode[T], limit int) error {
+	todo := make(map[*HelperNode[T]]bool)
 
 	for _, h := range bucket {
 		todo[h] = true
@@ -100,17 +100,17 @@ func minimum_unique[T gr.TokenTyper](bucket []*Helper[T], limit int) error {
 // Errors:
 //   - *ErrHelpersConflictingSize: If the helpers have conflicting sizes.
 //   - *ErrHelper: If there is an error appending the right-hand side to the helper.
-func solve_subgroup[T gr.TokenTyper](bucket []*Helper[T]) error {
+func solve_subgroup[T gr.TokenTyper](bucket []*HelperNode[T]) error {
 	// 1. Bucket sort the items by their position.
 
-	buckets := make(map[int][]*Helper[T])
+	buckets := make(map[int][]*HelperNode[T])
 
 	for _, h := range bucket {
 		pos := h.GetPos()
 
 		prev, ok := buckets[pos]
 		if !ok {
-			prev = []*Helper[T]{h}
+			prev = []*HelperNode[T]{h}
 		} else {
 			prev = append(prev, h)
 		}
@@ -137,7 +137,7 @@ func solve_subgroup[T gr.TokenTyper](bucket []*Helper[T]) error {
 //
 // Returns:
 //   - []*Helper: The conflicting helpers.
-func find_conflict[T gr.TokenTyper](limit int, bucket []*Helper[T]) []*Helper[T] {
+func find_conflict[T gr.TokenTyper](limit int, bucket []*HelperNode[T]) []*HelperNode[T] {
 	if len(bucket) < 2 {
 		return nil
 	}
@@ -179,7 +179,7 @@ func find_conflict[T gr.TokenTyper](limit int, bucket []*Helper[T]) []*Helper[T]
 	}
 
 	// 4. Find conflicts.
-	count_map := make(map[int][]*Helper[T])
+	count_map := make(map[int][]*HelperNode[T])
 
 	for j, h1 := range bucket {
 		count := 0
@@ -190,7 +190,7 @@ func find_conflict[T gr.TokenTyper](limit int, bucket []*Helper[T]) []*Helper[T]
 
 		prev, ok := count_map[count]
 		if !ok {
-			prev = []*Helper[T]{h1}
+			prev = []*HelperNode[T]{h1}
 		} else {
 			prev = append(prev, h1)
 		}
@@ -216,12 +216,12 @@ func find_conflict[T gr.TokenTyper](limit int, bucket []*Helper[T]) []*Helper[T]
 // Returns:
 //   - []*Helper: The conflicting helpers.
 //   - int: The position of the conflict.
-func find_conflicts_per_symbol[T gr.TokenTyper](symbol T, bucket []*Helper[T]) ([]*Helper[T], int) {
+func find_conflicts_per_symbol[T gr.TokenTyper](symbol T, bucket []*HelperNode[T]) ([]*HelperNode[T], int) {
 	if len(bucket) < 2 {
 		return nil, -1
 	}
 
-	buckets := make(map[int][]*Helper[T])
+	buckets := make(map[int][]*HelperNode[T])
 
 	for _, h := range bucket {
 		indices := h.IndicesOfRhs(symbol)
@@ -229,7 +229,7 @@ func find_conflicts_per_symbol[T gr.TokenTyper](symbol T, bucket []*Helper[T]) (
 		for _, index := range indices {
 			prev, ok := buckets[index]
 			if !ok {
-				prev = []*Helper[T]{h}
+				prev = []*HelperNode[T]{h}
 			} else {
 				prev = append(prev, h)
 			}

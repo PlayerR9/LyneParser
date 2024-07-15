@@ -3,9 +3,9 @@ package Lexer
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
+	tn "github.com/PlayerR9/treenode"
 )
 
 // match_weight_func is a weight function that returns the length of the match.
@@ -27,9 +27,8 @@ func match_weight_func[T gr.TokenTyper](elem *gr.MatchedResult[T]) (float64, boo
 //
 // Returns:
 //   - bool: True if the leaf is in error, false otherwise.
-func filter_error_leaves[T gr.TokenTyper](h *tr.StatusInfo[EvalStatus, *gr.Token[T]]) bool {
-	status := h.GetStatus()
-	return status == EvalError
+func filter_error_leaves[T gr.TokenTyper](h *TokenNode[T]) bool {
+	return h.Status == EvalError
 }
 
 // select_best_matches selects the best matches from the list of matches.
@@ -94,12 +93,12 @@ func set_lookahead[T gr.TokenTyper](tokens []*gr.Token[T]) {
 //
 // Returns:
 //   - *cds.Stream[*LeafToken]: The token stream.
-func convert_branch_to_token_stream[T gr.TokenTyper](branch []tr.Noder, toSkip []T) *cds.Stream[*gr.Token[T]] {
+func convert_branch_to_token_stream[T gr.TokenTyper](branch []tn.Noder, toSkip []T) *cds.Stream[*gr.Token[T]] {
 	branch = branch[1:]
 
 	for _, elem := range toSkip {
-		filter_token_different_id := func(n tr.Noder) bool {
-			tn, ok := n.(*TreeNode[T])
+		filter_token_different_id := func(n tn.Noder) bool {
+			tn, ok := n.(*TokenNode[T])
 			if !ok {
 				return false
 			}
@@ -115,8 +114,8 @@ func convert_branch_to_token_stream[T gr.TokenTyper](branch []tr.Noder, toSkip [
 	var ts []*gr.Token[T]
 
 	for _, elem := range branch {
-		tn, ok := elem.(*TreeNode[T])
-		uc.Assert(ok, "Must be a *TreeNode[T]")
+		tn, ok := elem.(*TokenNode[T])
+		uc.Assert(ok, "Must be a *TokenNode[T]")
 
 		ts = append(ts, tn.Token)
 	}
@@ -202,8 +201,8 @@ func match_from[T gr.TokenTyper](s *cds.Stream[byte], from int, ps []*gr.RegProd
 // Returns:
 //   - bool: True if all leaves are complete, false otherwise.
 //   - error: An error of type *ErrAllMatchesFailed if all matches failed.
-func filter_leaves[T gr.TokenTyper](source *cds.Stream[byte], productions []*gr.RegProduction[T], logger *Verbose) uc.EvalManyFunc[tr.Noder, tr.Noder] {
-	filter_func := func(ld tr.Noder) ([]tr.Noder, error) {
+func filter_leaves[T gr.TokenTyper](source *cds.Stream[byte], productions []*gr.RegProduction[T], logger *Verbose) uc.EvalManyFunc[tn.Noder, tn.Noder] {
+	filter_func := func(ld tn.Noder) ([]tn.Noder, error) {
 		// data := ld.GetData()
 
 		// var nextAt int

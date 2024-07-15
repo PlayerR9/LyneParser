@@ -5,13 +5,14 @@ import (
 	"slices"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
+	tr "github.com/PlayerR9/tree/Tree"
+	tn "github.com/PlayerR9/treenode"
 )
 
 type CoreIter[T gr.TokenTyper] struct {
-	do_func uc.EvalManyFunc[tr.Noder, tr.Noder]
+	do_func uc.EvalManyFunc[tn.Noder, tn.Noder]
 	tree    *tr.Tree
 
 	// data is the data.
@@ -41,12 +42,10 @@ func (it *CoreIter[T]) can_continue() bool {
 
 	root := it.tree.Root()
 
-	n, ok := root.(*tr.TreeNode[*tr.StatusInfo[EvalStatus, T]])
-	uc.Assert(ok, "Must be a *Tree.TreeNode[T]")
+	n, ok := root.(*TokenNode[T])
+	uc.Assert(ok, "Must be a *TokenNode[T]")
 
-	status := n.Data.GetStatus()
-
-	return status != EvalComplete
+	return n.Status != EvalComplete
 }
 
 func (it *CoreIter[T]) Consume() ([][]*gr.Token[T], error) {
@@ -65,8 +64,8 @@ func (it *CoreIter[T]) Consume() ([][]*gr.Token[T], error) {
 
 		leaves := it.tree.GetLeaves()
 
-		f := func(n tr.Noder) bool {
-			tn, ok := n.(*TreeNode[T])
+		f := func(n tn.Noder) bool {
+			tn, ok := n.(*TokenNode[T])
 			if !ok {
 				return false
 			}
@@ -86,8 +85,8 @@ func (it *CoreIter[T]) Consume() ([][]*gr.Token[T], error) {
 				return nil, uc.NewErrWhileAt("extracting", i+1, "branch", err)
 			}
 
-			tn, ok := leaf.(*TreeNode[T])
-			uc.Assert(ok, "Must be a *TreeNode[T]")
+			tn, ok := leaf.(*TokenNode[T])
+			uc.Assert(ok, "Must be a *TokenNode[T]")
 
 			converted := convert_branch[T](branch)
 			level := last_of_branch(converted)
@@ -136,7 +135,7 @@ func (it *CoreIter[T]) Restart() {
 	panic("Restart not implemented yet")
 }
 
-func new_core_iter[T gr.TokenTyper](doFunc uc.EvalManyFunc[*TreeNode[T], *TreeNode[T]]) *CoreIter[T] {
+func new_core_iter[T gr.TokenTyper](doFunc uc.EvalManyFunc[*TokenNode[T], *TokenNode[T]]) *CoreIter[T] {
 	// root := gr.RootToken()
 
 	// tn := newTreeNode(root)

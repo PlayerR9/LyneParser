@@ -25,7 +25,7 @@ var GlobalDebugMode bool = true
 // ConflictSolver solves conflicts in a decision table.
 type ConflictSolver[T gr.TokenTyper] struct {
 	// table is a map of elements in the decision table.
-	table map[T][]*Helper[T]
+	table map[T][]*HelperNode[T]
 
 	// rt is the rule table.
 	rt *RuleTable[T]
@@ -106,8 +106,8 @@ func NewConflictSolver[T gr.TokenTyper](symbols []T, rules []*gr.Production[T]) 
 //
 // Returns:
 //   - []*Helper: All helpers in the decision table.
-func (cs *ConflictSolver[T]) getHelpers() []*Helper[T] {
-	var result []*Helper[T]
+func (cs *ConflictSolver[T]) getHelpers() []*HelperNode[T] {
+	var result []*HelperNode[T]
 
 	for _, bucket := range cs.table {
 		result = append(result, bucket...)
@@ -123,8 +123,8 @@ func (cs *ConflictSolver[T]) getHelpers() []*Helper[T] {
 //
 // Returns:
 //   - []*Helper: The elements with the specified LHS.
-func (cs *ConflictSolver[T]) GetElemsWithLhs(rhs T) []*Helper[T] {
-	filter := func(h *Helper[T]) bool {
+func (cs *ConflictSolver[T]) GetElemsWithLhs(rhs T) []*HelperNode[T] {
+	filter := func(h *HelperNode[T]) bool {
 		ok := h.IsLhsRhs(rhs)
 		return ok
 	}
@@ -152,8 +152,8 @@ func (cs *ConflictSolver[T]) solveSetLookaheadOnShifts() {
 //
 // Returns:
 //   - map[T][]*Helper: The helpers with look-ahead.
-func (cs *ConflictSolver[T]) getHelpersWithLookahead() map[T][]*Helper[T] {
-	groups := make(map[T][]*Helper[T])
+func (cs *ConflictSolver[T]) getHelpersWithLookahead() map[T][]*HelperNode[T] {
+	groups := make(map[T][]*HelperNode[T])
 
 	todo := cs.getHelpers()
 
@@ -162,7 +162,7 @@ func (cs *ConflictSolver[T]) getHelpersWithLookahead() map[T][]*Helper[T] {
 		if ok {
 			prev, ok := groups[lookahead]
 			if !ok {
-				prev = []*Helper[T]{h}
+				prev = []*HelperNode[T]{h}
 			} else {
 				prev = append(prev, h)
 			}
@@ -213,7 +213,7 @@ func (cs *ConflictSolver[T]) SolveAmbiguousShifts() error {
 }
 
 // CMPerSymbol is a type that represents conflicts per symbol.
-type CMPerSymbol[T gr.TokenTyper] map[T]uc.Pair[[]*Helper[T], int]
+type CMPerSymbol[T gr.TokenTyper] map[T]uc.Pair[[]*HelperNode[T], int]
 
 // FindConflicts is a method that finds conflicts for a specific symbol.
 //
@@ -226,11 +226,11 @@ func (cs *ConflictSolver[T]) FindConflicts() CMPerSymbol[T] {
 	conflict_map := make(CMPerSymbol[T])
 
 	for symbol, bucket := range cs.table {
-		todo := make([]*Helper[T], len(bucket))
+		todo := make([]*HelperNode[T], len(bucket))
 		copy(todo, bucket)
 
 		// 1. Remove every shift action that has a look-ahead.
-		todo = us.SliceFilter(todo, func(h *Helper[T]) bool {
+		todo = us.SliceFilter(todo, func(h *HelperNode[T]) bool {
 			_, ok := h.GetLookahead()
 			return !ok
 		})
@@ -254,8 +254,8 @@ func (cs *ConflictSolver[T]) FindConflicts() CMPerSymbol[T] {
 // Returns:
 //   - map[*Helper][]*ExpansionTree: The forest of expansion trees.
 //   - error: An error of type *ErrHelper if the operation failed.
-func (cs *ConflictSolver[T]) MakeExpansionForests(index int, next_rhs map[*Helper[T]]T) (map[*Helper[T]][]T, error) {
-	possible_lookaheads := make(map[*Helper[T]][]T)
+func (cs *ConflictSolver[T]) MakeExpansionForests(index int, next_rhs map[*HelperNode[T]]T) (map[*HelperNode[T]][]T, error) {
+	possible_lookaheads := make(map[*HelperNode[T]][]T)
 
 	for c, rhs := range next_rhs {
 		rs := cs.GetElemsWithLhs(rhs)
@@ -304,9 +304,9 @@ func (cs *ConflictSolver[T]) MakeExpansionForests(index int, next_rhs map[*Helpe
 // Returns:
 //   - bool: A boolean value indicating if the operation was successful.
 //   - error: An error if the operation failed.
-func (cs *ConflictSolver[T]) SolveAmbiguous(index int, conflicts []*Helper[T]) (bool, error) {
+func (cs *ConflictSolver[T]) SolveAmbiguous(index int, conflicts []*HelperNode[T]) (bool, error) {
 	// 1. Take the next symbol of each conflicting rule
-	next_rhs := make(map[*Helper[T]]T)
+	next_rhs := make(map[*HelperNode[T]]T)
 
 	for _, c := range conflicts {
 		rhs, err := c.GetRhsAt(index + 1)
@@ -341,7 +341,7 @@ func (cs *ConflictSolver[T]) SolveAmbiguous(index int, conflicts []*Helper[T]) (
 		new_rule.ForceLookahead(forest[0])
 
 		for key, bucket := range cs.table {
-			slice := make([]*Helper[T], 0, len(bucket))
+			slice := make([]*HelperNode[T], 0, len(bucket))
 
 			for _, h := range bucket {
 				if h == c {
@@ -429,7 +429,7 @@ func (cs *ConflictSolver[T]) Match(stack *ud.History[lls.Stacker[*gr.Token[T]]])
 		return nil, fmt.Errorf("no elems found for symbol %s", id)
 	}
 
-	f := func(h *Helper[T]) (*Helper[T], error) {
+	f := func(h *HelperNode[T]) (*HelperNode[T], error) {
 		cmd := lls.NewPop[*gr.Token[T]]()
 		err := stack.ExecuteCommand(cmd)
 		if err != nil {
@@ -445,7 +445,7 @@ func (cs *ConflictSolver[T]) Match(stack *ud.History[lls.Stacker[*gr.Token[T]]])
 		return h, nil
 	}
 
-	slice := make([]*Helper[T], len(elems))
+	slice := make([]*HelperNode[T], len(elems))
 	copy(slice, elems)
 
 	success_or_fail, ok := us.EvaluateSimpleHelpers(slice, f)

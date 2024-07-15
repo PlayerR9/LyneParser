@@ -19,11 +19,11 @@ type Actioner[T gr.TokenTyper] interface {
 	//   - bool: True if there is a lookahead token ID.
 	GetLookahead() (T, bool)
 
-	// Size returns the size of the right-hand side tokens.
+	// ActionSize returns the size of the right-hand side tokens.
 	//
 	// Returns:
 	//   - int: The size of the right-hand side tokens.
-	Size() int
+	ActionSize() int
 
 	fmt.Stringer
 
@@ -111,11 +111,11 @@ func (a *Action[T]) AppendRhs(rhs T) {
 	a.rhs = append(a.rhs, rhs)
 }
 
-// Size returns the size of the right-hand side tokens.
+// ActionSize returns the size of the right-hand side tokens.
 //
 // Returns:
 //   - int: The size of the right-hand side tokens.
-func (a *Action[T]) Size() int {
+func (a *Action[T]) ActionSize() int {
 	return len(a.rhs)
 }
 

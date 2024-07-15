@@ -6,20 +6,21 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
-	tr "github.com/PlayerR9/MyGoLib/TreeLike/Tree"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
+	tr "github.com/PlayerR9/tree/Tree"
+	tn "github.com/PlayerR9/treenode"
 )
 
 type leaves_result[T gr.TokenTyper] struct {
-	leaves []*TreeNode[T]
+	leaves []*TokenNode[T]
 }
 
-func new_leaves_result[T gr.TokenTyper](nodes []tr.Noder) *leaves_result[T] {
-	var valid_nodes []*TreeNode[T]
+func new_leaves_result[T gr.TokenTyper](nodes []tn.Noder) *leaves_result[T] {
+	var valid_nodes []*TokenNode[T]
 
 	for _, node := range nodes {
-		n, ok := node.(*TreeNode[T])
+		n, ok := node.(*TokenNode[T])
 		if !ok {
 			continue
 		}
@@ -38,7 +39,7 @@ func (lr *leaves_result[T]) Size() int {
 	return len(lr.leaves)
 }
 
-func (lr *leaves_result[T]) get_first() *TreeNode[T] {
+func (lr *leaves_result[T]) get_first() *TokenNode[T] {
 	if len(lr.leaves) == 0 {
 		return nil
 	}
@@ -86,7 +87,7 @@ func (si *SourceIterator[T]) Size() (count int) {
 // Parameters:
 //   - matches: The matches to add to the tree evaluator.
 //   - logger: A verbose logger.
-func generate_eval_trees[T gr.TokenTyper](matches []*gr.MatchedResult[T], logger *Verbose) []*TreeNode[T] {
+func generate_eval_trees[T gr.TokenTyper](matches []*gr.MatchedResult[T], logger *Verbose) []*TokenNode[T] {
 	logger.DoIf(func(p *Printer) {
 		// DEBUG: Display the matches
 		p.Print("Matches:")
@@ -99,10 +100,10 @@ func generate_eval_trees[T gr.TokenTyper](matches []*gr.MatchedResult[T], logger
 	// Get the longest match.
 	matches = select_best_matches(matches, logger)
 
-	children := make([]*TreeNode[T], 0, len(matches))
+	children := make([]*TokenNode[T], 0, len(matches))
 
 	for _, match := range matches {
-		tn := NewTreeNode(match.Matched)
+		tn := NewTokenNode(match.Matched)
 
 		children = append(children, tn)
 	}
@@ -143,12 +144,12 @@ func (si *SourceIterator[T]) lex_one(logger *Verbose) error {
 
 	leaves := si.tree.GetLeaves()
 
-	var success []*TreeNode[T]
-	var failed []*TreeNode[T]
+	var success []*TokenNode[T]
+	var failed []*TokenNode[T]
 
 	for _, leaf := range leaves {
-		tn, ok := leaf.(*TreeNode[T])
-		uc.Assert(ok, "Must be a *TreeNode[T]")
+		tn, ok := leaf.(*TokenNode[T])
+		uc.Assert(ok, "Must be a *TokenNode[T]")
 
 		if tn.Status == EvalError {
 			failed = append(failed, tn)
@@ -192,7 +193,7 @@ func (si *SourceIterator[T]) Consume() (*leaves_result[T], error) {
 			return nil, uc.NewErrExhaustedIter()
 		}
 
-		var leaves []tr.Noder
+		var leaves []tn.Noder
 
 		err := si.lex_one(si.logger)
 		if err != nil {
@@ -204,8 +205,8 @@ func (si *SourceIterator[T]) Consume() (*leaves_result[T], error) {
 		}
 
 		// Ignore error leaves.
-		f := func(leaf tr.Noder) bool {
-			tn, ok := leaf.(*TreeNode[T])
+		f := func(leaf tn.Noder) bool {
+			tn, ok := leaf.(*TokenNode[T])
 			if !ok {
 				return false
 			}
@@ -271,16 +272,16 @@ func newSourceIterator[T gr.TokenTyper](source *cds.Stream[byte], productions []
 // Returns:
 //   - []Tree.Noder: The completed branch.
 //   - bool: True if the branch can continue, false otherwise.
-func (si *SourceIterator[T]) get_completed_branch() ([]tr.Noder, bool) {
+func (si *SourceIterator[T]) get_completed_branch() ([]tn.Noder, bool) {
 	leaves := si.tree.GetLeaves()
 
 	can_continue := false
 
-	var completed_leaves []tr.Noder
+	var completed_leaves []tn.Noder
 
 	for _, leaf := range leaves {
-		tn, ok := leaf.(*TreeNode[T])
-		uc.Assert(ok, "Must be a *TreeNode[T]")
+		tn, ok := leaf.(*TokenNode[T])
+		uc.Assert(ok, "Must be a *TokenNode[T]")
 
 		switch tn.Status {
 		case EvalComplete:
@@ -297,7 +298,7 @@ func (si *SourceIterator[T]) get_completed_branch() ([]tr.Noder, bool) {
 //
 // Parameters:
 //   - leaf: The leaf to delete.
-func (si *SourceIterator[T]) delete_branch(leaf tr.Noder) {
+func (si *SourceIterator[T]) delete_branch(leaf tn.Noder) {
 	err := si.tree.DeleteBranchContaining(leaf)
 	uc.AssertF(err == nil, "DeleteBranchContaining failed: %s", err.Error())
 }
@@ -429,7 +430,7 @@ func executeLexing(source *cds.Stream[byte], productions []*gr.RegProduction) (*
 
 		tree.Accept()
 
-		var completedLeaves []*tr.TreeNode[*tr.StatusInfo[EvalStatus, gr.Token]]
+		var completedLeaves []*tr.TokenNode[*tr.StatusInfo[EvalStatus, gr.Token]]
 
 		tree.ReadData(func(data *tr.Tree[*tr.StatusInfo[EvalStatus, gr.Token]]) {
 			completedLeaves = data.GetLeaves()

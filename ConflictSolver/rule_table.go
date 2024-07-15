@@ -11,7 +11,7 @@ type RuleTable[T gr.TokenTyper] struct {
 	items []*Item[T]
 
 	// buckets is the buckets of the rule table.
-	buckets map[T][]*Helper[T]
+	buckets map[T][]*HelperNode[T]
 }
 
 // NewRuleTable is a constructor of RuleTable.
@@ -49,8 +49,8 @@ func NewRuleTable[T gr.TokenTyper](symbols []T, rules []*gr.Production[T]) *Rule
 //
 // Returns:
 //   - map[T]*uts.Bucket[*Helper]: The item buckets.
-func (rt *RuleTable[T]) get_item_buckets() map[T][]*Helper[T] {
-	buckets := make(map[T][]*Helper[T])
+func (rt *RuleTable[T]) get_item_buckets() map[T][]*HelperNode[T] {
+	buckets := make(map[T][]*HelperNode[T])
 
 	for _, item := range rt.items {
 		symbol, err := item.Rule.GetRhsAt(item.Pos)
@@ -70,11 +70,11 @@ func (rt *RuleTable[T]) get_item_buckets() map[T][]*Helper[T] {
 			act = NewActShift[T]()
 		}
 
-		h := NewHelper(item, act)
+		h := NewHelperNode(item, act)
 
 		prev, ok := buckets[symbol]
 		if !ok {
-			prev = []*Helper[T]{h}
+			prev = []*HelperNode[T]{h}
 		} else {
 			prev = append(prev, h)
 		}
@@ -89,11 +89,11 @@ func (rt *RuleTable[T]) get_item_buckets() map[T][]*Helper[T] {
 //
 // Returns:
 //   - map[T]*uts.Bucket[*Helper]: The copy of the buckets.
-func (rt *RuleTable[T]) GetBucketsCopy() map[T][]*Helper[T] {
-	buckets := make(map[T][]*Helper[T])
+func (rt *RuleTable[T]) GetBucketsCopy() map[T][]*HelperNode[T] {
+	buckets := make(map[T][]*HelperNode[T])
 
 	for k, v := range rt.buckets {
-		v_copy := make([]*Helper[T], len(v))
+		v_copy := make([]*HelperNode[T], len(v))
 		copy(v_copy, v)
 
 		buckets[k] = v_copy

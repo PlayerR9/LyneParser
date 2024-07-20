@@ -1,7 +1,13 @@
 github.com/PlayerR9/MyGoLib v0.4.1 h1:XCeQL0nF7Dzi7j/OgXKP8BlmPPoaJ6HN8A1Xv+jD0r0=
 github.com/PlayerR9/MyGoLib v0.4.1/go.mod h1:LH3B5Ohx/7jL599VpeuaC0UrseOpPzEMuBSGIY7ZB6Q=
+github.com/PlayerR9/MyGoLib v0.4.3 h1:iCR+1TAITltb1pWR1BLyNLzArHrfo7xdyL7tDPjZjbI=
+github.com/PlayerR9/MyGoLib v0.4.3/go.mod h1:KosnXjviGS+DI9I5/NqQSZ8dFW+6vJkDgD5S9ER9sPo=
+github.com/PlayerR9/stack v0.1.0 h1:wlxHxXU9vmXnmXt4uh0kFtDONPY0hDFLvW+8Na9k3Q4=
+github.com/PlayerR9/stack v0.1.0/go.mod h1:rX0u6KrU8fKOnJlD7INcqlvRgH0SJFSDNaevaIUO98I=
 github.com/PlayerR9/tree v0.1.1 h1:EnQ964BzGEuPzNYDFMd5trO7ukcrbxDkCi1MytC02oo=
 github.com/PlayerR9/tree v0.1.1/go.mod h1:v7VpvM23y9r45o3dDRMfxUO1TUG7QDcuK97Kw4PrRA8=
+github.com/PlayerR9/tree v0.1.3 h1:qaldcOaLTaMgc0uXmcgKyac/kFqTbwCc4TQdSDllm9k=
+github.com/PlayerR9/tree v0.1.3/go.mod h1:TkaQbaY7Eg7oKZrZJkgdTBSoFqa35jI/AqJBnCUEAAA=
 github.com/PlayerR9/treenode v0.1.1 h1:2tVQiAyynMK/5dXCPyY1Ps0bZcClRyYuN259v+C/6l0=
 github.com/PlayerR9/treenode v0.1.1/go.mod h1:45/kjhPeM1jBhA1AtG2MasBR65ds8S+cwUT4yDYFhzw=
 github.com/gdamore/encoding v1.0.0/go.mod h1:alR0ol34c49FCSBLjhosxzcPHQbf2trDkoo5dl+VrEg=
@@ -23,6 +29,10 @@ golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACk
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=
 golang.org/x/exp v0.0.0-20240707233637-46b078467d37 h1:uLDX+AfeFCct3a2C7uIWBKMJIR3CJMhcgfrUAqjRK6w=
 golang.org/x/exp v0.0.0-20240707233637-46b078467d37/go.mod h1:M4RDyNAINzryxdtnbRXRL/OHtkFuWGRjvuhBJpk2IlY=
+golang.org/x/exp v0.0.0-20240716175740-e3f259677ff7 h1:wDLEX9a7YQoKdKNQt88rtydkqDxeGaBUTnIYc3iG/mA=
+golang.org/x/exp v0.0.0-20240716175740-e3f259677ff7/go.mod h1:M4RDyNAINzryxdtnbRXRL/OHtkFuWGRjvuhBJpk2IlY=
+golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 h1:2dVuKD2vS7b0QIHQbpyTISPd0LeHDbnYEryqj5Q1ug8=
+golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56/go.mod h1:M4RDyNAINzryxdtnbRXRL/OHtkFuWGRjvuhBJpk2IlY=
 golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4/go.mod h1:jJ57K6gSWd91VN4djpZkiMVwK6gcyfeH4XE8wZrZaV4=
 golang.org/x/mod v0.8.0/go.mod h1:iBbtSCu2XBx23ZKBPSOrRkjjQPZFPuis4dIYUhu/chs=
 golang.org/x/net v0.0.0-20190620200207-3b0461eec859/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=

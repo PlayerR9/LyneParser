@@ -7,12 +7,11 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
-	tr "github.com/PlayerR9/tree/Tree"
-	tn "github.com/PlayerR9/treenode"
+	tr "github.com/PlayerR9/tree/tree"
 )
 
 type CoreIter[T gr.TokenTyper] struct {
-	do_func uc.EvalManyFunc[tn.Noder, tn.Noder]
+	do_func uc.EvalManyFunc[tr.Noder, tr.Noder]
 	tree    *tr.Tree
 
 	// data is the data.
@@ -64,13 +63,13 @@ func (it *CoreIter[T]) Consume() ([][]*gr.Token[T], error) {
 
 		leaves := it.tree.GetLeaves()
 
-		f := func(n tn.Noder) bool {
+		f := func(n tr.Noder) bool {
 			tn, ok := n.(*TokenNode[T])
 			if !ok {
 				return false
 			}
 
-			ok = tn.Status != EvalIncomplete
+			ok = tr.Status != EvalIncomplete
 			return ok
 		}
 
@@ -91,7 +90,7 @@ func (it *CoreIter[T]) Consume() ([][]*gr.Token[T], error) {
 			converted := convert_branch[T](branch)
 			level := last_of_branch(converted)
 
-			if tn.Status == EvalError {
+			if tr.Status == EvalError {
 				err := NewErrLexerError(level, converted)
 
 				errs.AddErr(err, level)

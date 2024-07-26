@@ -5,8 +5,8 @@ import (
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	com "github.com/PlayerR9/LyneParser/SimpleLexer/Common"
-	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
+	lls "github.com/PlayerR9/stack/stack"
 )
 
 type Parser struct {

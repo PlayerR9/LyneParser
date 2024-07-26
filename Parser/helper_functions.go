@@ -6,9 +6,9 @@ import (
 	cs "github.com/PlayerR9/LyneParser/ConflictSolver"
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
-	"github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
+	lls "github.com/PlayerR9/stack/stack"
 )
 
 // evaluate evaluates the frontier evaluator given an element.
@@ -35,7 +35,7 @@ func evaluate[T gr.TokenTyper](dt *cs.ConflictSolver[T], source *cds.Stream[*gr.
 	var sols []*us.WeightedHelper[*CurrentEval[T]]
 
 	p := uc.NewPair(elem, 0.0)
-	S := Stacker.NewArrayStack(p)
+	S := lls.NewArrayStack(p)
 
 	for {
 		p, ok := S.Pop()

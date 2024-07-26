@@ -2,7 +2,7 @@ package ConflictSolver
 
 import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	tn "github.com/PlayerR9/treenode"
+	tr "github.com/PlayerR9/tree/tree"
 )
 
 // FilterTerminalLeaf filters out terminal leaf nodes.
@@ -13,7 +13,7 @@ import (
 // Returns:
 //   - bool: True if the tree node is a terminal leaf, false otherwise.
 func FilterTerminalLeaf[T gr.TokenTyper](tn *HelperNode[T]) bool {
-	rhs, err := tn.GetRhsAt(0)
+	rhs, err := tr.GetRhsAt(0)
 	if err != nil {
 		return false
 	}
@@ -29,13 +29,13 @@ func FilterTerminalLeaf[T gr.TokenTyper](tn *HelperNode[T]) bool {
 //
 // Returns:
 //   - bool: False if the tree node is a terminal leaf, true otherwise.
-func FilterNonTerminalLeaf[T gr.TokenTyper](n tn.Noder) bool {
+func FilterNonTerminalLeaf[T gr.TokenTyper](n tr.Noder) bool {
 	tn, ok := n.(*HelperNode[T])
 	if !ok {
 		return false
 	}
 
-	rhs, err := tn.GetRhsAt(0)
+	rhs, err := tr.GetRhsAt(0)
 	if err != nil {
 		return true
 	}

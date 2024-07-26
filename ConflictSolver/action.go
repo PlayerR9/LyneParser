@@ -7,7 +7,8 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	lls "github.com/PlayerR9/stack"
+	uterr "github.com/PlayerR9/MyGoLib/Utility/errors"
+	lls "github.com/PlayerR9/stack/stack"
 )
 
 // Actioner represents an action that the parser will take.
@@ -332,9 +333,9 @@ func MatchAction[T gr.TokenTyper](a Actioner[T], top *gr.Token[T], stack *ud.His
 	ela, ok := a.GetLookahead()
 	if ok {
 		if tla == nil {
-			return uc.NewErrUnexpected("", ela.String())
+			return uterr.NewErrUnexpected("", ela.String())
 		} else if ela != tla.GetID() {
-			return uc.NewErrUnexpected(top.GoString(), ela.String())
+			return uterr.NewErrUnexpected(top.GoString(), ela.String())
 		}
 	}
 
@@ -349,13 +350,13 @@ func MatchAction[T gr.TokenTyper](a Actioner[T], top *gr.Token[T], stack *ud.His
 		cmd := lls.NewPop[*gr.Token[T]]()
 		err = stack.ExecuteCommand(cmd)
 		if err != nil {
-			return uc.NewErrUnexpected("", rhs.String())
+			return uterr.NewErrUnexpected("", rhs.String())
 		}
 		top := cmd.Value()
 
 		id := top.GetID()
 		if id != rhs {
-			return uc.NewErrUnexpected(top.GoString(), rhs.String())
+			return uterr.NewErrUnexpected(top.GoString(), rhs.String())
 		}
 	}
 

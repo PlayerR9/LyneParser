@@ -6,7 +6,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	cds "github.com/PlayerR9/MyGoLib/CustomData/Stream"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	tr "github.com/PlayerR9/tree/Tree"
+	tr "github.com/PlayerR9/tree/tree"
 )
 
 func convert_branch[T gr.TokenTyper](branch *tr.Branch) []*gr.Token[T] {

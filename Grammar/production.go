@@ -4,10 +4,10 @@ import (
 	"slices"
 	"strings"
 
-	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
+	lls "github.com/PlayerR9/stack/stack"
 )
 
 // Production represents a production in a grammar.

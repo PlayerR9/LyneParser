@@ -6,7 +6,7 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
-	lls "github.com/PlayerR9/stack"
+	lls "github.com/PlayerR9/stack/stack"
 )
 
 // SetAction sets the action of the helper.

@@ -6,8 +6,8 @@ import (
 	gr "github.com/PlayerR9/LyneParser/Grammar"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
-	tr "github.com/PlayerR9/tree/Tree"
-	tn "github.com/PlayerR9/treenode"
+	trb "github.com/PlayerR9/tree/builder"
+	tr "github.com/PlayerR9/tree/tree"
 )
 
 // InfoStruct is the information about the expansion tree.
@@ -76,7 +76,7 @@ func (is *InfoStruct[T]) SetSeen(h *HelperNode[T]) {
 // ExpansionTree is a tree of expansion helpers.
 type ExpansionTree[T gr.TokenTyper] struct {
 	// tree is the tree of expansion helpers.
-	tree *tr.Tree
+	tree *tr.Tree[*HelperNode[T]]
 
 	// info is the information about the expansion tree.
 	info *InfoStruct[T]
@@ -100,7 +100,7 @@ type ExpansionTree[T gr.TokenTyper] struct {
 func NewExpansionTreeRootedAt[T gr.TokenTyper](cs *ConflictSolver[T], h *HelperNode[T]) (*ExpansionTree[T], error) {
 	info := NewInfoStruct(h)
 
-	nexts_func := func(data tn.Noder, is tr.Infoer) ([]tn.Noder, error) {
+	nexts_func := func(data tr.Noder, is tr.Infoer) ([]tr.Noder, error) {
 		is_inf, ok := is.(*InfoStruct[T])
 		if !ok {
 			return nil, uc.NewErrUnexpectedType("is", is)
@@ -127,7 +127,7 @@ func NewExpansionTreeRootedAt[T gr.TokenTyper](cs *ConflictSolver[T], h *HelperN
 
 		is_inf.SetSeen(hn)
 
-		var children []tn.Noder
+		var children []tr.Noder
 
 		for _, r := range result {
 			children = append(children, r)
@@ -136,7 +136,7 @@ func NewExpansionTreeRootedAt[T gr.TokenTyper](cs *ConflictSolver[T], h *HelperN
 		return children, nil
 	}
 
-	var builder tr.Builder
+	var builder trb.Builder[*HelperNode[T]]
 
 	builder.SetInfo(info)
 	builder.SetNextFunc(nexts_func)
@@ -192,7 +192,7 @@ func (et *ExpansionTree[T]) Collapse() []T {
 		tn, ok := leaf.(*HelperNode[T])
 		uc.Assert(ok, "Must be a *HelperNode[T]")
 
-		rhs, err := tn.GetRhsAt(0)
+		rhs, err := tr.GetRhsAt(0)
 		uc.AssertF(err == nil, "unexpected error: %s", err.Error())
 
 		pos, ok := slices.BinarySearch(result, rhs)

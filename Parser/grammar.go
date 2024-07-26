@@ -4,8 +4,8 @@ import (
 	"slices"
 
 	gr "github.com/PlayerR9/LyneParser/Grammar"
-	lls "github.com/PlayerR9/MyGoLib/ListLike/Stacker"
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
+	lls "github.com/PlayerR9/stack/stack"
 )
 
 // Grammar represents a context-free grammar.

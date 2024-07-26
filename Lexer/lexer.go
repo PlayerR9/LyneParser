@@ -8,15 +8,14 @@ import (
 	ffs "github.com/PlayerR9/MyGoLib/Formatting/FString"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
-	tr "github.com/PlayerR9/tree/Tree"
-	tn "github.com/PlayerR9/treenode"
+	tr "github.com/PlayerR9/tree/tree"
 )
 
 type leaves_result[T gr.TokenTyper] struct {
 	leaves []*TokenNode[T]
 }
 
-func new_leaves_result[T gr.TokenTyper](nodes []tn.Noder) *leaves_result[T] {
+func new_leaves_result[T gr.TokenTyper](nodes []tr.Noder) *leaves_result[T] {
 	var valid_nodes []*TokenNode[T]
 
 	for _, node := range nodes {
@@ -151,7 +150,7 @@ func (si *SourceIterator[T]) lex_one(logger *Verbose) error {
 		tn, ok := leaf.(*TokenNode[T])
 		uc.Assert(ok, "Must be a *TokenNode[T]")
 
-		if tn.Status == EvalError {
+		if tr.Status == EvalError {
 			failed = append(failed, tn)
 		} else {
 			success = append(success, tn)
@@ -193,7 +192,7 @@ func (si *SourceIterator[T]) Consume() (*leaves_result[T], error) {
 			return nil, uc.NewErrExhaustedIter()
 		}
 
-		var leaves []tn.Noder
+		var leaves []tr.Noder
 
 		err := si.lex_one(si.logger)
 		if err != nil {
@@ -205,13 +204,13 @@ func (si *SourceIterator[T]) Consume() (*leaves_result[T], error) {
 		}
 
 		// Ignore error leaves.
-		f := func(leaf tn.Noder) bool {
+		f := func(leaf tr.Noder) bool {
 			tn, ok := leaf.(*TokenNode[T])
 			if !ok {
 				return false
 			}
 
-			return tn.Status != EvalError
+			return tr.Status != EvalError
 		}
 
 		leaves = us.SliceFilter(leaves, f)
@@ -272,18 +271,18 @@ func newSourceIterator[T gr.TokenTyper](source *cds.Stream[byte], productions []
 // Returns:
 //   - []Tree.Noder: The completed branch.
 //   - bool: True if the branch can continue, false otherwise.
-func (si *SourceIterator[T]) get_completed_branch() ([]tn.Noder, bool) {
+func (si *SourceIterator[T]) get_completed_branch() ([]tr.Noder, bool) {
 	leaves := si.tree.GetLeaves()
 
 	can_continue := false
 
-	var completed_leaves []tn.Noder
+	var completed_leaves []tr.Noder
 
 	for _, leaf := range leaves {
 		tn, ok := leaf.(*TokenNode[T])
 		uc.Assert(ok, "Must be a *TokenNode[T]")
 
-		switch tn.Status {
+		switch tr.Status {
 		case EvalComplete:
 			completed_leaves = append(completed_leaves, leaf)
 		case EvalIncomplete:
@@ -298,7 +297,7 @@ func (si *SourceIterator[T]) get_completed_branch() ([]tn.Noder, bool) {
 //
 // Parameters:
 //   - leaf: The leaf to delete.
-func (si *SourceIterator[T]) delete_branch(leaf tn.Noder) {
+func (si *SourceIterator[T]) delete_branch(leaf tr.Noder) {
 	err := si.tree.DeleteBranchContaining(leaf)
 	uc.AssertF(err == nil, "DeleteBranchContaining failed: %s", err.Error())
 }

@@ -13,7 +13,7 @@ import (
 	ud "github.com/PlayerR9/MyGoLib/Units/Debugging"
 	uc "github.com/PlayerR9/MyGoLib/Units/common"
 	us "github.com/PlayerR9/MyGoLib/Units/slice"
-	lls "github.com/PlayerR9/stack"
+	lls "github.com/PlayerR9/stack/stack"
 )
 
 var (
